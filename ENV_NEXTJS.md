@@ -1,0 +1,17 @@
+# Next.js production environment contract
+
+Public browser variables:
+- NEXT_PUBLIC_APP_URL
+- NEXT_PUBLIC_SUPABASE_URL
+- NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+
+Server-only variables:
+- SUPABASE_SERVICE_ROLE_KEY (or newer Supabase secret key equivalent)
+- SUPABASE_DATABASE_URL
+- OPENAI_API_KEY
+- GOOGLE_SERVICE_ACCOUNT_JSON / GOOGLE_APPLICATION_CREDENTIALS
+- GOOGLE_DRIVE_FOLDER_ID
+- GOOGLE_SHEETS_SPREADSHEET_ID
+- LUMA_TOPUP_WEBHOOK_SECRET
+
+Never prefix server secrets with `NEXT_PUBLIC_`.

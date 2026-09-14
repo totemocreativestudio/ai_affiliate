@@ -1,0 +1,12 @@
+node_modules/
+.next/
+.vercel/
+.env
+.env.*
+!.env.example
+*.local
+*.log
+__pycache__/
+*.pyc
+backups/
+source-backups/
