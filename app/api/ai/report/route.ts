@@ -1,0 +1,61 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getServerContext } from "../../../../lib/server-auth";
+import { getServerSecret } from "../../../../lib/server-secrets";
+
+export const runtime="nodejs";
+
+const PAGE_SCHEMA={type:"object",additionalProperties:false,properties:{page_number:{type:"integer"},title:{type:"string"},subtitle:{type:"string"},sections:{type:"array",items:{type:"object",additionalProperties:false,properties:{heading:{type:"string"},body:{type:"string"}},required:["heading","body"]}},bullets:{type:"array",items:{type:"string"}},callout:{type:"string"}},required:["page_number","title","subtitle","sections","bullets","callout"]};
+const SCHEMA={type:"object",additionalProperties:false,properties:{document_title:{type:"string"},executive_note:{type:"string"},pages:{type:"array",minItems:20,maxItems:20,items:PAGE_SCHEMA}},required:["document_title","executive_note","pages"]};
+function outputText(data:any){if(typeof data?.output_text==="string")return data.output_text;for(const item of data?.output||[])for(const c of item?.content||[])if(c?.type==="output_text"&&c?.text)return c.text;return "";}
+
+export async function POST(req:NextRequest){
+  try{
+    const b=await req.json();const workspaceId=String(b.workspace_id||"");const primaryRunId=String(b.run_id||"");
+    const ctx=await getServerContext(workspaceId);const apiKey=await getServerSecret(ctx.admin,"luma_openai_api_key");if(!apiKey)return NextResponse.json({ok:false,error:"OpenAI belum aktif."},{status:503});
+    const {data:primary,error:primaryError}=await ctx.admin.from("ai_analysis_runs").select("*").eq("workspace_id",workspaceId).eq("run_id",primaryRunId).eq("created_by",ctx.user.id).maybeSingle();if(primaryError)throw primaryError;if(!primary)return NextResponse.json({ok:false,error:"Analysis run tidak ditemukan."},{status:404});
+
+    let q=ctx.admin.from("ai_analysis_runs").select("run_id,analysis_type,start_date,end_date,created_at,status").eq("workspace_id",workspaceId).eq("created_by",ctx.user.id).eq("status","Success").order("created_at",{ascending:false}).limit(100);
+    if(primary.start_date)q=q.eq("start_date",primary.start_date);else q=q.is("start_date",null);
+    if(primary.end_date)q=q.eq("end_date",primary.end_date);else q=q.is("end_date",null);
+    const {data:runs,error:runsError}=await q;if(runsError)throw runsError;
+    const latestByType:Record<string,any>={};for(const r of runs||[])if(!latestByType[r.analysis_type])latestByType[r.analysis_type]=r;
+    const chosen=Object.values(latestByType);const ids=chosen.map((x:any)=>x.run_id);
+    const {data:insights,error:insError}=ids.length?await ctx.admin.from("ai_insights").select("run_id,insight_json").eq("workspace_id",workspaceId).in("run_id",ids):{data:[],error:null};if(insError)throw insError;
+    const insightMap=Object.fromEntries((insights||[]).map((x:any)=>[x.run_id,x.insight_json]));
+    const combined=chosen.map((x:any)=>({analysis_type:x.analysis_type,result:insightMap[x.run_id]||{}}));
+    const {data:ref}=await ctx.admin.from("referral_profiles").select("referral_code").eq("user_id",ctx.user.id).maybeSingle();
+    const appUrl=process.env.NEXT_PUBLIC_APP_URL||"https://lumaway.online";
+
+    const pagePlan=[
+      "Cover — LUMAWAY / LUMA Affiliate Intelligence, report title, period, generated date.",
+      "Executive Summary — most important findings across all available analyses.",
+      "Scope & Data — dataset scope, period, caveats, what was uploaded and analyzed.",
+      "KPI Snapshot — performance status and measurable indicators present in the analysis.",
+      "Performance Analysis — overall performance interpretation.",
+      "Creator Analysis — concentration and contribution insights.",
+      "Creator Action Map — retain, grow, reactivate, test recommendations where supported.",
+      "Product Analysis — SKU/product contribution and limitations where granular data is absent.",
+      "Product Opportunity Map — priorities based only on available findings.",
+      "Trend Analysis — time movement and momentum.",
+      "Period Comparison — comparisons supported by the data; explicitly state if unavailable.",
+      "Anomaly Detection — unusual patterns and possible data/business anomalies.",
+      "Risk & Validation — what must be verified before decisions.",
+      "Recommendations — prioritized actions with business rationale.",
+      "30-Day Action Plan — sequence of practical actions.",
+      "Kanban Priorities — task-ready backlog with suggested priority and deadline horizon.",
+      "DO — recommended operating principles derived from the analysis.",
+      "DON'T — actions to avoid, data caveats, governance.",
+      "Conclusion & Next Analysis — what changed, what to monitor, what data to upload next.",
+      `Lumaway Affiliate — invite readers to register at ${appUrl} using referral code ${ref?.referral_code||"LUMAWAY"}. This final page is promotional and must be clearly separated from analytical findings.`,
+    ];
+    const instructions=`Anda adalah Senior Business Intelligence Editor untuk LUMAWAY. Buat DOKUMEN TEPAT 20 HALAMAN A4 dari kumpulan hasil enam jenis LUMA Affiliate Intelligence: performance, creator, product, trend, anomaly, recommendation.\nGunakan hanya fakta dan angka yang benar-benar ada pada combined_analysis. Jangan mengarang angka, sebab, SKU, creator, tren, atau benchmark. Bila salah satu tipe belum tersedia, nyatakan keterbatasannya dan gunakan hubungan logis dari tipe lain tanpa membuat fakta baru.\nSetiap halaman harus punya fokus berbeda sesuai PAGE PLAN. Tulis Bahasa Indonesia profesional, managerial, padat tetapi cukup kaya untuk menjadi halaman report. sections 1-3 per halaman, bullets 2-6 bila relevan, callout singkat.\nPage 1 harus cover minimal. Page 20 adalah promosi Lumaway/referral dan tidak boleh dicampur dengan kesimpulan data.\nPastikan page_number berurutan 1 sampai 20.`;
+    const input={period:{start:primary.start_date||"All data",end:primary.end_date||"All data"},primary_analysis_type:primary.analysis_type,page_plan:pagePlan,combined_analysis:combined,referral_code:ref?.referral_code||null,registration_url:appUrl};
+    const model=process.env.OPENAI_MODEL||process.env.AI_MODEL||"gpt-5-mini";
+    const response=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${apiKey}`,"Content-Type":"application/json"},body:JSON.stringify({model,instructions,input:JSON.stringify(input),text:{format:{type:"json_schema",name:"lumaway_20_page_report",schema:SCHEMA,strict:true}},store:false})});
+    const raw=await response.json();if(!response.ok)throw new Error(raw?.error?.message||`OpenAI request failed (${response.status})`);const text=outputText(raw);if(!text)throw new Error("AI report response kosong.");const document=JSON.parse(text);
+    document.pages=(document.pages||[]).sort((a:any,b:any)=>a.page_number-b.page_number).slice(0,20);
+    const fileName=`lumaway-ai-report-${primaryRunId.toLowerCase()}.html`;
+    const {data:report,error:reportError}=await ctx.admin.from("luma_pdf_reports").insert({workspace_id:workspaceId,user_id:ctx.user.id,title:document.document_title||`LUMAWAY AI Report ${primary.analysis_type}`,period_start:primary.start_date||null,period_end:primary.end_date||null,language:"id",tone:"black-white",tokens_used:0,file_name:fileName,run_id:primaryRunId,analysis_type:primary.analysis_type,content_json:{combined_run_ids:ids,executive_note:document.executive_note},document_json:document,status:"ready",page_count:20}).select("id,title,page_count,created_at").single();if(reportError)throw reportError;
+    return NextResponse.json({ok:true,report,document,model,combined_types:Object.keys(latestByType)});
+  }catch(error:any){return NextResponse.json({ok:false,error:error?.message||"Report generation failed."},{status:400});}
+}
