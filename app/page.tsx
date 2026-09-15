@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { createClient } from "../lib/supabase-browser";
@@ -291,6 +291,24 @@ export default function Home() {
     );
   }
 
+  async function loginWithGoogle() {
+    setError("");
+    setLoading(true);
+
+    const { error: googleError } =
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/`,
+        },
+      });
+
+    if (googleError) {
+      setError(googleError.message);
+      setLoading(false);
+    }
+  }
+
   async function login() {
     setError("");
     setLoading(true);
@@ -353,6 +371,35 @@ export default function Home() {
         <p>Supabase Authentication</p>
 
         <div style={{ marginTop: 30 }}>
+          <button
+            onClick={loginWithGoogle}
+            disabled={loading}
+            style={{
+              width: "100%",
+              padding: 12,
+              cursor: loading ? "wait" : "pointer",
+              background: "#fff",
+              border: "1px solid #ccc",
+              borderRadius: 4,
+              fontWeight: 600,
+            }}
+          >
+            Continue with Google
+          </button>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              margin: "20px 0",
+              color: "#777",
+            }}
+          >
+            <div style={{ height: 1, background: "#ddd", flex: 1 }} />
+            <span>or</span>
+            <div style={{ height: 1, background: "#ddd", flex: 1 }} />
+          </div>
           <label>
             <strong>Email</strong>
           </label>
