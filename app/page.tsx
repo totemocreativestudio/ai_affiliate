@@ -19,6 +19,7 @@ import RestoredLegacyModules from "./components/RestoredLegacyModules";
 
 type Profile = { id: string; email: string | null; full_name: string | null; role: string; active: boolean };
 type Workspace = { id: string; name: string; slug: string; status: string };
+type AuthMode = "signin" | "signup";
 
 export default function Home() {
   const supabase = createClient();
@@ -28,8 +29,17 @@ export default function Home() {
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [authMode, setAuthMode] = useState<AuthMode>("signin");
+  const [showPassword, setShowPassword] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [authMessage, setAuthMessage] = useState("");
 
-  useEffect(() => { void loadSession(); }, []);
+  useEffect(() => {
+    if (typeof window !== "undefined" && !window.location.hash) {
+      window.history.replaceState(null, "", "#dashboard");
+    }
+    void loadSession();
+  }, []);
 
   async function loadSession() {
     setError("");
@@ -56,29 +66,191 @@ export default function Home() {
   }
 
   async function loginWithGoogle() {
-    setError(""); setLoading(true);
-    const { error: googleError } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}/` } });
+    setError("");
+    setAuthMessage("");
+    setLoading(true);
+    const { error: googleError } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/#dashboard` },
+    });
     if (googleError) { setError(googleError.message); setLoading(false); }
   }
 
   async function login() {
-    setError(""); setLoading(true);
+    if (!email || !password) {
+      setError("Email dan password wajib diisi.");
+      return;
+    }
+    setError("");
+    setAuthMessage("");
+    setLoading(true);
     const { data, error: loginError } = await supabase.auth.signInWithPassword({ email, password });
     if (loginError) { setError(loginError.message); setLoading(false); return; }
     if (data.user) await loadLumaData(data.user.id);
     setLoading(false);
   }
 
-  async function logout() { await supabase.auth.signOut(); setProfile(null); setWorkspace(null); }
+  async function signup() {
+    if (!email || !password) {
+      setError("Email dan password wajib diisi.");
+      return;
+    }
+    if (password.length < 8) {
+      setError("Gunakan password minimal 8 karakter.");
+      return;
+    }
+    if (!termsAccepted) {
+      setError("Konfirmasi persetujuan akses workspace terlebih dahulu.");
+      return;
+    }
+    setError("");
+    setAuthMessage("");
+    setLoading(true);
+    const { data, error: signupError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: `${window.location.origin}/#dashboard` },
+    });
+    if (signupError) {
+      setError(signupError.message);
+      setLoading(false);
+      return;
+    }
+    if (data.session) await supabase.auth.signOut();
+    setAuthMessage("Akun berhasil dibuat. Verifikasi email, lalu minta admin menambahkan akun ke workspace LUMA.");
+    setAuthMode("signin");
+    setPassword("");
+    setTermsAccepted(false);
+    setLoading(false);
+  }
 
-  if (loading) return <main className="standalone-auth"><section className="auth-panel"><div className="auth-brand"><img src="/luma-mark.png" alt="Luma" /><div><strong>LUMA</strong><span>Light Up Your Potential.</span></div></div><h1>Loading Luma...</h1></section></main>;
+  async function logout() {
+    await supabase.auth.signOut();
+    setProfile(null);
+    setWorkspace(null);
+    setPassword("");
+    setError("");
+  }
 
-  if (!profile || !workspace) return <main className="standalone-auth"><section className="auth-panel"><div className="auth-brand"><img src="/luma-mark.png" alt="Luma" /><div><strong>LUMA</strong><span>Light Up Your Potential.</span></div></div><h1>Welcome to Luma</h1><p className="muted">Affiliate Intelligence Workspace</p><div style={{ marginTop: 30 }}><button onClick={loginWithGoogle} style={{width:"100%",padding:12,cursor:"pointer",background:"#fff",border:"1px solid #ccc",borderRadius:8,fontWeight:700,color:"#172033"}}>Continue with Google</button><div style={{display:"flex",alignItems:"center",gap:12,margin:"20px 0",color:"#777"}}><div style={{height:1,background:"#ddd",flex:1}}/><span>or</span><div style={{height:1,background:"#ddd",flex:1}}/></div><label>Email<input type="email" value={email} onChange={(e)=>setEmail(e.target.value)}/></label><label>Password<input type="password" value={password} onChange={(e)=>setPassword(e.target.value)}/></label><button className="full" onClick={login}>Login</button></div>{error&&<p className="auth-error">{error}</p>}</section></main>;
+  function switchAuthMode(mode: AuthMode) {
+    setAuthMode(mode);
+    setError("");
+    setAuthMessage("");
+  }
+
+  if (loading && !profile && !workspace) {
+    return (
+      <main className="auth-loading-screen">
+        <div className="auth-loading-mark"><img src="/luma-mark.png" alt="LUMA" /></div>
+        <span>Preparing your workspace...</span>
+      </main>
+    );
+  }
+
+  if (!profile || !workspace) {
+    return (
+      <main className="standalone-auth">
+        <section className="auth-shell">
+          <aside className="auth-showcase">
+            <div className="auth-showcase-glow auth-glow-one" />
+            <div className="auth-showcase-glow auth-glow-two" />
+            <div className="auth-brand auth-brand-light">
+              <img src="/luma-mark.png" alt="LUMA" />
+              <div><strong>LUMA</strong><span>Light Up Your Potential.</span></div>
+            </div>
+
+            <div className="auth-story">
+              <span className="auth-kicker">AFFILIATE INTELLIGENCE WORKSPACE</span>
+              <h1>Turn affiliate data into clear decisions.</h1>
+              <p>Monitor creator performance, campaign support, product movement, and AI insights from one focused workspace.</p>
+
+              <div className="auth-insight-card">
+                <div className="auth-insight-head">
+                  <span>Workspace intelligence</span>
+                  <i>Live</i>
+                </div>
+                <div className="auth-spark-bars" aria-hidden="true">
+                  <span style={{ height: "34%" }} /><span style={{ height: "48%" }} /><span style={{ height: "42%" }} /><span style={{ height: "68%" }} /><span style={{ height: "58%" }} /><span style={{ height: "82%" }} /><span style={{ height: "72%" }} /><span style={{ height: "94%" }} />
+                </div>
+                <div className="auth-insight-footer"><span>Creator performance</span><b>+24.8%</b></div>
+              </div>
+            </div>
+
+            <div className="auth-showcase-footer">
+              <span>Secure workspace access</span>
+              <span>Supabase Auth</span>
+            </div>
+          </aside>
+
+          <section className="auth-form-pane">
+            <div className="auth-form-wrap">
+              <div className="auth-mobile-brand">
+                <img src="/luma-mark.png" alt="LUMA" />
+                <strong>LUMA</strong>
+              </div>
+
+              <div className="auth-mode-switch" role="tablist" aria-label="Authentication mode">
+                <button type="button" className={authMode === "signin" ? "active" : ""} onClick={() => switchAuthMode("signin")}>Sign in</button>
+                <button type="button" className={authMode === "signup" ? "active" : ""} onClick={() => switchAuthMode("signup")}>Create account</button>
+              </div>
+
+              <div className="auth-heading" key={authMode}>
+                <span className="auth-kicker dark">LUMA WORKSPACE</span>
+                <h2>{authMode === "signin" ? "Welcome back" : "Create your LUMA account"}</h2>
+                <p>{authMode === "signin" ? "Sign in to continue to Affiliate Intelligence." : "Create an account first. Workspace access is activated by your administrator."}</p>
+              </div>
+
+              <button type="button" className="google-auth-button" onClick={loginWithGoogle}>
+                <span className="google-g">G</span>
+                Continue with Google
+              </button>
+
+              <div className="auth-divider"><span>or continue with email</span></div>
+
+              <div className="auth-fields">
+                <label>
+                  <span>Email address</span>
+                  <input type="email" value={email} autoComplete="email" placeholder="name@company.com" onChange={(e) => setEmail(e.target.value)} />
+                </label>
+                <label>
+                  <span>Password</span>
+                  <div className="password-field">
+                    <input type={showPassword ? "text" : "password"} value={password} autoComplete={authMode === "signin" ? "current-password" : "new-password"} placeholder="Minimum 8 characters" onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && authMode === "signin") void login(); }} />
+                    <button type="button" onClick={() => setShowPassword((v) => !v)}>{showPassword ? "Hide" : "Show"}</button>
+                  </div>
+                </label>
+              </div>
+
+              {authMode === "signup" && (
+                <label className="auth-consent">
+                  <input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} />
+                  <span>I understand that workspace membership is approved by a LUMA administrator.</span>
+                </label>
+              )}
+
+              {error && <div className="auth-alert error"><span>!</span><p>{error}</p></div>}
+              {authMessage && <div className="auth-alert success"><span>✓</span><p>{authMessage}</p></div>}
+
+              <button type="button" className="auth-primary-button" onClick={() => authMode === "signin" ? void login() : void signup()}>
+                {authMode === "signin" ? "Sign in to LUMA" : "Create account"}
+                <span>→</span>
+              </button>
+
+              <p className="auth-help">Need workspace access? Contact your LUMA workspace administrator.</p>
+            </div>
+          </section>
+        </section>
+      </main>
+    );
+  }
 
   return <div className="luma-app">
     <LumaSidebar profile={profile} workspace={workspace} onLogout={logout}/>
     <div className="app-shell">
-      <header className="topbar"><div><span className="topbar-kicker">LUMA WORKSPACE</span><span className="topbar-title">Affiliate Intelligence</span></div><div className="topbar-right"><span className="connection-pill"><i></i>{workspace.name} · Active</span></div></header>
+      <header className="topbar">
+        <div><span className="topbar-kicker">LUMA WORKSPACE</span><span className="topbar-title">Affiliate Intelligence</span></div>
+        <div className="topbar-right"><span className="connection-pill"><i></i>{workspace.name} · Active</span></div>
+      </header>
       <main className="content">
         <LegacyDashboard workspaceId={workspace.id}/>
         <UploadCenter workspaceId={workspace.id}/>
