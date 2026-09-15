@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerContext } from "../../../../lib/server-auth";
+import { getServerSecret } from "../../../../lib/server-secrets";
 
 export const runtime = "nodejs";
 
@@ -54,9 +55,9 @@ export async function POST(req: NextRequest) {
     if (!workspaceId) return NextResponse.json({ok:false,error:"workspace_id required"},{status:400});
     ctx = await getServerContext(workspaceId);
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = await getServerSecret(ctx.admin, "luma_openai_api_key");
     const model = process.env.OPENAI_MODEL || process.env.AI_MODEL || "gpt-5-mini";
-    if (!apiKey) return NextResponse.json({ ok: false, error: "AI belum aktif: OPENAI_API_KEY belum tersedia di environment Vercel." }, { status: 503 });
+    if (!apiKey) return NextResponse.json({ ok: false, error: "AI belum aktif. Platform admin perlu menghubungkan OpenAI API key satu kali dari LUMA AI Analytics." }, { status: 503 });
 
     await ctx.admin.from("ai_analysis_runs").insert({ workspace_id: workspaceId, run_id: runId, analysis_type: analysisType, start_date: start || null, end_date: end || null, dataset_version: "supabase-production", input_hash: "", model, status: "Processing", created_at: new Date().toISOString(), created_by: ctx.user.id });
 
