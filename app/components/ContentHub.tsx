@@ -11,15 +11,17 @@ export default function ContentHub({workspaceId}:{workspaceId:string}){
   const [blogs,setBlogs]=useState<Row[]>([]);
   const [tutorials,setTutorials]=useState<Row[]>([]);
   const [promos,setPromos]=useState<Row[]>([]);
+  const [channelUrl,setChannelUrl]=useState("");
   const [q,setQ]=useState("");
 
   async function load(){
-    const [b,t,p]=await Promise.all([
+    const [b,t,p,w]=await Promise.all([
       supabase.from("luma_blog_posts").select("id,slug,title,excerpt,category,cover_image_url,published_at,created_at").eq("status","published").order("published_at",{ascending:false}).limit(60),
       supabase.from("tutorials").select("id,title,description,category,youtube_url,embed_url,status,created_at").eq("workspace_id",workspaceId).order("sort_order",{ascending:true}).limit(100),
       supabase.from("luma_notifications").select("id,title,body,image_url,action_url,action_label,published_at").eq("category","promo").order("published_at",{ascending:false}).limit(30),
+      supabase.from("luma_platform_settings").select("setting_value").eq("setting_key","whatsapp_channel_url").maybeSingle(),
     ]);
-    setBlogs((b.data||[]) as Row[]);setTutorials((t.data||[]) as Row[]);setPromos((p.data||[]) as Row[]);
+    setBlogs((b.data||[]) as Row[]);setTutorials((t.data||[]) as Row[]);setPromos((p.data||[]) as Row[]);setChannelUrl(w.data?.setting_value||"");
   }
   useEffect(()=>{void load()},[workspaceId]);
 
@@ -28,6 +30,7 @@ export default function ContentHub({workspaceId}:{workspaceId:string}){
 
   return <section id="content-hub" className="legacy-page-anchor content-hub-page">
     <div className="eyebrow">INSIGHT · LEARNING · PROMOTION</div><h1>Insight & Blog</h1><p className="muted">Artikel, tutorial penggunaan LUMA, edukasi bisnis, dan promosi terbaru dari Lumaway.</p>
+    {channelUrl&&<div className="content-whatsapp-cta"><div><b>Lumaway WhatsApp Channel</b><span>Dapatkan update fitur, edukasi, dan promo terbaru.</span></div><a href={channelUrl} target="_blank" rel="noreferrer">Join Channel →</a></div>}
     <div className="content-hub-tabs"><button className={tab==="blog"?"active":""} onClick={()=>setTab("blog")}>Blog</button><button className={tab==="tutorial"?"active":""} onClick={()=>setTab("tutorial")}>Tutorial</button><button className={tab==="promotion"?"active":""} onClick={()=>setTab("promotion")}>Promotion</button></div>
     {tab!=="promotion"&&<div className="content-search"><span>⌕</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={`Cari ${tab==="blog"?"artikel":"tutorial"}...`}/></div>}
 
