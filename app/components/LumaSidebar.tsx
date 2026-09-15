@@ -6,22 +6,22 @@ type Props={profile:{email:string|null;full_name:string|null;role:string};worksp
 const userNav=[["#dashboard","DB","Dashboard"],["#upload","UP","Upload Center"],["#excel-sync","XL","Excel Sync"],["#database","DT","Database"],["#agreements","AG","Agreement"],["#affiliate-support","SP","Affiliate Support"],["#luma-affiliate","RF","Luma Affiliate"],["#promo-studio","AI","AI Promo Studio"],["#kanban","KB","Kanban"],["#content-hub","IN","Insight & Blog"],["#social-lumaway","SO","Social Lumaway"],["#billing","TK","Billing & Token"],["#google-sheets-private","GS","Google Sheets"],["#profile","PR","My Profile"]];
 const aiNav=[["performance","Performance Analysis"],["creator","Creator Analysis"],["product","Product Analysis"],["trend","Trend Analysis"],["anomaly","Anomaly Detection"],["recommendation","Recommendations"]];
 const masterNav=[["#product-master","PD","Product Master"],["#listings","LS","Listings"],["#shipping","SH","Shipping"],["#creator-samples","CS","Creator Samples"],["#ratecard","RC","Ratecard Master"]];
-const ownerNav=[["overview","OV","Command Center"],["finance","FN","Payments & Token"],["ai","AI","AI & API Usage"],["broadcast","BC","Broadcast & Promo"],["content","CT","Blog & Tutorial"],["social","SM","Social Moderation"],["system","SY","System & Issues"]];
+const ownerNav=[["overview","OV","Command Center"],["finance","FN","Payments & Token"],["referral","RF","Referral & Payout"],["ai","AI","AI & API Usage"],["broadcast","BC","Broadcast & Promo"],["content","CT","Blog & Tutorial"],["social","SM","Social Moderation"],["system","SY","System & Issues"]];
 const integrationNav=[["owner-integration-google","GC","Google Cloud"],["owner-integration-openai","OA","OpenAI"],["owner-integration-xendit","XD","Xendit"],["owner-integration-whatsapp","WA","WhatsApp Cloud"]];
 
 export default function LumaSidebar({profile,workspace,onLogout}:Props){
  const isOwner=profile.role==="admin";
  const [activeHash,setActiveHash]=useState(isOwner?"#administration":"#dashboard");
  const [ownerTab,setOwnerTab]=useState("overview");
- useEffect(()=>{const sync=()=>setActiveHash(window.location.hash||(isOwner?"#administration":"#dashboard"));if(isOwner&&window.location.hash!=="#administration")window.history.replaceState(null,"","#administration");sync();window.addEventListener("hashchange",sync);return()=>window.removeEventListener("hashchange",sync)},[isOwner]);
+ useEffect(()=>{const sync=()=>{if(isOwner&&window.location.hash!=="#administration")window.history.replaceState(null,"","#administration");setActiveHash(window.location.hash||(isOwner?"#administration":"#dashboard"))};sync();window.addEventListener("hashchange",sync);return()=>window.removeEventListener("hashchange",sync)},[isOwner]);
  function openAi(type:string){if(window.location.hash!=="#ai-analytics")window.location.hash="ai-analytics";const index=aiNav.findIndex(([key])=>key===type);setTimeout(()=>document.querySelectorAll<HTMLButtonElement>(".ai-type-grid .ai-type-card")[index]?.click(),60)}
- function openOwner(tab:string,section?:string){setOwnerTab(tab);if(window.location.hash!=="#administration")window.location.hash="administration";setTimeout(()=>window.dispatchEvent(new CustomEvent("luma-owner-nav",{detail:{tab,section}})),50)}
+ function openOwner(tab:string,section?:string){const actualTab=tab==="referral"?"finance":tab;setOwnerTab(tab);if(window.location.hash!=="#administration")window.location.hash="administration";setTimeout(()=>window.dispatchEvent(new CustomEvent("luma-owner-nav",{detail:{tab:actualTab,section}})),50)}
 
  return <aside className={`sidebar ${isOwner?"owner-sidebar":""}`} id="sidebar">
    <div className="brand"><img src="/luma-mark.png" alt="Luma" className="brand-mark"/><div><strong>LUMA</strong><span>{isOwner?"Owner Control":"Light Up Your Potential."}</span></div></div>
    {isOwner?<>
      <div className="sidebar-label">OWNER CONTROL</div><nav className="side-nav owner-nav">
-       {ownerNav.map(([tab,icon,label])=><button type="button" key={tab} className={ownerTab===tab?"active":""} onClick={()=>openOwner(tab)}><span className="nav-ico owner-nav-ico">{icon}</span><span>{label}</span></button>)}
+       {ownerNav.map(([tab,icon,label])=><button type="button" key={tab} className={ownerTab===tab?"active":""} onClick={()=>openOwner(tab,tab==="referral"?"owner-referral-payout":undefined)}><span className="nav-ico owner-nav-ico">{icon}</span><span>{label}</span></button>)}
        <details className="side-group" open><summary className={ownerTab==="integrations"?"active":""}><span><span className="nav-ico owner-nav-ico">IN</span>Integrations</span><span className="chevron">⌄</span></summary><div className="side-subnav owner-subnav">{integrationNav.map(([section,icon,label])=><button type="button" key={section} onClick={()=>openOwner("integrations",section)}><span>{icon}</span>{label}</button>)}</div></details>
        <div className="sidebar-label sidebar-label-inner">MONITORING SCOPE</div>
        <button type="button" onClick={()=>openOwner("overview")}><span className="nav-ico owner-nav-ico">U360</span><span>User / Customer 360</span></button>
