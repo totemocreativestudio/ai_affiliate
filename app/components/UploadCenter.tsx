@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 declare global { interface Window { XLSX?: any; } }
 type Props = { workspaceId: string };
+const NEUTRAL_DATE = "2000-01-01";
 
 function parseCsv(text: string) {
   const rows: string[][] = []; let row: string[] = []; let cell = ""; let quoted = false;
@@ -46,8 +47,8 @@ export default function UploadCenter({ workspaceId }: Props) {
     try {
       setStatus("Membaca file..."); const parsed = await parseFile(file); if (!parsed.rows.length) throw new Error("File tidak memiliki data.");
       const hash = await fileHash(parsed.buffer); const importId = `IMP-${crypto.randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase()}`; const batchSize = 300; const totalBatches = Math.ceil(parsed.rows.length / batchSize); let last: any = null;
-      const effectiveStart = startDate || "2000-01-01";
-      const effectiveEnd = endDate || effectiveStart;
+      const effectiveStart = startDate || NEUTRAL_DATE;
+      const effectiveEnd = endDate || (startDate ? startDate : NEUTRAL_DATE);
       for (let i = 0; i < totalBatches; i++) {
         setStatus(`Import batch ${i + 1}/${totalBatches} · ${parsed.rows.length.toLocaleString("id-ID")} row`);
         const rows = parsed.rows.slice(i * batchSize, (i + 1) * batchSize);
@@ -59,13 +60,13 @@ export default function UploadCenter({ workspaceId }: Props) {
   }
 
   return <section id="upload" className="legacy-page-anchor">
-    <div className="page-head"><div><div className="eyebrow">DATA & UPLOAD</div><h1>Upload Center</h1><p className="muted">Periode bersifat opsional. Tanggal kosong tampil netral dan untuk file tanpa tanggal digunakan baseline 01/01/2000 agar data tetap valid.</p></div></div>
+    <div className="page-head"><div><div className="eyebrow">DATA & UPLOAD</div><h1>Upload Center</h1><p className="muted">Periode bersifat opsional. Field tanggal dimulai kosong agar user bebas menentukan periode.</p></div></div>
     <div className="card">
       <div className="grid">
         <label>Jenis Data<select value={dataType} onChange={(e) => setDataType(e.target.value)}><option value="performance">Affiliate Performance</option><option value="sales">Sales / Transaction</option><option value="creators">Master Creator</option><option value="products">Master Product / SKU</option><option value="creator_samples">Creator Samples</option><option value="product_hpp">Product HPP</option></select></label>
         <label>Platform<select value={platform} onChange={(e) => setPlatform(e.target.value)}><option>TikTok</option><option>Shopee</option><option>Instagram</option><option>Other</option></select></label>
-        <label>Start Date <span className="field-note">Opsional</span><input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></label>
-        <label>End Date <span className="field-note">Opsional</span><input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></label>
+        <label>Start Date <span className="field-note">Opsional · dd/mm/yyyy</span><input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></label>
+        <label>End Date <span className="field-note">Opsional · dd/mm/yyyy</span><input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></label>
       </div>
       <label>File CSV/XLSX<input type="file" accept={accept} onChange={(e) => setFile(e.target.files?.[0] || null)} /></label>
       <label className="inline-check"><input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} />Re-import file yang sama untuk mengganti hasil import sebelumnya</label>
@@ -73,6 +74,6 @@ export default function UploadCenter({ workspaceId }: Props) {
       {status && <div className={`flash ${status.toLowerCase().includes("gagal") || status.toLowerCase().includes("wajib") ? "error" : "success"} upload-status`}>{status}</div>}
       {result?.stats && <div className="kpis import-kpis">{Object.entries(result.stats).map(([k, v]) => <div className="kpi" key={k}><small>{k}</small><b>{Number(v || 0).toLocaleString("id-ID")}</b></div>)}</div>}
     </div>
-    <div className="card"><h3>Mapping yang digunakan</h3><ul className="legacy-list"><li><b>TikTok Performance:</b> Creator, GMV, LIVE GMV, Video GMV, Showcase GMV, Refund, Orders, Qty, Buyers, Commission.</li><li><b>Shopee Performance:</b> Affiliate, GMV, Qty, Orders, Clicks, Commission, Buyers.</li><li><b>Sales / Transaction:</b> tanggal, order/item/transaction ID, SKU, produk, Qty, Orders, GMV, Commission, Refund, Channel.</li><li>Jika file punya tanggal transaksi, tanggal file tetap diprioritaskan. Baseline 01/01/2000 hanya fallback untuk file tanpa tanggal.</li></ul></div>
+    <div className="card"><h3>Mapping yang digunakan</h3><ul className="legacy-list"><li><b>TikTok Performance:</b> Creator, GMV, LIVE GMV, Video GMV, Showcase GMV, Refund, Orders, Qty, Buyers, Commission.</li><li><b>Shopee Performance:</b> Affiliate, GMV, Qty, Orders, Clicks, Commission, Buyers.</li><li><b>Sales / Transaction:</b> tanggal, order/item/transaction ID, SKU, produk, Qty, Orders, GMV, Commission, Refund, Channel.</li><li>Jika tanggal dikosongkan, UI tetap netral; untuk kebutuhan database legacy LUMA menggunakan tanggal internal 01/01/2000 sehingga import tidak gagal karena field date kosong.</li></ul></div>
   </section>;
 }
