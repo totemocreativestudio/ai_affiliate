@@ -7,6 +7,7 @@ type Props = { workspaceId: string };
 export default function OpenAIIntegration({ workspaceId }: Props) {
   const [configured, setConfigured] = useState(false);
   const [source, setSource] = useState("none");
+  const [canConfigure, setCanConfigure] = useState(false);
   const [apiKey, setApiKey] = useState("");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("Memeriksa integrasi OpenAI...");
@@ -19,7 +20,8 @@ export default function OpenAIIntegration({ workspaceId }: Props) {
       if (!r.ok || !d.ok) throw new Error(d.error || "Gagal membaca status OpenAI.");
       setConfigured(Boolean(d.configured));
       setSource(d.source || "none");
-      setStatus(d.configured ? "OpenAI API aktif dan siap digunakan oleh AI Analytics serta AI Promo Studio." : "OpenAI API belum dikonfigurasi.");
+      setCanConfigure(Boolean(d.can_configure));
+      setStatus(d.configured ? "OpenAI API aktif dan siap digunakan oleh AI Analytics serta AI Promo Studio." : d.can_configure ? "OpenAI API belum dikonfigurasi. Masukkan key platform satu kali di bawah." : "OpenAI API belum dikonfigurasi. Hubungi platform admin LUMA.");
     } catch (e: any) {
       setStatus(e?.message || "Gagal membaca status OpenAI.");
     } finally {
@@ -53,7 +55,7 @@ export default function OpenAIIntegration({ workspaceId }: Props) {
   }
 
   return <section id="openai-integration" className="legacy-page-anchor">
-    <div className="eyebrow">ADMINISTRATION · AI INTEGRATION</div>
+    <div className="eyebrow">AI INTEGRATION</div>
     <h1>OpenAI Integration</h1>
     <p className="muted">Satu API key platform digunakan server-side untuk AI Analytics dan AI Promo Studio. Key tidak disimpan di source code atau local storage.</p>
     <div className="card integration-status-card">
@@ -63,7 +65,7 @@ export default function OpenAIIntegration({ workspaceId }: Props) {
       </div>
       <div className="integration-meta"><span>Storage</span><strong>{source === "vercel" ? "Vercel Environment" : source === "secure-vault" ? "Supabase Vault" : "Not configured"}</strong></div>
     </div>
-    <div className="card">
+    {canConfigure && <div className="card">
       <h3>{configured ? "Replace API Key" : "Connect OpenAI API"}</h3>
       <p className="muted">Paste key hanya di sini. Setelah disimpan, LUMA hanya menampilkan status koneksi, bukan isi key.</p>
       <div className="secret-input-row">
@@ -71,6 +73,6 @@ export default function OpenAIIntegration({ workspaceId }: Props) {
         <button className="primary" disabled={busy || !apiKey.trim()} onClick={save}>{busy ? "Saving..." : configured ? "Replace Key" : "Connect API"}</button>
         <button className="secondary" disabled={busy} onClick={check}>Test Status</button>
       </div>
-    </div>
+    </div>}
   </section>;
 }
