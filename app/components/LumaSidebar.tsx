@@ -11,7 +11,11 @@ const masterNav=[["#product-master","◫","Product Master"],["#listings","☷","
 export default function LumaSidebar({profile,workspace,onLogout}:Props){
  const [activeHash,setActiveHash]=useState("#dashboard");
  useEffect(()=>{const sync=()=>setActiveHash(window.location.hash||"#dashboard");sync();window.addEventListener("hashchange",sync);return()=>window.removeEventListener("hashchange",sync)},[]);
- function openAi(type:string){if(window.location.hash!=="#ai-analytics")window.location.hash="ai-analytics";setTimeout(()=>window.dispatchEvent(new CustomEvent("luma-ai-type",{detail:type})),0)}
+ function openAi(type:string){
+   if(window.location.hash!=="#ai-analytics")window.location.hash="ai-analytics";
+   const index=aiNav.findIndex(([key])=>key===type);
+   setTimeout(()=>{const buttons=document.querySelectorAll<HTMLButtonElement>(".ai-type-grid .ai-type-card");buttons[index]?.click();},60);
+ }
  return <aside className="sidebar" id="sidebar"><div className="brand"><img src="/luma-mark.png" alt="Luma" className="brand-mark"/><div><strong>LUMA</strong><span>Light Up Your Potential.</span></div></div><div className="sidebar-label">WORKSPACE</div><nav className="side-nav">
    {nav.map(([href,icon,label])=><a key={href} className={activeHash===href?"active":""} href={href}><span className="nav-ico">{icon}</span><span>{label}</span>{label==="Google Sheets"&&<span className="nav-dot"/>}</a>)}
    <details className="side-group" open><summary className={activeHash==="#ai-analytics"?"active":""}><span><span className="nav-ico">✦</span>AI Analytics</span><span className="chevron">⌄</span></summary><div className="side-subnav">{aiNav.map(([key,label])=><button type="button" key={key} onClick={()=>openAi(key)}>{label}</button>)}</div></details>
