@@ -5,6 +5,7 @@ import { createClient } from "../../lib/supabase-browser";
 import OwnerMonitoring360 from "./OwnerMonitoring360";
 import OwnerFinanceControl from "./OwnerFinanceControl";
 import OwnerPlatformHealth from "./OwnerPlatformHealth";
+import OwnerTutorialControl from "./OwnerTutorialControl";
 import AdminBroadcast from "./AdminBroadcast";
 import AdminBlog from "./AdminBlog";
 import AdminSocialModeration from "./AdminSocialModeration";
@@ -37,7 +38,7 @@ export default function AdminDashboardV3({workspaceId}:{workspaceId:string}){
     {tab==="finance"&&<OwnerFinanceControl/>}
     {tab==="ai"&&<OwnerPlatformHealth mode="api"/>}
     {tab==="broadcast"&&<AdminBroadcast workspaceId={workspaceId}/>} 
-    {tab==="content"&&<AdminBlog workspaceId={workspaceId}/>} 
+    {tab==="content"&&<div className="owner-section-stack"><AdminBlog workspaceId={workspaceId}/><OwnerTutorialControl workspaceId={workspaceId}/></div>} 
     {tab==="social"&&<AdminSocialModeration/>}
     {tab==="integrations"&&<div className="integrations-stack"><div className="owner-section-title"><div><span className="owner-kicker">PLATFORM CONNECTIONS</span><h2>Integrations</h2><p>Credential sensitif tetap server-side. Owner console hanya menampilkan konfigurasi dan status operasional.</p></div></div><GoogleCloudIntegration/><div id="owner-integration-openai"><OpenAIIntegration workspaceId={workspaceId}/></div><div id="owner-integration-xendit"><XenditIntegration workspaceId={workspaceId}/></div><div id="owner-integration-whatsapp"><WhatsAppIntegration workspaceId={workspaceId}/></div></div>}
     {tab==="system"&&<OwnerPlatformHealth mode="system"/>}
