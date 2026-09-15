@@ -3,7 +3,7 @@
 import "./luma-production.css";
 import "./luma-legacy-extra.css";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../lib/supabase-browser";
 import ProductMaster from "./components/ProductMaster";
 import Listings from "./components/Listings";
@@ -16,9 +16,32 @@ import AIAnalytics from "./components/AIAnalytics";
 import LumaSidebar from "./components/LumaSidebar";
 import LegacyDashboard from "./components/LegacyDashboard";
 import RestoredLegacyModules from "./components/RestoredLegacyModules";
+import AccountPage from "./components/AccountPage";
+import LumaIcon from "./components/LumaIcon";
 
 type Profile = { id: string; email: string | null; full_name: string | null; role: string; active: boolean };
 type Workspace = { id: string; name: string; slug: string; status: string };
+type Theme = "light" | "dark";
+
+const VALID_PAGES = [
+  "dashboard", "upload", "excel-sync", "database", "agreements", "affiliate-support",
+  "luma-affiliate", "promo-studio", "tutorial", "billing", "google-sheets", "ai-analytics",
+  "product-master", "listings", "shipping", "creator-samples", "ratecard", "administration", "account",
+];
+const RESTORED_PAGES = ["excel-sync", "agreements", "affiliate-support", "luma-affiliate", "promo-studio", "tutorial", "billing", "google-sheets", "administration"];
+const TITLES: Record<string, string> = {
+  dashboard: "Dashboard", upload: "Upload Center", "excel-sync": "Excel Sync", database: "Database",
+  agreements: "Agreement", "affiliate-support": "Affiliate Support", "luma-affiliate": "Luma Affiliate",
+  "promo-studio": "Luma AI Studio", tutorial: "Tutorial", billing: "Billing & Token", "google-sheets": "Google Sheets",
+  "ai-analytics": "AI Analytics", "product-master": "Product Master", listings: "Listings", shipping: "Shipping",
+  "creator-samples": "Creator Samples", ratecard: "Ratecard Master", administration: "Admin Console", account: "Account & Workspace",
+};
+
+function pageFromLocation() {
+  if (typeof window === "undefined") return "dashboard";
+  const raw = window.location.hash.replace(/^#/, "");
+  return VALID_PAGES.includes(raw) ? raw : "dashboard";
+}
 
 export default function Home() {
   const supabase = createClient();
@@ -26,10 +49,30 @@ export default function Home() {
   const [password, setPassword] = useState("");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const [membershipRole, setMembershipRole] = useState("owner");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [activePage, setActivePage] = useState("dashboard");
+  const [visited, setVisited] = useState<Set<string>>(() => new Set(["dashboard"]));
+  const [theme, setTheme] = useState<Theme>("light");
 
-  useEffect(() => { void loadSession(); }, []);
+  useEffect(() => {
+    const storedTheme = window.localStorage.getItem("luma_theme");
+    setTheme(storedTheme === "dark" ? "dark" : "light");
+    const initial = pageFromLocation();
+    setActivePage(initial);
+    setVisited((prev) => new Set([...prev, initial]));
+    const onPop = () => {
+      const next = pageFromLocation();
+      setActivePage(next);
+      setVisited((prev) => new Set([...prev, next]));
+      const scroller = document.querySelector(".content");
+      if (scroller instanceof HTMLElement) scroller.scrollTo({ top: 0 });
+    };
+    window.addEventListener("popstate", onPop);
+    void loadSession();
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   async function loadSession() {
     setError("");
@@ -47,12 +90,30 @@ export default function Home() {
     const { data: memberships, error: memberError } = await supabase.from("workspace_members").select("workspace_id,membership_role,created_at").eq("user_id", userId).order("created_at", { ascending: true });
     if (memberError || !memberships?.length) { setError(`Workspace membership error: ${memberError?.message || "No workspace"}`); return; }
 
-    const preferred = typeof window !== "undefined" ? window.localStorage.getItem("luma_active_workspace") : null;
+    const preferred = window.localStorage.getItem("luma_active_workspace");
     const selected = memberships.find((x: any) => x.workspace_id === preferred) || memberships[0];
     const { data: workspaceData, error: workspaceError } = await supabase.from("workspaces").select("id,name,slug,status").eq("id", selected.workspace_id).single();
     if (workspaceError) { setError(`Workspace error: ${workspaceError.message}`); return; }
     setWorkspace(workspaceData);
-    if (typeof window !== "undefined") window.localStorage.setItem("luma_active_workspace", workspaceData.id);
+    setMembershipRole(selected.membership_role || "owner");
+    window.localStorage.setItem("luma_active_workspace", workspaceData.id);
+  }
+
+  function navigate(page: string) {
+    const next = VALID_PAGES.includes(page) ? page : "dashboard";
+    if (next !== activePage) window.history.pushState({ lumaPage: next }, "", `#${next}`);
+    setActivePage(next);
+    setVisited((prev) => new Set([...prev, next]));
+    const scroller = document.querySelector(".content");
+    if (scroller instanceof HTMLElement) scroller.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function toggleTheme() {
+    setTheme((current) => {
+      const next: Theme = current === "dark" ? "light" : "dark";
+      window.localStorage.setItem("luma_theme", next);
+      return next;
+    });
   }
 
   async function loginWithGoogle() {
@@ -69,28 +130,33 @@ export default function Home() {
     setLoading(false);
   }
 
-  async function logout() { await supabase.auth.signOut(); setProfile(null); setWorkspace(null); }
+  async function logout() { await supabase.auth.signOut(); setProfile(null); setWorkspace(null); setMembershipRole("owner"); }
 
-  if (loading) return <main className="standalone-auth"><section className="auth-panel"><div className="auth-brand"><img src="/luma-mark.png" alt="Luma" /><div><strong>LUMA</strong><span>Light Up Your Potential.</span></div></div><h1>Loading Luma...</h1></section></main>;
+  const roleLabel = useMemo(() => membershipRole === "owner" ? "Owner" : membershipRole || "Owner", [membershipRole]);
 
-  if (!profile || !workspace) return <main className="standalone-auth"><section className="auth-panel"><div className="auth-brand"><img src="/luma-mark.png" alt="Luma" /><div><strong>LUMA</strong><span>Light Up Your Potential.</span></div></div><h1>Welcome to Luma</h1><p className="muted">Affiliate Intelligence Workspace</p><div style={{ marginTop: 30 }}><button onClick={loginWithGoogle} style={{width:"100%",padding:12,cursor:"pointer",background:"#fff",border:"1px solid #ccc",borderRadius:8,fontWeight:700,color:"#172033"}}>Continue with Google</button><div style={{display:"flex",alignItems:"center",gap:12,margin:"20px 0",color:"#777"}}><div style={{height:1,background:"#ddd",flex:1}}/><span>or</span><div style={{height:1,background:"#ddd",flex:1}}/></div><label>Email<input type="email" value={email} onChange={(e)=>setEmail(e.target.value)}/></label><label>Password<input type="password" value={password} onChange={(e)=>setPassword(e.target.value)}/></label><button className="full" onClick={login}>Login</button></div>{error&&<p className="auth-error">{error}</p>}</section></main>;
+  if (loading) return <main className={`standalone-auth theme-${theme}`}><section className="auth-panel"><div className="auth-brand"><img src="/luma-mark.png" alt="Luma"/><div><strong>LUMA</strong><span>Light Up Your Potential.</span></div></div><h1>Loading Luma...</h1></section></main>;
 
-  return <div className="luma-app">
-    <LumaSidebar profile={profile} workspace={workspace} onLogout={logout}/>
+  if (!profile || !workspace) return <main className={`standalone-auth theme-${theme}`}><section className="auth-panel"><div className="auth-brand"><img src="/luma-mark.png" alt="Luma"/><div><strong>LUMA</strong><span>Light Up Your Potential.</span></div></div><h1>Welcome to Luma</h1><p className="muted">Affiliate Intelligence Workspace</p><div className="auth-form"><button onClick={loginWithGoogle} className="google-login" type="button">Continue with Google</button><div className="auth-divider"><span/>or<span/></div><label><span>Email</span><input type="email" value={email} onChange={(e)=>setEmail(e.target.value)}/></label><label><span>Password</span><input type="password" value={password} onChange={(e)=>setPassword(e.target.value)}/></label><button className="primary full" onClick={login} type="button">Login</button></div>{error&&<p className="auth-error">{error}</p>}</section></main>;
+
+  return <div className={`luma-app theme-${theme}`}>
+    <LumaSidebar profile={profile} workspace={workspace} membershipRole={membershipRole} activePage={activePage} theme={theme} onNavigate={navigate} onToggleTheme={toggleTheme} onLogout={logout}/>
     <div className="app-shell">
-      <header className="topbar"><div><span className="topbar-kicker">LUMA WORKSPACE</span><span className="topbar-title">Affiliate Intelligence</span></div><div className="topbar-right"><span className="connection-pill"><i></i>{workspace.name} · Active</span></div></header>
+      <header className="topbar"><div className="topbar-page-title"><span className="topbar-kicker">LUMA WORKSPACE</span><span className="topbar-title">{TITLES[activePage] || "Affiliate Intelligence"}</span></div><div className="topbar-right"><button className="topbar-theme" type="button" onClick={toggleTheme}><LumaIcon name={theme === "dark" ? "sun" : "moon"} size={17}/></button><button className="workspace-pill" type="button" onClick={()=>navigate("account")}><i/>{workspace.name}<span>{roleLabel}</span></button></div></header>
       <main className="content">
-        <LegacyDashboard workspaceId={workspace.id}/>
-        <UploadCenter workspaceId={workspace.id}/>
-        <DatabaseCenter workspaceId={workspace.id}/>
-        <AIAnalytics workspaceId={workspace.id}/>
-        <RestoredLegacyModules workspaceId={workspace.id} userId={profile.id} isAdmin={profile.role === "admin"}/>
-        <section id="product-master" className="legacy-page-anchor"><div className="eyebrow">MASTER DATA</div><ProductMaster workspaceId={workspace.id}/></section>
-        <section id="listings" className="legacy-page-anchor"><Listings workspaceId={workspace.id}/></section>
-        <section id="shipping" className="legacy-page-anchor"><Shipping workspaceId={workspace.id}/></section>
-        <section id="creator-samples" className="legacy-page-anchor"><CreatorSamples workspaceId={workspace.id}/></section>
-        <section id="ratecard" className="legacy-page-anchor"><RatecardMaster workspaceId={workspace.id}/></section>
-        {error&&<div className="flash error">{error}</div>}
+        {visited.has("dashboard")&&<div className="feature-panel" hidden={activePage!=="dashboard"}><LegacyDashboard workspaceId={workspace.id}/></div>}
+        {visited.has("upload")&&<div className="feature-panel" hidden={activePage!=="upload"}><UploadCenter workspaceId={workspace.id}/></div>}
+        {visited.has("database")&&<div className="feature-panel" hidden={activePage!=="database"}><DatabaseCenter workspaceId={workspace.id}/></div>}
+        {visited.has("ai-analytics")&&<div className="feature-panel" hidden={activePage!=="ai-analytics"}><AIAnalytics workspaceId={workspace.id}/></div>}
+
+        <div className={`feature-panel restored-module-router show-${activePage}`} hidden={!RESTORED_PAGES.includes(activePage)}><RestoredLegacyModules workspaceId={workspace.id} userId={profile.id} isAdmin={profile.role === "admin"}/></div>
+
+        {visited.has("product-master")&&<div className="feature-panel" hidden={activePage!=="product-master"}><section className="feature-page native-feature-page"><div className="feature-header"><div><div className="eyebrow">MASTER DATA</div><h1>Product Master</h1><p className="muted">Kelola SKU dan master produk workspace Anda.</p></div></div><ProductMaster workspaceId={workspace.id}/></section></div>}
+        {visited.has("listings")&&<div className="feature-panel" hidden={activePage!=="listings"}><section className="feature-page native-feature-page"><Listings workspaceId={workspace.id}/></section></div>}
+        {visited.has("shipping")&&<div className="feature-panel" hidden={activePage!=="shipping"}><section className="feature-page native-feature-page"><Shipping workspaceId={workspace.id}/></section></div>}
+        {visited.has("creator-samples")&&<div className="feature-panel" hidden={activePage!=="creator-samples"}><section className="feature-page native-feature-page"><CreatorSamples workspaceId={workspace.id}/></section></div>}
+        {visited.has("ratecard")&&<div className="feature-panel" hidden={activePage!=="ratecard"}><section className="feature-page native-feature-page"><RatecardMaster workspaceId={workspace.id}/></section></div>}
+        {visited.has("account")&&<div className="feature-panel" hidden={activePage!=="account"}><AccountPage profile={profile} workspace={workspace} membershipRole={membershipRole} theme={theme} onToggleTheme={toggleTheme}/></div>}
+        {error&&<div className="flash error global-error">{error}</div>}
       </main>
     </div>
   </div>;
