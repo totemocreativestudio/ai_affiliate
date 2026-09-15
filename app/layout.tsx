@@ -1,4 +1,5 @@
 import "./luma-v2.css";
+import ReferralCapture from "./components/ReferralCapture";
 
 export const metadata = {
   title: "Luma AI",
@@ -12,7 +13,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id">
-      <body>{children}</body>
+      <body><ReferralCapture />{children}</body>
     </html>
   );
 }
