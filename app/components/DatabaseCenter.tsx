@@ -47,7 +47,10 @@ export default function DatabaseCenter({ workspaceId }: Props) {
   }
 
   useEffect(() => {
-    load(1);
+    void load(1);
+    const refresh = () => void load(1);
+    window.addEventListener("luma-data-changed", refresh);
+    return () => window.removeEventListener("luma-data-changed", refresh);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId]);
 
