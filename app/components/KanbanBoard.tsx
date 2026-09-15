@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../../lib/supabase-browser";
 import GoogleSheetsPrivate from "./GoogleSheetsPrivate";
+import OpenAIIntegration from "./OpenAIIntegration";
 
 type Task = { id:number; title:string; description:string|null; status:string|null; priority:string|null; due_date:string|null; assigned_to:string|null; sort_order:number|null; source:string|null; analysis_type:string|null; source_ref:string|null; };
 type Props={workspaceId:string;userId?:string};
@@ -15,7 +16,7 @@ export default function KanbanBoard({workspaceId,userId}:Props){
   async function load(){const {data,error}=await supabase.from("creator_tasks").select("id,title,description,status,priority,due_date,assigned_to,sort_order,source,analysis_type,source_ref").eq("workspace_id",workspaceId).order("sort_order",{ascending:true}).order("id",{ascending:true});if(error)setMsg(error.message);else setTasks((data||[]) as Task[])}
   useEffect(()=>{void load()},[workspaceId]);
 
-  async function createTask(){if(!form.title.trim())return setMsg("Judul task wajib diisi.");setBusy(true);const payload:any={workspace_id:workspaceId,title:form.title.trim(),description:form.description||null,status:"backlog",priority:form.priority,due_date:form.due_date||null,assigned_to:form.assigned_to||null,source:"web",sort_order:Date.now()};if(userId)payload.created_by=userId;const {error}=await supabase.from("creator_tasks").insert(payload);setBusy(false);if(error)return setMsg(error.message);setForm({title:"",description:"",priority:"normal",due_date:"",assigned_to:""});setMsg("Task ditambahkan.");await load()}
+  async function createTask(){if(!form.title.trim())return setMsg("Judul task wajib diisi.");setBusy(true);const payload:any={workspace_id:workspaceId,title:form.title.trim(),description:form.description||null,status:"backlog",priority:form.priority,due_date:form.due_date||null,assigned_to:form.assigned_to||null,source:"web",sort_order:Date.now()};if(userId)payload.created_by=userId;else{const {data:{user}}=await supabase.auth.getUser();if(user?.id)payload.created_by=user.id}const {error}=await supabase.from("creator_tasks").insert(payload);setBusy(false);if(error)return setMsg(error.message);setForm({title:"",description:"",priority:"normal",due_date:"",assigned_to:""});setMsg("Task ditambahkan.");await load()}
   async function moveTask(id:number,status:string){setTasks(x=>x.map(t=>t.id===id?{...t,status}:t));const {error}=await supabase.from("creator_tasks").update({status,sort_order:Date.now(),updated_at:new Date().toISOString()}).eq("workspace_id",workspaceId).eq("id",id);if(error){setMsg(error.message);await load()}}
   async function saveEdit(){if(!editing)return;const {error}=await supabase.from("creator_tasks").update({title:editing.title,description:editing.description,priority:editing.priority,due_date:editing.due_date||null,assigned_to:editing.assigned_to||null,updated_at:new Date().toISOString()}).eq("workspace_id",workspaceId).eq("id",editing.id);if(error)return setMsg(error.message);setEditing(null);setMsg("Task diperbarui.");await load()}
   async function remove(id:number){if(!window.confirm("Hapus task ini?"))return;const {error}=await supabase.from("creator_tasks").delete().eq("workspace_id",workspaceId).eq("id",id);if(error)return setMsg(error.message);setTasks(x=>x.filter(t=>t.id!==id))}
@@ -29,5 +30,6 @@ export default function KanbanBoard({workspaceId,userId}:Props){
       {editing&&<div className="kanban-modal-backdrop" onClick={()=>setEditing(null)}><div className="kanban-modal" onClick={e=>e.stopPropagation()}><h2>Edit Task</h2><label>Title<input value={editing.title} onChange={e=>setEditing({...editing,title:e.target.value})}/></label><label>Description<textarea value={editing.description||""} onChange={e=>setEditing({...editing,description:e.target.value})}/></label><div className="grid"><label>Priority<select value={editing.priority||"normal"} onChange={e=>setEditing({...editing,priority:e.target.value})}><option>low</option><option>normal</option><option>high</option><option>urgent</option></select></label><label>Due Date<input type="date" value={editing.due_date||""} onChange={e=>setEditing({...editing,due_date:e.target.value})}/></label></div><label>Assigned To<input value={editing.assigned_to||""} onChange={e=>setEditing({...editing,assigned_to:e.target.value})}/></label><div className="button-row"><button className="primary" onClick={saveEdit}>Save</button><button className="secondary" onClick={()=>setEditing(null)}>Cancel</button></div></div></div>}
     </section>
     <GoogleSheetsPrivate workspaceId={workspaceId}/>
+    <OpenAIIntegration workspaceId={workspaceId}/>
   </>;
 }
