@@ -6,13 +6,14 @@ import { getServerSecret } from "../../../../lib/server-secrets";
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
+  let ctx:any=null; let workspaceId=""; let orderCode="";
   try {
     const body = await req.json();
-    const workspaceId = String(body.workspace_id || "");
+    workspaceId = String(body.workspace_id || "");
     const packageId = Number(body.package_id || 0);
     if (!workspaceId || !packageId) return NextResponse.json({ ok:false,error:"Workspace dan package wajib diisi." },{status:400});
 
-    const ctx = await getServerContext(workspaceId);
+    ctx = await getServerContext(workspaceId);
     const key = await getServerSecret(ctx.admin,"luma_xendit_secret_key");
     if (!key) return NextResponse.json({ ok:false,error:"Payment gateway belum aktif. Admin perlu menghubungkan Xendit terlebih dahulu." },{status:503});
 
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest) {
     if(pkgError)throw pkgError;
     if(pkg.status!=="active"||Number(pkg.price||0)<=0) return NextResponse.json({ok:false,error:"Paket token belum aktif atau harga belum ditetapkan admin."},{status:400});
 
-    const orderCode=`TOPUP-${randomUUID().replace(/-/g,"").slice(0,12).toUpperCase()}`;
+    orderCode=`TOPUP-${randomUUID().replace(/-/g,"").slice(0,12).toUpperCase()}`;
     const origin=(process.env.NEXT_PUBLIC_APP_URL||new URL(req.url).origin).replace(/\/$/,"");
     const customer:any={reference_id:`luma-${ctx.user.id}-${Date.now()}`,type:"INDIVIDUAL",email:ctx.user.email||undefined};
     const payload:any={
@@ -54,8 +55,14 @@ export async function POST(req: NextRequest) {
     });
     if(orderError)throw orderError;
 
+    await ctx.admin.from("luma_api_usage_events").insert({
+      workspace_id:workspaceId,user_id:ctx.user.id,provider:"xendit",service:"payment_session",request_type:"token_checkout",status:"success",reference:orderCode,
+      metadata:{payment_session_id:x.payment_session_id||null,amount:Number(pkg.price),tokens:Number(pkg.tokens),channels:x.allowed_payment_channels||[]}
+    });
+
     return NextResponse.json({ok:true,order_code:orderCode,payment_url:x.payment_link_url,payment_session_id:x.payment_session_id,expires_at:x.expires_at,channels:x.allowed_payment_channels||[]});
   } catch(error:any){
+    if(ctx){try{await ctx.admin.from("luma_api_usage_events").insert({workspace_id:workspaceId||null,user_id:ctx.user.id,provider:"xendit",service:"payment_session",request_type:"token_checkout",status:"error",reference:orderCode||null,metadata:{error:error?.message||"unknown"}})}catch{}}
     return NextResponse.json({ok:false,error:error?.message||"Gagal membuat checkout."},{status:400});
   }
 }
