@@ -16,7 +16,6 @@ export async function getServerContext(workspaceId: string) {
   }
 
   const cookieStore = await cookies();
-
   const userClient = createServerClient(url, publishable, {
     cookies: {
       getAll() {
@@ -69,16 +68,20 @@ export async function getServerContext(workspaceId: string) {
     throw new Error("Workspace access denied.");
   }
 
+  // Lumaway customer model: every authenticated customer owns and manages
+  // only their own workspace. The membership check above remains the hard
+  // isolation boundary; legacy role labels such as "staff" no longer reduce
+  // the customer's permissions inside that workspace.
+  const workspaceOwner = Boolean(membership);
+
   return {
     user,
     profile,
-    membership,
+    membership: membership
+      ? { ...membership, membership_role: "owner" }
+      : membership,
     platformAdmin,
     admin,
-    canManage:
-      platformAdmin ||
-      ["owner", "admin", "manager"].includes(
-        membership?.membership_role || ""
-      ),
+    canManage: platformAdmin || workspaceOwner,
   };
 }
