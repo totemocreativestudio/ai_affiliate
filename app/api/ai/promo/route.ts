@@ -3,54 +3,19 @@ import { getServerContext } from "../../../../lib/server-auth";
 import { getServerSecret } from "../../../../lib/server-secrets";
 
 export const runtime = "nodejs";
-
-const SCHEMA = {
-  type:"object",additionalProperties:false,
-  properties:{
-    strategy:{type:"object",additionalProperties:false,properties:{goal:{type:"string"},angle:{type:"string"},audience_insight:{type:"string"},tone_rationale:{type:"string"}},required:["goal","angle","audience_insight","tone_rationale"]},
-    primary_content:{type:"object",additionalProperties:false,properties:{headline:{type:"string"},subheadline:{type:"string"},body:{type:"string"},cta:{type:"string"}},required:["headline","subheadline","body","cta"]},
-    hooks:{type:"array",items:{type:"string"}},
-    key_messages:{type:"array",items:{type:"string"}},
-    content_outline:{type:"array",items:{type:"object",additionalProperties:false,properties:{section:{type:"string"},objective:{type:"string"},copy:{type:"string"}},required:["section","objective","copy"]}},
-    social_posts:{type:"array",items:{type:"object",additionalProperties:false,properties:{format:{type:"string"},hook:{type:"string"},caption:{type:"string"},cta:{type:"string"}},required:["format","hook","caption","cta"]}},
-    education_points:{type:"array",items:{type:"string"}},
-    do:{type:"array",items:{type:"string"}},
-    dont:{type:"array",items:{type:"string"}},
-    quality_checks:{type:"array",items:{type:"string"}},
-  },
-  required:["strategy","primary_content","hooks","key_messages","content_outline","social_posts","education_points","do","dont","quality_checks"],
-};
-
-const TONE_GUIDE:Record<string,string>={
-  professional:"Profesional & modern: terstruktur, kredibel, bersih, langsung pada nilai bisnis tanpa terdengar kaku.",
-  friendly:"Friendly & conversational: natural, hangat, mudah dicerna, seperti komunikasi manusia yang cerdas.",
-  educational:"Educational & authoritative: menjelaskan alasan, konteks, langkah, dan insight dengan bahasa yang dapat dipercaya.",
-  persuasive:"Persuasive soft-selling: menumbuhkan kebutuhan dan keyakinan tanpa hard selling, tekanan, atau klaim bombastis.",
-  energetic:"Energetic & trendy: ritme cepat, hook kuat, relevan untuk short-form content tanpa slang berlebihan.",
-  premium:"Premium & elegant: ringkas, percaya diri, sophisticated, fokus kualitas dan value perception.",
-};
-
+const SCHEMA={type:"object",additionalProperties:false,properties:{strategy:{type:"object",additionalProperties:false,properties:{goal:{type:"string"},angle:{type:"string"},audience_insight:{type:"string"},tone_rationale:{type:"string"}},required:["goal","angle","audience_insight","tone_rationale"]},primary_content:{type:"object",additionalProperties:false,properties:{headline:{type:"string"},subheadline:{type:"string"},body:{type:"string"},cta:{type:"string"}},required:["headline","subheadline","body","cta"]},hooks:{type:"array",items:{type:"string"}},key_messages:{type:"array",items:{type:"string"}},content_outline:{type:"array",items:{type:"object",additionalProperties:false,properties:{section:{type:"string"},objective:{type:"string"},copy:{type:"string"}},required:["section","objective","copy"]}},social_posts:{type:"array",items:{type:"object",additionalProperties:false,properties:{format:{type:"string"},hook:{type:"string"},caption:{type:"string"},cta:{type:"string"}},required:["format","hook","caption","cta"]}},education_points:{type:"array",items:{type:"string"}},do:{type:"array",items:{type:"string"}},dont:{type:"array",items:{type:"string"}},quality_checks:{type:"array",items:{type:"string"}}},required:["strategy","primary_content","hooks","key_messages","content_outline","social_posts","education_points","do","dont","quality_checks"]};
+const TONE_GUIDE:Record<string,string>={professional:"Profesional & modern: terstruktur, kredibel, bersih, langsung pada nilai bisnis tanpa terdengar kaku.",friendly:"Friendly & conversational: natural, hangat, mudah dicerna, seperti komunikasi manusia yang cerdas.",educational:"Educational & authoritative: menjelaskan alasan, konteks, langkah, dan insight dengan bahasa yang dapat dipercaya.",persuasive:"Persuasive soft-selling: menumbuhkan kebutuhan dan keyakinan tanpa hard selling, tekanan, atau klaim bombastis.",energetic:"Energetic & trendy: ritme cepat, hook kuat, relevan untuk short-form content tanpa slang berlebihan.",premium:"Premium & elegant: ringkas, percaya diri, sophisticated, fokus kualitas dan value perception."};
 function outputText(data:any){if(typeof data?.output_text==="string")return data.output_text;for(const item of data?.output||[])for(const content of item?.content||[])if(content?.type==="output_text"&&content?.text)return content.text;return "";}
 
 export async function POST(req:NextRequest){
+  let ctx:any=null;let workspaceId="";
   try{
-    const b=await req.json();const workspaceId=String(b.workspace_id||"");const ctx=await getServerContext(workspaceId);
-    const key=await getServerSecret(ctx.admin,"luma_openai_api_key");
-    if(!key)return NextResponse.json({ok:false,error:"AI belum aktif. Owner LUMA perlu menghubungkan OpenAI API key."},{status:503});
-    if(!b.audience||!b.key_points)return NextResponse.json({ok:false,error:"Target audiens dan poin utama wajib diisi."},{status:400});
-
-    const tones=Array.isArray(b.tones)?b.tones.map(String).slice(0,3):[String(b.tone||"professional")];
-    const toneText=tones.map((x:string)=>TONE_GUIDE[x]||x).join("\n");
-    const prompt={
-      brand:b.brand||"Luma",product_name:b.product_name||"Luma",title:b.title||"Untitled Content",content_type:b.content_type||"marketing",platform:b.platform||"General",audience:b.audience,structure:b.structure||"TOFU - MOFU - BOFU",tones,tone_guide:toneText,key_points:b.key_points,objective:b.objective||"",constraints:b.constraints||"",
-    };
+    const b=await req.json();workspaceId=String(b.workspace_id||"");ctx=await getServerContext(workspaceId);const key=await getServerSecret(ctx.admin,"luma_openai_api_key");if(!key)return NextResponse.json({ok:false,error:"AI belum aktif. Owner LUMA perlu menghubungkan OpenAI API key."},{status:503});if(!b.audience||!b.key_points)return NextResponse.json({ok:false,error:"Target audiens dan poin utama wajib diisi."},{status:400});
+    const tones=Array.isArray(b.tones)?b.tones.map(String).slice(0,3):[String(b.tone||"professional")];const toneText=tones.map((x:string)=>TONE_GUIDE[x]||x).join("\n");const prompt={brand:b.brand||"Luma",product_name:b.product_name||"Luma",title:b.title||"Untitled Content",content_type:b.content_type||"marketing",platform:b.platform||"General",audience:b.audience,structure:b.structure||"TOFU - MOFU - BOFU",tones,tone_guide:toneText,key_points:b.key_points,objective:b.objective||"",constraints:b.constraints||""};
     const instructions=`Anda adalah Senior Content Strategist, Copywriter, dan Marketing Editor di LUMA AI Studio.\nHasil harus terasa seperti karya manusia profesional: spesifik terhadap brief, konsisten dengan audiens, dan siap dipakai.\nJANGAN menciptakan data, fitur, harga, testimoni, sertifikasi, benefit, atau klaim yang tidak ada di brief.\nGabungkan gaya bahasa yang dipilih secara natural, bukan menumpuk jargon.\nSesuaikan kedalaman dengan content_type: content = ide & copy, marketing = conversion journey, education = clarity & learning, branding = positioning, product = value & differentiation, affiliate = persuasive creator-ready material.\nSesuaikan format dengan platform. Gunakan struktur yang dipilih sebagai kerangka berpikir, tetapi jangan menuliskan label framework secara mekanis kecuali memang relevan.\nBerikan minimal 6 hooks, minimal 4 key messages, minimal 5 content_outline, dan minimal 3 social_posts.\nLakukan quality check untuk relevansi, factual grounding, clarity, tone consistency, dan CTA fit.`;
-    const model=process.env.OPENAI_MODEL||process.env.AI_MODEL||"gpt-5-mini";
-    const response=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model,instructions,input:JSON.stringify(prompt),text:{format:{type:"json_schema",name:"luma_promo_v2",schema:SCHEMA,strict:true}},store:false})});
-    const raw=await response.json();if(!response.ok)throw new Error(raw?.error?.message||`OpenAI request failed (${response.status})`);
-    const text=outputText(raw);if(!text)throw new Error("Respons AI kosong.");const result=JSON.parse(text);const now=new Date().toISOString();
-    const {data,error}=await ctx.admin.from("promo_generations").insert({workspace_id:workspaceId,user_id:ctx.user.id,title:prompt.title,product_name:prompt.product_name,audience:prompt.audience,tone:tones.join(", "),key_points:prompt.key_points,content_type:prompt.content_type,platform:prompt.platform,structure:prompt.structure,output_json:result,landing_json:result.primary_content,reels_json:result.social_posts,created_at:now,updated_at:now,status:"saved"}).select("id").single();
-    if(error)throw error;
+    const model=process.env.OPENAI_MODEL||process.env.AI_MODEL||"gpt-5-mini";const response=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model,instructions,input:JSON.stringify(prompt),text:{format:{type:"json_schema",name:"luma_promo_v2",schema:SCHEMA,strict:true}},store:false})});const raw=await response.json();if(!response.ok)throw new Error(raw?.error?.message||`OpenAI request failed (${response.status})`);const text=outputText(raw);if(!text)throw new Error("Respons AI kosong.");const result=JSON.parse(text);const now=new Date().toISOString();
+    const {data,error}=await ctx.admin.from("promo_generations").insert({workspace_id:workspaceId,user_id:ctx.user.id,title:prompt.title,product_name:prompt.product_name,audience:prompt.audience,tone:tones.join(", "),key_points:prompt.key_points,content_type:prompt.content_type,platform:prompt.platform,structure:prompt.structure,output_json:result,landing_json:result.primary_content,reels_json:result.social_posts,created_at:now,updated_at:now,status:"saved"}).select("id").single();if(error)throw error;
+    const usage=raw?.usage||{};await ctx.admin.from("luma_api_usage_events").insert({workspace_id:workspaceId,user_id:ctx.user.id,provider:"openai",service:"responses",request_type:`promo:${prompt.content_type}`,model,input_tokens:Number(usage.input_tokens||0),output_tokens:Number(usage.output_tokens||0),total_tokens:Number(usage.total_tokens||0),status:"success",reference:`promo:${data.id}`,metadata:{platform:prompt.platform,response_id:raw?.id||null}});
     return NextResponse.json({ok:true,id:data.id,model,result});
-  }catch(error:any){return NextResponse.json({ok:false,error:error?.message||"Promo generation failed"},{status:400});}
+  }catch(error:any){if(ctx){try{await ctx.admin.from("luma_api_usage_events").insert({workspace_id:workspaceId||null,user_id:ctx.user.id,provider:"openai",service:"responses",request_type:"promo",status:"error",metadata:{error:error?.message||"unknown"}})}catch{}}return NextResponse.json({ok:false,error:error?.message||"Promo generation failed"},{status:400});}
 }
