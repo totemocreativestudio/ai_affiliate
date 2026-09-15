@@ -1,4 +1,6 @@
-﻿"use client";
+"use client";
+
+import "./luma-production.css";
 
 import { useEffect, useState } from "react";
 import { createClient } from "../lib/supabase-browser";
@@ -291,6 +293,24 @@ export default function Home() {
     );
   }
 
+  async function loginWithGoogle() {
+    setError("");
+    setLoading(true);
+
+    const { error: googleError } =
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/`,
+        },
+      });
+
+    if (googleError) {
+      setError(googleError.message);
+      setLoading(false);
+    }
+  }
+
   async function login() {
     setError("");
     setLoading(true);
@@ -341,18 +361,42 @@ export default function Home() {
 
   if (!profile) {
     return (
-      <main
-        style={{
-          maxWidth: 420,
-          margin: "80px auto",
-          padding: 30,
-          fontFamily: "Arial, sans-serif",
-        }}
-      >
-        <h1>Luma AI</h1>
-        <p>Supabase Authentication</p>
+      <main className="standalone-auth">
+        <section className="auth-panel">
+        <div className="auth-brand"><img src="/luma-mark.png" alt="Luma" /><div><strong>LUMA</strong><span>Light Up Your Potential.</span></div></div>
+        <h1>Welcome to Luma</h1>
+        <p className="muted">Affiliate Intelligence Workspace</p>
 
         <div style={{ marginTop: 30 }}>
+          <button
+            onClick={loginWithGoogle}
+            disabled={loading}
+            style={{
+              width: "100%",
+              padding: 12,
+              cursor: loading ? "wait" : "pointer",
+              background: "#fff",
+              border: "1px solid #ccc",
+              borderRadius: 4,
+              fontWeight: 600,
+            }}
+          >
+            Continue with Google
+          </button>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              margin: "20px 0",
+              color: "#777",
+            }}
+          >
+            <div style={{ height: 1, background: "#ddd", flex: 1 }} />
+            <span>or</span>
+            <div style={{ height: 1, background: "#ddd", flex: 1 }} />
+          </div>
           <label>
             <strong>Email</strong>
           </label>
@@ -404,29 +448,48 @@ export default function Home() {
         </div>
 
         {error && (
-          <p
-            style={{
-              color: "red",
-              marginTop: 20,
-            }}
-          >
-            {error}
-          </p>
+          <p className="auth-error">{error}</p>
         )}
+        </section>
       </main>
     );
   }
 
   return (
-    <main
-      style={{
-        maxWidth: 1200,
-        margin: "40px auto",
-        padding: 30,
-        fontFamily: "Arial, sans-serif",
-      }}
-    >
-      {/* HEADER */}
+    <div className="luma-app">
+      <aside className="sidebar">
+        <div className="brand">
+          <img src="/luma-mark.png" alt="Luma" className="brand-mark" />
+          <div><strong>LUMA</strong><span>Light Up Your Potential.</span></div>
+        </div>
+        <div className="sidebar-label">WORKSPACE</div>
+        <nav className="side-nav">
+          <a className="active" href="#dashboard">Dashboard</a>
+          <a href="#creator-ranking">Creator Ranking</a>
+          <a href="#product-master">Product Master</a>
+          <a href="#listings">Listings</a>
+          <a href="#shipping">Shipping</a>
+          <a href="#creator-samples">Creator Samples</a>
+          <a href="#ratecard">Ratecard Master</a>
+        </nav>
+        <div className="sidebar-bottom">
+          <div className="user-chip">
+            <div className="avatar">{(profile.full_name || profile.email || "U").slice(0,1).toUpperCase()}</div>
+            <div><strong>{profile.full_name || profile.email}</strong><small>{profile.role} · {workspace?.name}</small></div>
+          </div>
+          <button className="logout" onClick={logout}>Logout</button>
+        </div>
+      </aside>
+
+      <div className="app-shell">
+        <header className="topbar">
+          <div><span className="topbar-kicker">LUMA WORKSPACE</span><span className="topbar-title">Affiliate Intelligence</span></div>
+          <div className="topbar-right"><span className="connection-pill"><i></i> Workspace Active</span></div>
+        </header>
+
+        <main className="content" id="dashboard">
+          <div className="eyebrow">LUMA AFFILIATE INTELLIGENCE</div>
+          {/* HEADER */}
 
       <div
         style={{
@@ -786,6 +849,7 @@ export default function Home() {
       {/* RANKING CREATOR */}
       {/* ================================================== */}
 
+      <section id="creator-ranking" className="module-anchor">
       {workspace && (
         <CreatorRanking
           workspaceId={workspace.id}
@@ -795,14 +859,23 @@ export default function Home() {
           creatorId={creatorId}
         />
       )}
+      </section>
 
-      {workspace && <ProductMaster workspaceId={workspace.id} />}
+      <section id="product-master" className="module-anchor">
+        {workspace && <ProductMaster workspaceId={workspace.id} />}
+      </section>
 
+      <section id="listings" className="module-anchor">
         {workspace && <Listings workspaceId={workspace.id} />}
+      </section>
 
+      <section id="shipping" className="module-anchor">
         {workspace && <Shipping workspaceId={workspace.id} />}
+      </section>
 
+      <section id="creator-samples" className="module-anchor">
         {workspace && <CreatorSamples workspaceId={workspace.id} />}
+      </section>
 
         {/* ERROR */}
 
@@ -819,8 +892,12 @@ export default function Home() {
           {error}
         </p>
       )}
-            {workspace && <RatecardMaster workspaceId={workspace.id} />}
-</main>
+      <section id="ratecard" className="module-anchor">
+        {workspace && <RatecardMaster workspaceId={workspace.id} />}
+      </section>
+        </main>
+      </div>
+    </div>
   );
 }
 
