@@ -33,7 +33,15 @@ export default function LegacyDashboard({ workspaceId }: Props) {
     }catch(e:any){setError(e?.message||"Gagal memuat dashboard");}
     finally{setBusy(false);}
   }
-  useEffect(()=>{load(1)},[workspaceId]);
+
+  useEffect(()=>{
+    void load(1);
+    const refresh=()=>void load(1);
+    window.addEventListener("luma-data-changed",refresh);
+    return()=>window.removeEventListener("luma-data-changed",refresh);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[workspaceId]);
+
   const pages=Math.max(1,Math.ceil(total/50));
 
   return <section id="dashboard" className="legacy-page-anchor dashboard-page">
