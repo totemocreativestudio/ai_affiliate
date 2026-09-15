@@ -46,10 +46,12 @@ export default function UploadCenter({ workspaceId }: Props) {
     try {
       setStatus("Membaca file..."); const parsed = await parseFile(file); if (!parsed.rows.length) throw new Error("File tidak memiliki data.");
       const hash = await fileHash(parsed.buffer); const importId = `IMP-${crypto.randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase()}`; const batchSize = 300; const totalBatches = Math.ceil(parsed.rows.length / batchSize); let last: any = null;
+      const effectiveStart = startDate || "2000-01-01";
+      const effectiveEnd = endDate || effectiveStart;
       for (let i = 0; i < totalBatches; i++) {
         setStatus(`Import batch ${i + 1}/${totalBatches} · ${parsed.rows.length.toLocaleString("id-ID")} row`);
         const rows = parsed.rows.slice(i * batchSize, (i + 1) * batchSize);
-        const r = await fetch("/api/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspace_id: workspaceId, data_type: dataType, platform, start_date: startDate || null, end_date: endDate || null, filename: file.name, file_hash: hash, force_reimport: force, import_id: importId, batch_index: i, total_batches: totalBatches, rows }) });
+        const r = await fetch("/api/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspace_id: workspaceId, data_type: dataType, platform, start_date: effectiveStart, end_date: effectiveEnd, filename: file.name, file_hash: hash, force_reimport: force, import_id: importId, batch_index: i, total_batches: totalBatches, rows }) });
         last = await r.json(); if (!r.ok || !last.ok) throw new Error(last.error || "Import gagal.");
       }
       setResult(last); setStatus(`Import selesai · ${last?.import_id || importId}`);
@@ -57,7 +59,7 @@ export default function UploadCenter({ workspaceId }: Props) {
   }
 
   return <section id="upload" className="legacy-page-anchor">
-    <div className="page-head"><div><div className="eyebrow">DATA & UPLOAD</div><h1>Upload Center</h1><p className="muted">Periode bersifat opsional. Kosongkan tanggal bila ingin mengikuti tanggal yang tersedia di file.</p></div></div>
+    <div className="page-head"><div><div className="eyebrow">DATA & UPLOAD</div><h1>Upload Center</h1><p className="muted">Periode bersifat opsional. Tanggal kosong tampil netral dan untuk file tanpa tanggal digunakan baseline 01/01/2000 agar data tetap valid.</p></div></div>
     <div className="card">
       <div className="grid">
         <label>Jenis Data<select value={dataType} onChange={(e) => setDataType(e.target.value)}><option value="performance">Affiliate Performance</option><option value="sales">Sales / Transaction</option><option value="creators">Master Creator</option><option value="products">Master Product / SKU</option><option value="creator_samples">Creator Samples</option><option value="product_hpp">Product HPP</option></select></label>
@@ -71,6 +73,6 @@ export default function UploadCenter({ workspaceId }: Props) {
       {status && <div className={`flash ${status.toLowerCase().includes("gagal") || status.toLowerCase().includes("wajib") ? "error" : "success"} upload-status`}>{status}</div>}
       {result?.stats && <div className="kpis import-kpis">{Object.entries(result.stats).map(([k, v]) => <div className="kpi" key={k}><small>{k}</small><b>{Number(v || 0).toLocaleString("id-ID")}</b></div>)}</div>}
     </div>
-    <div className="card"><h3>Mapping yang digunakan</h3><ul className="legacy-list"><li><b>TikTok Performance:</b> Creator, GMV, LIVE GMV, Video GMV, Showcase GMV, Refund, Orders, Qty, Buyers, Commission.</li><li><b>Shopee Performance:</b> Affiliate, GMV, Qty, Orders, Clicks, Commission, Buyers.</li><li><b>Sales / Transaction:</b> tanggal, order/item/transaction ID, SKU, produk, Qty, Orders, GMV, Commission, Refund, Channel.</li><li>Jika tanggal dikosongkan, LUMA memprioritaskan tanggal di file. Untuk file performance tanpa tanggal, data disimpan tanpa memaksakan periode palsu.</li></ul></div>
+    <div className="card"><h3>Mapping yang digunakan</h3><ul className="legacy-list"><li><b>TikTok Performance:</b> Creator, GMV, LIVE GMV, Video GMV, Showcase GMV, Refund, Orders, Qty, Buyers, Commission.</li><li><b>Shopee Performance:</b> Affiliate, GMV, Qty, Orders, Clicks, Commission, Buyers.</li><li><b>Sales / Transaction:</b> tanggal, order/item/transaction ID, SKU, produk, Qty, Orders, GMV, Commission, Refund, Channel.</li><li>Jika file punya tanggal transaksi, tanggal file tetap diprioritaskan. Baseline 01/01/2000 hanya fallback untuk file tanpa tanggal.</li></ul></div>
   </section>;
 }
