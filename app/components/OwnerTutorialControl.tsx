@@ -1,0 +1,14 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { createClient } from "../../lib/supabase-browser";
+
+type Row=Record<string,any>;
+export default function OwnerTutorialControl({workspaceId}:{workspaceId:string}){
+  const supabase=useMemo(()=>createClient(),[]);const [rows,setRows]=useState<Row[]>([]),[msg,setMsg]=useState("");const [form,setForm]=useState({title:"",category:"Getting Started",description:"",youtube_url:"",sort_order:0});
+  async function load(){const {data,error}=await supabase.from("tutorials").select("*").eq("workspace_id",workspaceId).order("sort_order",{ascending:true}).limit(300);if(error)setMsg(error.message);else setRows((data||[]) as Row[])}
+  useEffect(()=>{void load()},[workspaceId]);
+  async function add(){if(!form.title)return setMsg("Title wajib diisi.");const embed=form.youtube_url.replace("watch?v=","embed/").replace("youtu.be/","youtube.com/embed/");const {error}=await supabase.from("tutorials").insert({workspace_id:workspaceId,title:form.title,category:form.category,description:form.description,youtube_url:form.youtube_url||null,embed_url:embed||null,status:"Published",sort_order:Number(form.sort_order||0)});if(error)return setMsg(error.message);setForm({title:"",category:"Getting Started",description:"",youtube_url:"",sort_order:0});setMsg("Tutorial published.");await load()}
+  async function remove(id:number){if(!confirm("Hapus tutorial ini?"))return;const {error}=await supabase.from("tutorials").delete().eq("id",id);if(error)return setMsg(error.message);await load()}
+  return <section className="owner-panel"><div className="owner-panel-head"><div><h3>Tutorial Library</h3><p>Materi onboarding dan product education yang tampil di user Content Hub.</p></div></div><div className="owner-form-grid"><label>Title<input value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></label><label>Category<input value={form.category} onChange={e=>setForm({...form,category:e.target.value})}/></label><label>YouTube URL<input value={form.youtube_url} onChange={e=>setForm({...form,youtube_url:e.target.value})}/></label><label>Sort Order<input type="number" value={form.sort_order} onChange={e=>setForm({...form,sort_order:Number(e.target.value)})}/></label></div><label>Description<textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></label><button className="primary" onClick={add}>Publish Tutorial</button>{msg&&<div className="owner-inline-note">{msg}</div>}<div className="owner-table-wrap" style={{marginTop:16}}><table><thead><tr><th>Title</th><th>Category</th><th>Status</th><th>Order</th><th>URL</th><th></th></tr></thead><tbody>{rows.map(x=><tr key={x.id}><td><b>{x.title}</b><small>{x.description}</small></td><td>{x.category}</td><td>{x.status}</td><td>{x.sort_order}</td><td>{x.youtube_url||"-"}</td><td><button onClick={()=>remove(x.id)}>Delete</button></td></tr>)}</tbody></table></div></section>;
+}
