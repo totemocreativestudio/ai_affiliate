@@ -1,4 +1,6 @@
 import "./luma-v2.css";
+import "./luma-social.css";
+import "./luma-social-extra.css";
 import ReferralCapture from "./components/ReferralCapture";
 
 export const metadata = {
