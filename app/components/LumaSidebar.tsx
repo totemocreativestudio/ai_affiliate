@@ -2,20 +2,37 @@
 
 import { useEffect, useState } from "react";
 type Props={profile:{email:string|null;full_name:string|null;role:string};workspace:{name:string;slug:string;status:string};onLogout:()=>void;};
-const nav=[
-  ["#dashboard","⌂","Dashboard"],["#upload","⇧","Upload Center"],["#excel-sync","⇄","Excel Sync"],["#database","▤","Database"],["#agreements","▧","Agreement"],["#affiliate-support","♡","Affiliate Support"],["#luma-affiliate","♙","Luma Affiliate"],["#promo-studio","✦","AI Promo Studio"],["#kanban","▥","Kanban"],["#content-hub","◫","Insight & Blog"],["#social-lumaway","◎","Social Lumaway"],["#billing","▣","Billing & Token"],["#google-sheets-private","▦","Google Sheets"],["#profile","◉","My Profile"],
-];
+
+const userNav=[["#dashboard","DB","Dashboard"],["#upload","UP","Upload Center"],["#excel-sync","XL","Excel Sync"],["#database","DT","Database"],["#agreements","AG","Agreement"],["#affiliate-support","SP","Affiliate Support"],["#luma-affiliate","RF","Luma Affiliate"],["#promo-studio","AI","AI Promo Studio"],["#kanban","KB","Kanban"],["#content-hub","IN","Insight & Blog"],["#social-lumaway","SO","Social Lumaway"],["#billing","TK","Billing & Token"],["#google-sheets-private","GS","Google Sheets"],["#profile","PR","My Profile"]];
 const aiNav=[["performance","Performance Analysis"],["creator","Creator Analysis"],["product","Product Analysis"],["trend","Trend Analysis"],["anomaly","Anomaly Detection"],["recommendation","Recommendations"]];
-const masterNav=[["#product-master","◫","Product Master"],["#listings","☷","Listings"],["#shipping","▱","Shipping"],["#creator-samples","◇","Creator Samples"],["#ratecard","Rp","Ratecard Master"]];
+const masterNav=[["#product-master","PD","Product Master"],["#listings","LS","Listings"],["#shipping","SH","Shipping"],["#creator-samples","CS","Creator Samples"],["#ratecard","RC","Ratecard Master"]];
+const ownerNav=[["overview","OV","Command Center"],["finance","FN","Payments & Token"],["ai","AI","AI & API Usage"],["broadcast","BC","Broadcast & Promo"],["content","CT","Blog & Tutorial"],["social","SM","Social Moderation"],["system","SY","System & Issues"]];
+const integrationNav=[["owner-integration-google","GC","Google Cloud"],["owner-integration-openai","OA","OpenAI"],["owner-integration-xendit","XD","Xendit"],["owner-integration-whatsapp","WA","WhatsApp Cloud"]];
 
 export default function LumaSidebar({profile,workspace,onLogout}:Props){
- const [activeHash,setActiveHash]=useState("#dashboard");
- useEffect(()=>{const sync=()=>setActiveHash(window.location.hash||"#dashboard");sync();window.addEventListener("hashchange",sync);return()=>window.removeEventListener("hashchange",sync)},[]);
- function openAi(type:string){if(window.location.hash!=="#ai-analytics")window.location.hash="ai-analytics";const index=aiNav.findIndex(([key])=>key===type);setTimeout(()=>{const buttons=document.querySelectorAll<HTMLButtonElement>(".ai-type-grid .ai-type-card");buttons[index]?.click();},60)}
- return <aside className="sidebar" id="sidebar"><div className="brand"><img src="/luma-mark.png" alt="Luma" className="brand-mark"/><div><strong>LUMA</strong><span>Light Up Your Potential.</span></div></div><div className="sidebar-label">WORKSPACE</div><nav className="side-nav">
-   {nav.map(([href,icon,label])=><a key={href} className={activeHash===href?"active":""} href={href}><span className="nav-ico">{icon}</span><span>{label}</span>{label==="Google Sheets"&&<span className="nav-dot"/>}</a>)}
-   <details className="side-group" open><summary className={activeHash==="#ai-analytics"?"active":""}><span><span className="nav-ico">✦</span>AI Analytics</span><span className="chevron">⌄</span></summary><div className="side-subnav">{aiNav.map(([key,label])=><button type="button" key={key} onClick={()=>openAi(key)}>{label}</button>)}</div></details>
-   <div className="sidebar-label sidebar-label-inner">MASTER DATA</div>{masterNav.map(([href,icon,label])=><a key={href} className={activeHash===href?"active":""} href={href}><span className="nav-ico">{icon}</span><span>{label}</span></a>)}
-   {profile.role==="admin"&&<><div className="sidebar-label sidebar-label-inner">LUMAWAY OWNER</div><a className={activeHash==="#administration"?"active":""} href="#administration"><span className="nav-ico">⚙</span><span>Owner Dashboard</span></a></>}
- </nav><div className="sidebar-bottom"><a href="#profile" className="user-chip sidebar-profile-link"><div className="avatar">{(profile.full_name||profile.email||"U").slice(0,1).toUpperCase()}</div><div><strong>{profile.full_name||profile.email}</strong><small>{workspace.name}</small></div></a><button className="logout" onClick={onLogout}>Logout</button></div></aside>;
+ const isOwner=profile.role==="admin";
+ const [activeHash,setActiveHash]=useState(isOwner?"#administration":"#dashboard");
+ const [ownerTab,setOwnerTab]=useState("overview");
+ useEffect(()=>{const sync=()=>setActiveHash(window.location.hash||(isOwner?"#administration":"#dashboard"));if(isOwner&&window.location.hash!=="#administration")window.history.replaceState(null,"","#administration");sync();window.addEventListener("hashchange",sync);return()=>window.removeEventListener("hashchange",sync)},[isOwner]);
+ function openAi(type:string){if(window.location.hash!=="#ai-analytics")window.location.hash="ai-analytics";const index=aiNav.findIndex(([key])=>key===type);setTimeout(()=>document.querySelectorAll<HTMLButtonElement>(".ai-type-grid .ai-type-card")[index]?.click(),60)}
+ function openOwner(tab:string,section?:string){setOwnerTab(tab);if(window.location.hash!=="#administration")window.location.hash="administration";setTimeout(()=>window.dispatchEvent(new CustomEvent("luma-owner-nav",{detail:{tab,section}})),50)}
+
+ return <aside className={`sidebar ${isOwner?"owner-sidebar":""}`} id="sidebar">
+   <div className="brand"><img src="/luma-mark.png" alt="Luma" className="brand-mark"/><div><strong>LUMA</strong><span>{isOwner?"Owner Control":"Light Up Your Potential."}</span></div></div>
+   {isOwner?<>
+     <div className="sidebar-label">OWNER CONTROL</div><nav className="side-nav owner-nav">
+       {ownerNav.map(([tab,icon,label])=><button type="button" key={tab} className={ownerTab===tab?"active":""} onClick={()=>openOwner(tab)}><span className="nav-ico owner-nav-ico">{icon}</span><span>{label}</span></button>)}
+       <details className="side-group" open><summary className={ownerTab==="integrations"?"active":""}><span><span className="nav-ico owner-nav-ico">IN</span>Integrations</span><span className="chevron">⌄</span></summary><div className="side-subnav owner-subnav">{integrationNav.map(([section,icon,label])=><button type="button" key={section} onClick={()=>openOwner("integrations",section)}><span>{icon}</span>{label}</button>)}</div></details>
+       <div className="sidebar-label sidebar-label-inner">MONITORING SCOPE</div>
+       <button type="button" onClick={()=>openOwner("overview")}><span className="nav-ico owner-nav-ico">U360</span><span>User / Customer 360</span></button>
+       <button type="button" onClick={()=>openOwner("overview")}><span className="nav-ico owner-nav-ico">DB</span><span>Database & Storage</span></button>
+       <button type="button" onClick={()=>openOwner("overview")}><span className="nav-ico owner-nav-ico">SC</span><span>Subscriptions & Cost</span></button>
+     </nav>
+   </>:<><div className="sidebar-label">WORKSPACE</div><nav className="side-nav">
+     {userNav.map(([href,icon,label])=><a key={href} className={activeHash===href?"active":""} href={href}><span className="nav-ico">{icon}</span><span>{label}</span>{label==="Google Sheets"&&<span className="nav-dot"/>}</a>)}
+     <details className="side-group" open><summary className={activeHash==="#ai-analytics"?"active":""}><span><span className="nav-ico">AI</span>AI Analytics</span><span className="chevron">⌄</span></summary><div className="side-subnav">{aiNav.map(([key,label])=><button type="button" key={key} onClick={()=>openAi(key)}>{label}</button>)}</div></details>
+     <div className="sidebar-label sidebar-label-inner">MASTER DATA</div>{masterNav.map(([href,icon,label])=><a key={href} className={activeHash===href?"active":""} href={href}><span className="nav-ico">{icon}</span><span>{label}</span></a>)}
+   </nav></>}
+   <div className="sidebar-bottom"><a href={isOwner?"#administration":"#profile"} className="user-chip sidebar-profile-link"><div className="avatar">{(profile.full_name||profile.email||"U").slice(0,1).toUpperCase()}</div><div><strong>{profile.full_name||profile.email}</strong><small>{isOwner?"Owner · Lumaway":workspace.name}</small></div></a><button className="logout" onClick={onLogout}>Logout</button></div>
+ </aside>;
 }
