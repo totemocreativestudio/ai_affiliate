@@ -1,4 +1,6 @@
-﻿export const metadata = {
+import "./luma-v2.css";
+
+export const metadata = {
   title: "Luma AI",
   description: "Luma AI Online",
 };
