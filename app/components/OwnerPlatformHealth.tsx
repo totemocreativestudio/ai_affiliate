@@ -1,0 +1,19 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { createClient } from "../../lib/supabase-browser";
+
+type Row=Record<string,any>;
+const fmt=(v:any)=>new Intl.NumberFormat("id-ID").format(Number(v||0));
+
+export default function OwnerPlatformHealth({mode}:{mode:"api"|"system"}){
+  const supabase=useMemo(()=>createClient(),[]);const [summary,setSummary]=useState<Row>({}),[usage,setUsage]=useState<Row[]>([]),[runs,setRuns]=useState<Row[]>([]),[issues,setIssues]=useState<Row[]>([]),[msg,setMsg]=useState("");
+  async function load(){const [s,u,r,i]=await Promise.all([supabase.rpc("get_owner_monitoring_summary"),supabase.from("luma_api_usage_events").select("*").order("created_at",{ascending:false}).limit(1000),supabase.from("ai_analysis_runs").select("*").order("created_at",{ascending:false}).limit(500),supabase.from("luma_issue_logs").select("*").order("created_at",{ascending:false}).limit(500)]);setSummary((s.data||{}) as Row);setUsage((u.data||[]) as Row[]);setRuns((r.data||[]) as Row[]);setIssues((i.data||[]) as Row[])}
+  useEffect(()=>{void load()},[]);
+  async function resolve(id:number){const {error}=await supabase.from("luma_issue_logs").update({status:"resolved",resolved_at:new Date().toISOString()}).eq("id",id);if(error)return setMsg(error.message);await load()}
+  if(mode==="api")return <div className="owner-section-stack"><div className="owner-kpi-row"><Metric label="API Requests" value={fmt(summary.api_requests)}/><Metric label="Input Tokens" value={fmt(summary.api_input_tokens)}/><Metric label="Output Tokens" value={fmt(summary.api_output_tokens)}/><Metric label="Total Tokens" value={fmt(summary.api_total_tokens)}/><Metric label="AI Runs" value={fmt(summary.ai_runs)}/></div><Table title="API Usage Log" rows={usage} cols={["created_at","provider","service","request_type","model","input_tokens","output_tokens","total_tokens","status"]}/><Table title="AI Analysis Runs" rows={runs} cols={["created_at","run_id","created_by","analysis_type","start_date","end_date","model","status","error_message"]}/></div>;
+  const open=issues.filter(x=>String(x.status).toLowerCase()!=="resolved");
+  return <div className="owner-section-stack"><div className="owner-kpi-row"><Metric label="Open Issues" value={fmt(open.length)}/><Metric label="AI Errors" value={fmt(summary.ai_error)}/><Metric label="Sales Rows" value={fmt(summary.sales_rows)}/><Metric label="Imports" value={fmt(summary.imports)}/></div>{msg&&<div className="owner-inline-note">{msg}</div>}<section className="owner-panel"><div className="owner-panel-head"><div><h3>Bug, Error & UI Queue</h3><p>Resolve setelah perbaikan diverifikasi di production.</p></div></div><div className="owner-table-wrap"><table><thead><tr><th>Severity</th><th>Issue</th><th>Page</th><th>Status</th><th>Date</th><th></th></tr></thead><tbody>{issues.map(x=><tr key={x.id}><td>{x.severity}</td><td><b>{x.title}</b><small>{x.details}</small></td><td>{x.page_path||"-"}</td><td>{x.status}</td><td>{x.created_at?new Date(x.created_at).toLocaleString("id-ID"):"-"}</td><td><button disabled={x.status==="resolved"} onClick={()=>resolve(x.id)}>Resolve</button></td></tr>)}</tbody></table></div></section></div>;
+}
+function Metric({label,value}:{label:string;value:any}){return <div className="owner-metric"><span>{label}</span><b>{value}</b></div>}
+function Table({title,rows,cols}:{title:string;rows:Row[];cols:string[]}){return <section className="owner-panel"><div className="owner-panel-head"><div><h3>{title}</h3><p>{fmt(rows.length)} records</p></div></div><div className="owner-table-wrap"><table><thead><tr>{cols.map(c=><th key={c}>{c.replaceAll("_"," ")}</th>)}</tr></thead><tbody>{rows.map((r,i)=><tr key={r.id||r.run_id||i}>{cols.map(c=><td key={c}>{c==="created_at"&&r[c]?new Date(r[c]).toLocaleString("id-ID"):String(r[c]??"-")}</td>)}</tr>)}</tbody></table></div></section>}
