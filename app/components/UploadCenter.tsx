@@ -130,6 +130,7 @@ export default function UploadCenter({ workspaceId }: Props) {
 
       setResult(last);
       setStatus(`Import selesai · ${last?.import_id || importId}`);
+      window.dispatchEvent(new CustomEvent("luma-data-changed", { detail: { source: "upload", importId } }));
     } catch (e: any) {
       setStatus(e?.message || "Import gagal.");
     } finally {
