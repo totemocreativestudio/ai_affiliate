@@ -1,8 +1,10 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 type Props = { name: string; size?: number; className?: string };
 
-const paths: Record<string, React.ReactNode> = {
+const paths: Record<string, ReactNode> = {
   dashboard: <><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></>,
   upload: <><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M5 20h14"/></>,
   sync: <><path d="M20 7h-5V2"/><path d="M4 17h5v5"/><path d="M20 7a8 8 0 0 0-13.7-2.7L4 7"/><path d="M4 17a8 8 0 0 0 13.7 2.7L20 17"/></>,
@@ -27,9 +29,5 @@ const paths: Record<string, React.ReactNode> = {
 };
 
 export default function LumaIcon({ name, size = 18, className = "" }: Props) {
-  return (
-    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      {paths[name] || paths.dashboard}
-    </svg>
-  );
+  return <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name] || paths.dashboard}</svg>;
 }
