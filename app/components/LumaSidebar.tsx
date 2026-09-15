@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 type Props = {
   profile: { email: string | null; full_name: string | null; role: string };
   workspace: { name: string; slug: string; status: string };
@@ -20,7 +22,24 @@ const nav = [
   ["#google-sheets", "▦", "Google Sheets"],
 ];
 
+const masterNav = [
+  ["#product-master", "◫", "Product Master"],
+  ["#listings", "☷", "Listings"],
+  ["#shipping", "▱", "Shipping"],
+  ["#creator-samples", "◇", "Creator Samples"],
+  ["#ratecard", "Rp", "Ratecard Master"],
+];
+
 export default function LumaSidebar({ profile, workspace, onLogout }: Props) {
+  const [activeHash, setActiveHash] = useState("#dashboard");
+
+  useEffect(() => {
+    const syncHash = () => setActiveHash(window.location.hash || "#dashboard");
+    syncHash();
+    window.addEventListener("hashchange", syncHash);
+    return () => window.removeEventListener("hashchange", syncHash);
+  }, []);
+
   return (
     <aside className="sidebar" id="sidebar">
       <div className="brand">
@@ -29,14 +48,16 @@ export default function LumaSidebar({ profile, workspace, onLogout }: Props) {
       </div>
       <div className="sidebar-label">WORKSPACE</div>
       <nav className="side-nav">
-        {nav.map(([href, icon, label], i) => (
-          <a key={href} className={i === 0 ? "active" : ""} href={href}>
+        {nav.map(([href, icon, label]) => (
+          <a key={href} className={activeHash === href ? "active" : ""} href={href}>
             <span className="nav-ico">{icon}</span><span>{label}</span>
             {label === "Google Sheets" && <span className="nav-dot" />}
           </a>
         ))}
         <details className="side-group" open>
-          <summary><span><span className="nav-ico">✦</span>AI Analytics</span><span className="chevron">⌄</span></summary>
+          <summary className={activeHash === "#ai-analytics" ? "active" : ""}>
+            <span><span className="nav-ico">✦</span>AI Analytics</span><span className="chevron">⌄</span>
+          </summary>
           <div className="side-subnav">
             <a href="#ai-analytics">Performance Analysis</a>
             <a href="#ai-analytics">Creator Analysis</a>
@@ -47,15 +68,21 @@ export default function LumaSidebar({ profile, workspace, onLogout }: Props) {
           </div>
         </details>
         <div className="sidebar-label sidebar-label-inner">MASTER DATA</div>
-        <a href="#product-master"><span className="nav-ico">◫</span><span>Product Master</span></a>
-        <a href="#listings"><span className="nav-ico">☷</span><span>Listings</span></a>
-        <a href="#shipping"><span className="nav-ico">▱</span><span>Shipping</span></a>
-        <a href="#creator-samples"><span className="nav-ico">◇</span><span>Creator Samples</span></a>
-        <a href="#ratecard"><span className="nav-ico">Rp</span><span>Ratecard Master</span></a>
-        {profile.role === "admin" && <><div className="sidebar-label sidebar-label-inner">ADMINISTRATION</div><a href="#administration"><span className="nav-ico">⚙</span><span>Admin Console</span></a></>}
+        {masterNav.map(([href, icon, label]) => (
+          <a key={href} className={activeHash === href ? "active" : ""} href={href}>
+            <span className="nav-ico">{icon}</span><span>{label}</span>
+          </a>
+        ))}
+        {profile.role === "admin" && <>
+          <div className="sidebar-label sidebar-label-inner">ADMINISTRATION</div>
+          <a className={activeHash === "#administration" ? "active" : ""} href="#administration"><span className="nav-ico">⚙</span><span>Admin Console</span></a>
+        </>}
       </nav>
       <div className="sidebar-bottom">
-        <div className="user-chip"><div className="avatar">{(profile.full_name || profile.email || "U").slice(0,1).toUpperCase()}</div><div><strong>{profile.full_name || profile.email}</strong><small>{profile.role} · {workspace.name}</small></div></div>
+        <div className="user-chip">
+          <div className="avatar">{(profile.full_name || profile.email || "U").slice(0,1).toUpperCase()}</div>
+          <div><strong>{profile.full_name || profile.email}</strong><small>{profile.role} · {workspace.name}</small></div>
+        </div>
         <button className="logout" onClick={onLogout}>Logout</button>
       </div>
     </aside>
