@@ -1,121 +1,84 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../../lib/supabase-browser";
-import KanbanBoard from "./KanbanBoard";
 
-type Props = { workspaceId: string };
-const TYPES = [
-  ["performance", "Performance Analysis", "KPI, efisiensi, dan kesehatan performa"],
-  ["creator", "Creator Analysis", "Kontribusi, konsentrasi, dan peluang creator"],
-  ["product", "Product Analysis", "SKU, produk, kontribusi GMV dan volume"],
-  ["trend", "Trend Analysis", "Pergerakan periode, momentum, dan arah performa"],
-  ["anomaly", "Anomaly Detection", "Lonjakan, penurunan, dan pola tidak biasa"],
-  ["recommendation", "Recommendations", "Prioritas tindakan berbasis seluruh temuan"],
+type Row=Record<string,any>;
+const TYPES=[
+  ["performance","Performance Analysis","KPI, efisiensi, kesehatan performa, kontribusi platform"],
+  ["creator","Creator Analysis","Kontributor, konsentrasi, segmentasi dan peluang creator"],
+  ["product","Product Analysis","SKU, produk, kontribusi GMV, volume dan product mix"],
+  ["trend","Trend Analysis","Pergerakan periode, momentum dan arah performa"],
+  ["anomaly","Anomaly Detection","Lonjakan, penurunan, outlier dan pola tidak biasa"],
+  ["recommendation","Recommendations","Prioritas tindakan lintas performance, creator, product, trend dan anomaly"],
 ] as const;
-
 const money=(v:any)=>new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(Number(v||0));
 const num=(v:any)=>new Intl.NumberFormat("id-ID").format(Number(v||0));
 
-export default function AIAnalytics({ workspaceId }: Props) {
-  const supabase = createClient();
-  const [type, setType] = useState("performance");
-  const [start, setStart] = useState("");
-  const [end, setEnd] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [status, setStatus] = useState("Siap menganalisis data workspace.");
-  const [result, setResult] = useState<any>(null);
-  const [runId, setRunId] = useState("");
-  const [reportOpen,setReportOpen]=useState(false);
-  const [reportSaved,setReportSaved]=useState(false);
+export default function AIAnalytics({workspaceId}:{workspaceId:string}){
+  const supabase=createClient();
+  const [type,setType]=useState("performance");const [start,setStart]=useState("");const [end,setEnd]=useState("");const [busy,setBusy]=useState(false);const [status,setStatus]=useState("Siap menganalisis database workspace.");const [result,setResult]=useState<any>(null);const [runId,setRunId]=useState("");
+  const [history,setHistory]=useState<Row[]>([]);const [menu,setMenu]=useState<string>("");const [detail,setDetail]=useState<Row|null>(null);const [detailSize,setDetailSize]=useState<"normal"|"expanded"|"minimized">("normal");
+  const [docPreview,setDocPreview]=useState<Row|null>(null);const [docZoom,setDocZoom]=useState(.82);const [docSize,setDocSize]=useState<"normal"|"expanded"|"minimized">("normal");const [generatingReport,setGeneratingReport]=useState<string>("");
   const [taskAdded,setTaskAdded]=useState<Record<number,boolean>>({});
-
   const active=TYPES.find(x=>x[0]===type)!;
 
+  useEffect(()=>{void loadHistory()},[workspaceId]);
+
+  async function loadHistory(){
+    const {data:{user}}=await supabase.auth.getUser();if(!user)return;
+    const {data:runs,error}=await supabase.from("ai_analysis_runs").select("id,run_id,analysis_type,start_date,end_date,model,status,created_at,error_message").eq("workspace_id",workspaceId).eq("created_by",user.id).order("created_at",{ascending:false}).limit(100);if(error)return setStatus(error.message);
+    const ids=(runs||[]).map((x:any)=>x.run_id).filter(Boolean);
+    const [{data:insights},{data:reports}]=await Promise.all([
+      ids.length?supabase.from("ai_insights").select("run_id,insight_json,created_at").eq("workspace_id",workspaceId).in("run_id",ids):Promise.resolve({data:[]} as any),
+      supabase.from("luma_pdf_reports").select("id,run_id,title,page_count,previewed_at,downloaded_at,download_count,watermark_removed_at,created_at").eq("workspace_id",workspaceId).eq("user_id",user.id).order("created_at",{ascending:false}),
+    ]);
+    const im=Object.fromEntries((insights||[]).map((x:any)=>[x.run_id,x.insight_json]));const rm:Record<string,any>={};for(const r of reports||[])if(r.run_id&&!rm[r.run_id])rm[r.run_id]=r;
+    setHistory((runs||[]).map((x:any)=>({...x,insight:im[x.run_id]||null,report:rm[x.run_id]||null})));
+  }
+
   async function buildContext(){
-    const effectiveStart=start||null; const effectiveEnd=end||null;
-    const { data:kpi, error:kpiError }=await supabase.rpc("get_dashboard_kpi",{p_workspace_id:workspaceId,p_start_date:effectiveStart,p_end_date:effectiveEnd,p_platform:null,p_creator_id:null});
-    if(kpiError)throw kpiError;
-    const { data:ranking, error:rankingError }=await supabase.rpc("get_creator_ranking",{p_workspace_id:workspaceId,p_start_date:effectiveStart,p_end_date:effectiveEnd,p_platform:null,p_creator_id:null,p_search:null,p_page:1,p_page_size:50});
-    if(rankingError)throw rankingError;
-
-    let q=supabase.from("sales").select("data_date,creator_name,username,platform,sku,product_name,qty,orders,gmv,commission,refund,clicks,buyers,live_gmv,video_gmv,showcase_gmv").eq("workspace_id",workspaceId).order("data_date",{ascending:true}).limit(5000);
-    if(start)q=q.gte("data_date",start); if(end)q=q.lte("data_date",end);
-    const {data:sales,error:salesError}=await q; if(salesError)throw salesError;
-    const rows=sales||[];
-
-    const monthly:Record<string,any>={}; const products:Record<string,any>={}; const platforms:Record<string,any>={};
-    for(const r of rows as any[]){
-      const m=r.data_date?String(r.data_date).slice(0,7):"undated"; monthly[m]??={gmv:0,qty:0,orders:0,commission:0,rows:0}; monthly[m].gmv+=Number(r.gmv||0);monthly[m].qty+=Number(r.qty||0);monthly[m].orders+=Number(r.orders||0);monthly[m].commission+=Number(r.commission||0);monthly[m].rows++;
-      const p=r.sku||r.product_name; if(p){products[p]??={sku:r.sku||null,product:r.product_name||null,gmv:0,qty:0,orders:0,commission:0};products[p].gmv+=Number(r.gmv||0);products[p].qty+=Number(r.qty||0);products[p].orders+=Number(r.orders||0);products[p].commission+=Number(r.commission||0)}
-      const pf=r.platform||"Unknown";platforms[pf]??={gmv:0,qty:0,orders:0,commission:0};platforms[pf].gmv+=Number(r.gmv||0);platforms[pf].qty+=Number(r.qty||0);platforms[pf].orders+=Number(r.orders||0);platforms[pf].commission+=Number(r.commission||0);
-    }
-    return {
-      analysis_focus:active[2], period:{start:start||"ALL DATA",end:end||"ALL DATA"},
-      kpi:kpi?.[0]||{}, platforms,
-      top_creators:(ranking||[]).slice(0,30).map((x:any)=>({rank:x.rank,creator:x.creator_name||x.username,platform:x.platform,qty:x.qty,orders:x.orders,gmv:x.gmv,commission:x.commission})),
-      top_products:Object.values(products).sort((a:any,b:any)=>b.gmv-a.gmv).slice(0,30),
-      monthly_trend:Object.entries(monthly).map(([period,v])=>({period,...v})),
-      sampled_rows:rows.length,
-    };
+    const {data:kpi,error:kpiError}=await supabase.rpc("get_dashboard_kpi",{p_workspace_id:workspaceId,p_start_date:start||null,p_end_date:end||null,p_platform:null,p_creator_id:null});if(kpiError)throw kpiError;
+    const {data:ranking,error:rankingError}=await supabase.rpc("get_creator_ranking",{p_workspace_id:workspaceId,p_start_date:start||null,p_end_date:end||null,p_platform:null,p_creator_id:null,p_search:null,p_page:1,p_page_size:50});if(rankingError)throw rankingError;
+    let q=supabase.from("sales").select("data_date,creator_name,username,platform,sku,product_name,category,qty,orders,gmv,commission,refund,clicks,buyers,live_gmv,video_gmv,showcase_gmv").eq("workspace_id",workspaceId).order("data_date",{ascending:true}).limit(10000);if(start)q=q.gte("data_date",start);if(end)q=q.lte("data_date",end);const {data:sales,error:salesError}=await q;if(salesError)throw salesError;const rows=sales||[];
+    const monthly:Record<string,any>={},products:Record<string,any>={},platforms:Record<string,any>={};
+    for(const r of rows as any[]){const m=r.data_date?String(r.data_date).slice(0,7):"undated";monthly[m]??={gmv:0,qty:0,orders:0,commission:0,refund:0,rows:0};for(const k of ["gmv","qty","orders","commission","refund"])monthly[m][k]+=Number(r[k]||0);monthly[m].rows++;const pk=r.sku||r.product_name;if(pk){products[pk]??={sku:r.sku||null,product:r.product_name||null,category:r.category||null,gmv:0,qty:0,orders:0,commission:0,refund:0};for(const k of ["gmv","qty","orders","commission","refund"])products[pk][k]+=Number(r[k]||0)}const pf=r.platform||"Unknown";platforms[pf]??={gmv:0,qty:0,orders:0,commission:0,refund:0};for(const k of ["gmv","qty","orders","commission","refund"])platforms[pf][k]+=Number(r[k]||0)}
+    return {analysis_focus:active[2],period:{start:start||"ALL DATA",end:end||"ALL DATA"},kpi:kpi?.[0]||{},platforms,top_creators:(ranking||[]).slice(0,50).map((x:any)=>({rank:x.rank,creator:x.creator_name||x.username,platform:x.platform,qty:x.qty,orders:x.orders,gmv:x.gmv,commission:x.commission})),top_products:Object.values(products).sort((a:any,b:any)=>b.gmv-a.gmv).slice(0,50),monthly_trend:Object.entries(monthly).map(([period,v])=>({period,...v})),sampled_rows:rows.length};
   }
 
-  async function run() {
-    setBusy(true); setResult(null); setReportOpen(false); setReportSaved(false); setTaskAdded({});
-    try {
-      if(start&&end&&start>end)throw new Error("Start Date tidak boleh melewati End Date.");
-      setStatus("Menyiapkan dataset workspace..."); const context=await buildContext();
-      setStatus(`Memproses ${active[1]}...`);
-      const r=await fetch("/api/ai/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({workspace_id:workspaceId,analysis_type:type,start_date:start||null,end_date:end||null,context})});
-      const d=await r.json(); if(!r.ok||!d.ok)throw new Error(d.error||"Analisis AI gagal.");
-      setResult(d.result); setRunId(d.run_id||""); setStatus(`Selesai · ${d.model||"AI"}`);
-    } catch(e:any){setStatus(e?.message||"Analisis AI gagal.");} finally{setBusy(false);}
-  }
+  async function run(){setBusy(true);setResult(null);setTaskAdded({});try{if(start&&end&&start>end)throw new Error("Start Date tidak boleh melewati End Date.");setStatus("Menyiapkan dataset dari database hasil upload Excel...");const context=await buildContext();setStatus(`Menjalankan ${active[1]} dan mengaitkan insight lain yang relevan...`);const r=await fetch("/api/ai/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({workspace_id:workspaceId,analysis_type:type,start_date:start||null,end_date:end||null,context})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||"Analisis AI gagal.");setResult(d.result);setRunId(d.run_id||"");setStatus(`Selesai · ${d.model||"AI"}. Analisis tersimpan ke history.`);await loadHistory();}catch(e:any){setStatus(e?.message||"Analisis AI gagal.")}finally{setBusy(false)}}
 
-  const report=useMemo(()=>{
-    if(!result)return null;
-    return {
-      data:[`Periode: ${start||"Seluruh data"} – ${end||"Seluruh data"}`,`Status: ${result.performance_status||"INFO"}`,...(result.key_findings||[])],
-      analysis:[result.executive_summary,...(result.creator_findings||[]),...(result.product_findings||[]),...(result.trend_findings||[]),...(result.anomalies||[])].filter(Boolean),
-      do:[...(result.recommendations||[])],
-      dont:["Jangan mengambil kesimpulan di luar data yang tersedia.","Jangan mengubah data operasional berdasarkan satu anomali tanpa verifikasi.",result.confidence_note].filter(Boolean),
-    };
-  },[result,start,end]);
+  async function addTask(text:string,index:number){const {data:{user}}=await supabase.auth.getUser();const {error}=await supabase.from("creator_tasks").insert({workspace_id:workspaceId,title:text.slice(0,160),description:text,status:"backlog",priority:"normal",source:"ai_analysis",source_ref:runId||null,analysis_type:type,created_by:user?.id||null,sort_order:Date.now()});if(error)return setStatus(error.message);setTaskAdded(x=>({...x,[index]:true}));setStatus("Recommendation ditambahkan ke Kanban.")}
 
-  async function addTask(text:string,index:number){
-    const {data:{user}}=await supabase.auth.getUser();
-    const {error}=await supabase.from("creator_tasks").insert({workspace_id:workspaceId,title:text.slice(0,160),description:text,status:"backlog",priority:"normal",source:"ai_analysis",source_ref:runId||null,analysis_type:type,created_by:user?.id||null,sort_order:Date.now()});
-    if(error)return setStatus(error.message); setTaskAdded(x=>({...x,[index]:true})); setStatus("Recommendation ditambahkan ke Kanban.");
-  }
+  async function generateDocument(targetRun=runId){if(!targetRun)return setStatus("Pilih hasil analisis terlebih dahulu.");setGeneratingReport(targetRun);setStatus("Menyusun dokumen 20 halaman dari kombinasi analisis yang tersedia...");try{const r=await fetch("/api/ai/report",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({workspace_id:workspaceId,run_id:targetRun})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||"Gagal generate document.");setStatus(`Dokumen 20 halaman selesai. Kombinasi: ${(d.combined_types||[]).join(", ")||"available analysis"}. Preview pertama = 5 token.`);await loadHistory();}catch(e:any){setStatus(e.message||"Generate document gagal.")}finally{setGeneratingReport("")}}
 
-  async function saveReport(){
-    if(!report)return; const {data:{user}}=await supabase.auth.getUser(); if(!user)return;
-    const {error}=await supabase.from("luma_pdf_reports").insert({workspace_id:workspaceId,user_id:user.id,title:`LUMA ${active[1]}`,period_start:start||null,period_end:end||null,language:"id",tone:"minimalist",tokens_used:0,file_name:`luma-${type}-${Date.now()}.html`,run_id:runId||null,analysis_type:type,content_json:report,status:"ready"});
-    if(error)return setStatus(error.message); setReportSaved(true); setStatus("Report disimpan ke history.");
-  }
+  async function previewReport(reportId:number){setStatus("Membuka preview. Preview pertama untuk dokumen ini menggunakan 5 token...");try{const r=await fetch("/api/reports/access",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({workspace_id:workspaceId,report_id:reportId,action:"preview"})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||"Preview gagal.");setDocPreview(d.report);setDocZoom(.82);setDocSize("normal");setStatus(d.charge?.charged?"Preview terbuka · 5 token digunakan. Preview berikutnya untuk dokumen yang sama gratis.":"Preview terbuka · tidak ada token tambahan.");await loadHistory();}catch(e:any){setStatus(e.message||"Preview gagal.")}}
 
-  function downloadReport(){
-    if(!report)return;
-    const section=(title:string,items:string[])=>`<section><h2>${title}</h2>${items.map(x=>`<div class="item">${String(x).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]||c))}</div>`).join("")}</section>`;
-    const html=`<!doctype html><html><head><meta charset="utf-8"><title>LUMA ${active[1]}</title><style>body{font-family:Arial,sans-serif;color:#111827;margin:0;background:#fff}main{max-width:820px;margin:0 auto;padding:56px}header{border-bottom:2px solid #111827;padding-bottom:18px;margin-bottom:28px}small{color:#635bff;font-weight:700;letter-spacing:.12em}h1{font-size:30px;margin:8px 0}h2{font-size:15px;text-transform:uppercase;letter-spacing:.08em;margin:28px 0 10px}.item{border-bottom:1px solid #e5e7eb;padding:10px 0;line-height:1.55;font-size:13px}.meta{color:#667085;font-size:12px}@media print{main{padding:20mm}}</style></head><body><main><header><small>LUMA AFFILIATE INTELLIGENCE</small><h1>${active[1]}</h1><div class="meta">${start||"All data"} – ${end||"All data"}</div></header>${section("Data",report.data)}${section("Analysis",report.analysis)}${section("Do",report.do)}${section("Don't",report.dont)}<script>window.onload=()=>{}</script></main></body></html>`;
-    const blob=new Blob([html],{type:"text/html;charset=utf-8"}); const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`LUMA-${type}-${new Date().toISOString().slice(0,10)}.html`;a.click();URL.revokeObjectURL(a.href);
-  }
+  async function removeWatermark(){if(!docPreview)return;try{const r=await fetch("/api/reports/access",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({workspace_id:workspaceId,report_id:docPreview.id,action:"remove_watermark"})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||"Gagal menghapus watermark.");setStatus(d.charge?.charged?"Watermark dihapus · 25 token digunakan.":"Watermark sudah pernah dihapus.");await previewReport(docPreview.id);}catch(e:any){setStatus(e.message)}}
 
-  function printReport(){
-    const el=document.getElementById("luma-report-preview"); if(!el)return; const w=window.open("","_blank","width=900,height=1000"); if(!w)return; w.document.write(`<html><head><title>LUMA ${active[1]}</title><style>body{font-family:Arial;color:#111827;padding:40px}h1{font-size:28px}h2{font-size:14px;text-transform:uppercase;letter-spacing:.08em;margin-top:28px}.report-row{padding:9px 0;border-bottom:1px solid #e5e7eb;line-height:1.5;font-size:13px}.report-brand{color:#635bff;font-size:10px;font-weight:800;letter-spacing:.15em}</style></head><body>${el.innerHTML}</body></html>`);w.document.close();w.focus();setTimeout(()=>w.print(),250);
-  }
+  async function downloadReport(reportId:number){setStatus("Menyiapkan download · 10 token dan hanya dapat dilakukan 1x per dokumen...");try{const r=await fetch("/api/reports/access",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({workspace_id:workspaceId,report_id:reportId,action:"download"})});if(!r.ok){const d=await r.json();throw new Error(d.error||"Download gagal.")}const blob=await r.blob();const disposition=r.headers.get("Content-Disposition")||"";const m=disposition.match(/filename="([^"]+)"/);const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=m?.[1]||`lumaway-report-${reportId}.html`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);setStatus("Download selesai · 10 token digunakan. Dokumen ini tidak dapat didownload ulang.");await loadHistory();}catch(e:any){setStatus(e.message||"Download gagal.")}}
 
-  return <>
-    <section id="ai-analytics" className="legacy-page-anchor ai-page">
-      <div className="ai-page-head"><div><div className="eyebrow">LUMA AFFILIATE INTELLIGENCE · AI ANALYTICS</div><h1>{active[1]}</h1><p className="muted">{active[2]}. Setiap tipe memakai fokus analisis berbeda dan membaca database workspace aktif.</p></div></div>
-      <div className="ai-type-grid">{TYPES.map(([key,label,desc])=><button key={key} className={`ai-type-card ${type===key?"active":""}`} onClick={()=>{setType(key);setResult(null);setReportOpen(false)}}><strong>{label}</strong><span>{desc}</span></button>)}</div>
-      <div className="card ai-control-card"><div className="filters"><label>Start <span className="field-note">Opsional</span><input type="date" value={start} onChange={e=>setStart(e.target.value)}/></label><label>End <span className="field-note">Opsional</span><input type="date" value={end} onChange={e=>setEnd(e.target.value)}/></label><button className="primary" onClick={run} disabled={busy}>{busy?"Menganalisis...":"✦ Analisis dengan AI"}</button><button className="secondary" onClick={()=>{setStart("");setEnd("")}}>Reset Date</button></div><div className="ai-status">{status}</div></div>
-      {result&&<><div className="ai-result-grid"><div className="card ai-summary-card"><div className="eyebrow">EXECUTIVE SUMMARY</div><h3>{result.performance_status||"INFO"}</h3><p>{result.executive_summary}</p><div className="button-row"><button className="primary" onClick={()=>setReportOpen(true)}>Preview Report</button><button className="secondary" onClick={saveReport}>{reportSaved?"Saved ✓":"Save Report"}</button><button className="secondary" onClick={downloadReport}>Download Document</button><button className="secondary" onClick={printReport}>Print / Save PDF</button></div></div>
+  function openDetail(row:Row){setDetail(row);setDetailSize("normal");setMenu("")}
+  const currentHistory=useMemo(()=>history.find(x=>x.run_id===runId),[history,runId]);
+
+  return <section id="ai-analytics" className="legacy-page-anchor ai-page ai-v2">
+    <div className="ai-page-head"><div><div className="eyebrow">LUMA AFFILIATE INTELLIGENCE · AI ANALYTICS</div><h1>{active[1]}</h1><p className="muted">{active[2]}. Analisis mengacu pada database workspace dari file yang diupload; hasil terkait dari tipe analisis lain dapat digunakan sebagai konteks tambahan.</p></div></div>
+    <div className="ai-type-grid">{TYPES.map(([key,label,desc])=><button key={key} className={`ai-type-card ${type===key?"active":""}`} onClick={()=>{setType(key);setResult(null);setRunId("")}}><strong>{label}</strong><span>{desc}</span></button>)}</div>
+    <div className="card ai-control-card"><div className="filters"><label>Start <span className="field-note">Opsional</span><input type="date" value={start} onChange={e=>setStart(e.target.value)}/></label><label>End <span className="field-note">Opsional</span><input type="date" value={end} onChange={e=>setEnd(e.target.value)}/></label><button className="primary" onClick={run} disabled={busy}>{busy?"Menganalisis...":"✦ Analisis dengan AI"}</button><button className="secondary" onClick={()=>{setStart("");setEnd("")}}>Reset Date</button></div><div className="ai-status">{status}</div></div>
+
+    {result&&<div className="ai-result-grid"><div className="card ai-summary-card"><div className="eyebrow">EXECUTIVE SUMMARY</div><div className="ai-summary-title"><h3>{result.performance_status||"INFO"}</h3><span>{active[1]}</span></div><p>{result.executive_summary}</p><div className="button-row"><button className="primary" disabled={generatingReport===runId} onClick={()=>generateDocument()}>{generatingReport===runId?"Generating 20 pages...":"Generate 20-Page Document"}</button>{currentHistory?.report&&<><button className="secondary" onClick={()=>previewReport(currentHistory.report.id)}>Preview Document · 5 token*</button><button className="secondary" disabled={currentHistory.report.download_count>=1} onClick={()=>downloadReport(currentHistory.report.id)}>Download · 10 token</button></>}</div><small className="muted">*Hanya preview pertama per dokumen yang memakai 5 token. Preview berikutnya gratis.</small></div>
       {[["Key Findings",result.key_findings],["Creator Findings",result.creator_findings],["Product Findings",result.product_findings],["Trend Findings",result.trend_findings],["Anomalies",result.anomalies]].map(([title,items]:any)=><div className="card" key={title}><h3>{title}</h3><ul className="legacy-list">{(items||[]).map((x:string,i:number)=><li key={i}>{x}</li>)}</ul></div>)}
-      <div className="card ai-do-card"><h3>DO · Recommendations</h3><div className="recommendation-list">{(result.recommendations||[]).map((x:string,i:number)=><div className="recommendation-row" key={i}><span>{x}</span><button className="secondary" disabled={taskAdded[i]} onClick={()=>addTask(x,i)}>{taskAdded[i]?"Added ✓":"+ Kanban"}</button></div>)}</div></div>
-      <div className="card"><h3>Confidence Note</h3><p className="muted">{result.confidence_note}</p></div></div>
-      {reportOpen&&report&&<div className="report-modal-backdrop" onClick={()=>setReportOpen(false)}><div className="report-modal" onClick={e=>e.stopPropagation()}><div className="report-modal-actions"><strong>Report Preview</strong><div className="button-row"><button onClick={downloadReport}>Download</button><button onClick={printReport}>Print / PDF</button><button onClick={()=>setReportOpen(false)}>Close</button></div></div><div id="luma-report-preview" className="luma-report-preview"><div className="report-brand">LUMA AFFILIATE INTELLIGENCE</div><h1>{active[1]}</h1><p className="muted">{start||"All data"} – {end||"All data"}</p>{[["DATA",report.data],["ANALYSIS",report.analysis],["DO",report.do],["DON'T",report.dont]].map(([h,items]:any)=><section key={h}><h2>{h}</h2>{items.map((x:string,i:number)=><div className="report-row" key={i}>{x}</div>)}</section>)}</div></div></div>}</>}
-    </section>
-    <KanbanBoard workspaceId={workspaceId} userId="" />
-  </>;
+      <div className="card ai-do-card"><h3>DO · Recommendations</h3><div className="recommendation-list">{(result.recommendations||[]).map((x:string,i:number)=><div className="recommendation-row" key={i}><span>{x}</span><button className="secondary" disabled={taskAdded[i]} onClick={()=>addTask(x,i)}>{taskAdded[i]?"Added ✓":"+ Kanban"}</button></div>)}</div></div><div className="card"><h3>Confidence & Data Note</h3><p className="muted">{result.confidence_note}</p></div>
+    </div>}
+
+    <div className="card ai-history-card"><div className="section-head"><div><h3>Analysis & Document History</h3><p className="muted">Semua 6 tipe analysis disimpan. Dokumen 20 halaman dapat digenerate dari kombinasi analysis dengan periode yang sama.</p></div><button className="secondary" onClick={loadHistory}>Refresh</button></div>{history.length?<div className="scroll"><table><thead><tr><th>Analysis</th><th>Period</th><th>Status</th><th>Document</th><th>Created</th><th></th></tr></thead><tbody>{history.map(row=><tr key={row.run_id}><td><b>{TYPES.find(x=>x[0]===row.analysis_type)?.[1]||row.analysis_type}</b><br/><small>{row.run_id}</small></td><td>{row.start_date||"All data"} → {row.end_date||"All data"}</td><td><span className={`status-pill s-${String(row.status).toLowerCase()}`}>{row.status}</span></td><td>{row.report?<><b>20 pages</b><br/><small>{row.report.previewed_at?"Previewed":"Not previewed"} · {row.report.download_count?"Downloaded":"Download available"}</small></>:<button className="secondary" disabled={row.status!=="Success"||generatingReport===row.run_id} onClick={()=>generateDocument(row.run_id)}>{generatingReport===row.run_id?"Generating...":"Generate"}</button>}</td><td>{row.created_at?new Date(row.created_at).toLocaleString("id-ID"):"-"}</td><td className="history-menu-cell"><button className="more-button" onClick={()=>setMenu(menu===row.run_id?"":row.run_id)}>•••</button>{menu===row.run_id&&<div className="history-menu"><button onClick={()=>{row.report?previewReport(row.report.id):openDetail(row);setMenu("")}}>Preview</button><button onClick={()=>openDetail(row)}>Detail</button><button disabled={!row.report||row.report.download_count>=1} onClick={()=>{downloadReport(row.report.id);setMenu("")}}>Download</button></div>}</td></tr>)}</tbody></table></div>:<div className="empty-state"><strong>Belum ada history analysis.</strong></div>}</div>
+
+    {detail&&<div className={`analysis-detail-shell ${detailSize}`}><div className="analysis-detail-window"><div className="analysis-window-bar"><div><strong>{TYPES.find(x=>x[0]===detail.analysis_type)?.[1]||detail.analysis_type}</strong><small>{detail.run_id}</small></div><div><button title="Minimize" onClick={()=>setDetailSize(detailSize==="minimized"?"normal":"minimized")}>—</button><button title="Expand" onClick={()=>setDetailSize(detailSize==="expanded"?"normal":"expanded")}>□</button><button title="Close" onClick={()=>setDetail(null)}>×</button></div></div>{detailSize!=="minimized"&&<div className="analysis-detail-scroll"><AnalysisReadOnly result={detail.insight} row={detail}/></div>}</div></div>}
+
+    {docPreview&&<div className={`document-preview-shell ${docSize}`} onContextMenu={e=>e.preventDefault()}><div className="document-preview-window"><div className="analysis-window-bar"><div><strong>{docPreview.title}</strong><small>A4 · {docPreview.page_count||20} pages · Preview read-only</small></div><div className="document-toolbar"><button onClick={()=>setDocZoom(z=>Math.max(.5,z-.1))}>−</button><span>{Math.round(docZoom*100)}%</span><button onClick={()=>setDocZoom(z=>Math.min(1.5,z+.1))}>+</button>{!docPreview.watermark_removed_at&&<button className="watermark-action" onClick={removeWatermark}>Remove watermark · 25 token</button>}<button title="Minimize" onClick={()=>setDocSize(docSize==="minimized"?"normal":"minimized")}>—</button><button title="Expand" onClick={()=>setDocSize(docSize==="expanded"?"normal":"expanded")}>□</button><button title="Close" onClick={()=>setDocPreview(null)}>×</button></div></div>{docSize!=="minimized"&&<div className="document-scroll no-select" onCopy={e=>e.preventDefault()} onDoubleClick={e=>e.preventDefault()}><div className="document-zoom" style={{transform:`scale(${docZoom})`,transformOrigin:"top center"}}><DocumentPages report={docPreview}/></div></div>}</div></div>}
+  </section>;
 }
+
+function AnalysisReadOnly({result,row}:{result:any;row:Row}){if(!result)return <div className="empty-state"><strong>Insight detail tidak tersedia.</strong></div>;return <div className="analysis-readonly"><div className="analysis-meta-grid"><span>Period<b>{row.start_date||"All data"} → {row.end_date||"All data"}</b></span><span>Status<b>{result.performance_status||row.status}</b></span><span>Model<b>{row.model||"-"}</b></span></div><section><h3>Executive Summary</h3><p>{result.executive_summary}</p></section>{[["Key Findings",result.key_findings],["Creator Findings",result.creator_findings],["Product Findings",result.product_findings],["Trend Findings",result.trend_findings],["Anomalies",result.anomalies],["Recommendations",result.recommendations]].map(([t,items]:any)=><section key={t}><h3>{t}</h3><ul>{(items||[]).map((x:string,i:number)=><li key={i}>{x}</li>)}</ul></section>)}<section><h3>Confidence Note</h3><p>{result.confidence_note}</p></section></div>}
+
+function DocumentPages({report}:{report:Row}){const doc=report.document_json||{};return <div className="a4-page-stack">{(doc.pages||[]).slice(0,20).map((p:any,i:number)=><article className={`a4-page ${i===0?"cover":""}`} key={p.page_number||i}>{!report.watermark_removed_at&&<div className="a4-watermark">LUMAWAY</div>}<header><span>LUMA AFFILIATE INTELLIGENCE</span><div><img src="/luma-mark.png" alt="L"/><b>LUMAWAY</b></div></header><main>{i===0?<div className="a4-cover-content"><small>AI ANALYTICS REPORT</small><h1>{p.title||doc.document_title}</h1><p>{p.subtitle}</p><i></i><em>{report.period_start||"ALL DATA"} — {report.period_end||"ALL DATA"}</em></div>:<><div className="a4-number">{String(p.page_number||i+1).padStart(2,"0")}</div><h1>{p.title}</h1><p className="a4-subtitle">{p.subtitle}</p>{(p.sections||[]).map((s:any,j:number)=><section key={j}><h2>{s.heading}</h2><p>{s.body}</p></section>)}{!!p.bullets?.length&&<ul>{p.bullets.map((x:string,j:number)=><li key={j}>{x}</li>)}</ul>}{p.callout&&<aside>{p.callout}</aside>}</>}</main><footer><span>© {new Date().getFullYear()} Lumaway. All rights reserved.</span><b>{doc.document_title||report.title}</b></footer></article>)}</div>}
