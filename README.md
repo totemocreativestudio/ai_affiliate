@@ -1,15 +1,24 @@
-# Next.js application-layer bridge
+# LUMA Affiliate Intelligence
 
-The supplied Luma V5.6.4.1 source is Flask/Jinja, not Next.js. This folder intentionally contains no fake replacement application.
+LUMA is a Next.js + Supabase multi-user affiliate intelligence application deployed with Vercel.
 
-To preserve the existing UI/UX, the safe conversion is:
+Current production modules include authentication, workspace isolation, dashboard analytics, Upload Center, creator/store database, Creator 360, AI Analytics, Promo Studio, Kanban, private Google Sheets integration, affiliate referral, billing/token wallet, notifications, Insight & Blog, Social Lumaway, user profile, and Lumaway Owner Control.
 
-1. Treat `templates/*.html` + `static/app.css` + `static/app.js` as the visual/interaction reference.
-2. Port routes into Next.js App Router pages/route handlers incrementally.
-3. Move server data access to Supabase.
-4. Replace Flask session auth with Supabase Auth using `@supabase/ssr`.
-5. Move local document storage to Supabase Storage.
-6. Keep the existing Google Sheets/Drive/OpenAI integration semantics.
-7. Verify one module at a time before switching production.
+## Data architecture
 
-Do not call the project production-ready until the Next.js source exists, `npm run build` passes, and the deployed app has been browser-tested.
+- Next.js App Router for UI and server routes.
+- Supabase Auth for login and account identity.
+- Supabase PostgreSQL as source of truth with workspace-scoped RLS.
+- Supabase Storage for user/application files.
+- Vercel for deployment.
+- OpenAI integration is server-side only.
+- Payment/payout integration is server-side only.
+
+## Creator & store intelligence
+
+- Ranking Creator opens Creator 360.
+- Creator 360 combines creator profile, sales, commission, product performance, sample/shipping value, points, agreement, targets, manual ads support, rating, program status, last-video links, and affiliated stores.
+- Store Intelligence is populated from uploaded transaction/performance files when a store column is present (`Store Name`, `Shop Name`, `Nama Toko`, `Toko`, `Seller Name`, `Store ID`, etc.).
+- Owner Monitoring 360 aggregates users, workspaces, creators, stores, sales, storage, tokens, API usage, referral payouts, and paid service subscriptions.
+
+Production changes should only be treated as complete after the Vercel build succeeds and the affected flow is browser-tested.
