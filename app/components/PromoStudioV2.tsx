@@ -1,0 +1,86 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { createClient } from "../../lib/supabase-browser";
+
+type Row=Record<string,any>;
+const TONES=[
+  ["professional","Professional & Modern","Kredibel, clean, business-ready"],
+  ["friendly","Friendly & Conversational","Natural, hangat, mudah dipahami"],
+  ["educational","Educational & Authoritative","Jelas, informatif, berbasis konteks"],
+  ["persuasive","Persuasive Soft Selling","Meyakinkan tanpa hard selling"],
+  ["energetic","Energetic & Trendy","Hook kuat untuk short-form content"],
+  ["premium","Premium & Elegant","Ringkas, sophisticated, high-value"],
+] as const;
+const TYPES=[
+  ["content","Content","Ide, caption, hook, storytelling"],["marketing","Marketing","Conversion, campaign, funnel"],["education","Education","Materi edukasi & penjelasan"],["branding","Branding","Positioning & brand voice"],["product","Product","USP, benefit, product story"],["affiliate","Affiliate","Creator-ready persuasive content"],
+] as const;
+
+export default function PromoStudioV2({workspaceId,userId}:{workspaceId:string;userId:string}){
+  const supabase=createClient();
+  const [form,setForm]=useState({product_name:"Luma",title:"",content_type:"marketing",platform:"General",audience:"",structure:"TOFU - MOFU - BOFU",key_points:"",objective:"",constraints:""});
+  const [tones,setTones]=useState<string[]>(["professional","persuasive"]);
+  const [result,setResult]=useState<any>(null);
+  const [history,setHistory]=useState<Row[]>([]);
+  const [status,setStatus]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [detail,setDetail]=useState<Row|null>(null);
+
+  async function load(){const {data}=await supabase.from("promo_generations").select("*").eq("workspace_id",workspaceId).eq("user_id",userId).order("created_at",{ascending:false}).limit(30);setHistory((data||[]) as Row[])}
+  useEffect(()=>{void load()},[workspaceId,userId]);
+
+  function toggleTone(key:string){setTones(prev=>prev.includes(key)?prev.filter(x=>x!==key):prev.length>=3?prev:[...prev,key])}
+
+  async function generate(){
+    if(!form.audience.trim()||!form.key_points.trim())return setStatus("Target audiens dan poin utama wajib diisi.");
+    if(!tones.length)return setStatus("Pilih minimal satu gaya bahasa.");
+    setBusy(true);setStatus("LUMA sedang menyusun strategi, copy, dan quality check...");setResult(null);
+    try{
+      const r=await fetch("/api/ai/promo",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({workspace_id:workspaceId,...form,tones})});const d=await r.json();
+      if(!r.ok||!d.ok)throw new Error(d.error||"Gagal generate.");setResult(d.result);setStatus(`Selesai · ${d.model||"AI"}. Output disimpan ke history.`);await load();
+    }catch(e:any){setStatus(e?.message||"Generate gagal.")}finally{setBusy(false)}
+  }
+
+  function historyOutput(row:Row){return row.output_json||{primary_content:row.landing_json,social_posts:row.reels_json};}
+
+  return <section id="promo-studio" className="legacy-page-anchor promo-v2">
+    <div className="eyebrow">LUMA AI STUDIO</div><h1>Content & Marketing Studio</h1><p className="muted">Bangun materi content, marketing, edukasi, branding, product, dan affiliate dengan kombinasi tone yang konsisten dan factual grounding dari brief Anda.</p>
+
+    <div className="promo-type-grid">{TYPES.map(([key,label,desc])=><button key={key} className={form.content_type===key?"active":""} onClick={()=>setForm({...form,content_type:key})}><strong>{label}</strong><span>{desc}</span></button>)}</div>
+
+    <div className="promo-studio-grid promo-studio-v2-grid">
+      <div className="card promo-brief-card">
+        <div className="section-head"><div><h3>Creative Brief</h3><p className="muted">Semakin spesifik brief, semakin tinggi tingkat kesesuaian output.</p></div></div>
+        <div className="grid"><label>Produk / Layanan<input value={form.product_name} onChange={e=>setForm({...form,product_name:e.target.value})}/></label><label>Judul / Campaign<input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="Contoh: Launch fitur baru"/></label><label>Platform<select value={form.platform} onChange={e=>setForm({...form,platform:e.target.value})}><option>General</option><option>TikTok</option><option>Instagram</option><option>Reels</option><option>Website</option><option>Marketplace</option><option>Email</option><option>LinkedIn</option></select></label><label>Framework<select value={form.structure} onChange={e=>setForm({...form,structure:e.target.value})}><option>TOFU - MOFU - BOFU</option><option>AIDA</option><option>PAS</option><option>ACCA</option><option>Storytelling</option><option>Problem - Insight - Action</option></select></label></div>
+        <label>Target Audiens<textarea value={form.audience} onChange={e=>setForm({...form,audience:e.target.value})} placeholder="Siapa audiens, kebutuhan, pain point, level awareness..."/></label>
+        <label>Objective<textarea value={form.objective} onChange={e=>setForm({...form,objective:e.target.value})} placeholder="Tujuan content/campaign: awareness, leads, edukasi, conversion..."/></label>
+        <label>Poin Utama / Facts<textarea rows={6} value={form.key_points} onChange={e=>setForm({...form,key_points:e.target.value})} placeholder="Masukkan USP, fakta, benefit, data, harga, CTA, batas klaim..."/></label>
+        <label>Constraint / Jangan dilakukan<textarea value={form.constraints} onChange={e=>setForm({...form,constraints:e.target.value})} placeholder="Contoh: jangan hard selling, jangan sebut diskon, hindari jargon..."/></label>
+
+        <div className="tone-section"><div><b>Gaya Bahasa</b><span>Pilih 1–3 gaya untuk dikombinasikan</span></div><div className="tone-grid">{TONES.map(([key,label,desc])=><button type="button" key={key} className={tones.includes(key)?"active":""} onClick={()=>toggleTone(key)}><strong>{label}</strong><span>{desc}</span></button>)}</div></div>
+        <button className="primary generate-wide" disabled={busy} onClick={generate}>{busy?"Generating high-quality output...":"✦ Generate High-Quality Material"}</button>
+        {status&&<div className={`flash ${status.toLowerCase().includes("gagal")||status.toLowerCase().includes("wajib")?"error":"success"}`}>{status}</div>}
+      </div>
+
+      <div className="card promo-output-card">{result?<PromoOutput result={result}/>:<div className="promo-placeholder"><div>✦</div><strong>Output AI akan tampil di sini</strong><span>Strategy → Primary Copy → Hooks → Outline → Social Posts → Quality Check</span></div>}</div>
+    </div>
+
+    <div className="card"><div className="section-head"><div><h3>Riwayat Materi</h3><p className="muted">Output tersimpan per user dan workspace.</p></div></div>{history.length?<div className="scroll"><table><thead><tr><th>Title</th><th>Type</th><th>Platform</th><th>Tone</th><th>Date</th><th></th></tr></thead><tbody>{history.map(x=><tr key={x.id}><td><b>{x.title||"Untitled"}</b><br/><small>{x.product_name}</small></td><td>{x.content_type||"marketing"}</td><td>{x.platform||"General"}</td><td>{x.tone}</td><td>{x.created_at?new Date(x.created_at).toLocaleString("id-ID"):"-"}</td><td><button className="secondary" onClick={()=>setDetail({...x,_output:historyOutput(x)})}>View</button></td></tr>)}</tbody></table></div>:<div className="empty-state"><strong>Belum ada history.</strong></div>}</div>
+
+    {detail&&<div className="kanban-modal-backdrop" onClick={()=>setDetail(null)}><div className="promo-history-modal" onClick={e=>e.stopPropagation()}><div className="report-modal-actions"><div><strong>{detail.title}</strong><small>{detail.content_type} · {detail.platform}</small></div><button onClick={()=>setDetail(null)}>×</button></div><div className="promo-history-body"><PromoOutput result={detail._output}/></div></div></div>}
+  </section>;
+}
+
+function PromoOutput({result}:{result:any}){
+  return <div className="promo-result-v2">
+    <div className="promo-strategy"><span>STRATEGY</span><h2>{result.strategy?.angle}</h2><p>{result.strategy?.audience_insight}</p><small>{result.strategy?.tone_rationale}</small></div>
+    <section><span className="result-label">PRIMARY CONTENT</span><h2>{result.primary_content?.headline}</h2><h4>{result.primary_content?.subheadline}</h4><p className="primary-copy">{result.primary_content?.body}</p><div className="result-cta">{result.primary_content?.cta}</div></section>
+    <section><span className="result-label">HOOK OPTIONS</span><div className="hook-list">{(result.hooks||[]).map((x:string,i:number)=><div key={i}><b>{String(i+1).padStart(2,"0")}</b><span>{x}</span></div>)}</div></section>
+    <section><span className="result-label">KEY MESSAGES</span><ul className="legacy-list">{(result.key_messages||[]).map((x:string,i:number)=><li key={i}>{x}</li>)}</ul></section>
+    <section><span className="result-label">CONTENT OUTLINE</span><div className="outline-list">{(result.content_outline||[]).map((x:any,i:number)=><article key={i}><b>{x.section}</b><small>{x.objective}</small><p>{x.copy}</p></article>)}</div></section>
+    <section><span className="result-label">SOCIAL POSTS</span><div className="social-output-grid">{(result.social_posts||[]).map((x:any,i:number)=><article key={i}><small>{x.format}</small><b>{x.hook}</b><p>{x.caption}</p><em>{x.cta}</em></article>)}</div></section>
+    {!!result.education_points?.length&&<section><span className="result-label">EDUCATION POINTS</span><ul className="legacy-list">{result.education_points.map((x:string,i:number)=><li key={i}>{x}</li>)}</ul></section>}
+    <section className="quality-section"><div><span className="result-label">DO</span>{(result.do||[]).map((x:string,i:number)=><p key={i}>✓ {x}</p>)}</div><div><span className="result-label">DON'T</span>{(result.dont||[]).map((x:string,i:number)=><p key={i}>× {x}</p>)}</div></section>
+    <section><span className="result-label">QUALITY CHECK</span>{(result.quality_checks||[]).map((x:string,i:number)=><span className="quality-chip" key={i}>✓ {x}</span>)}</section>
+  </div>;
+}
