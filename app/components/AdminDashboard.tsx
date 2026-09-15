@@ -1,3 +1,4 @@
 "use client";
 
-export { default } from "./AdminDashboardV2";
+// V2 remains archived in source for rollback/reference.
+export { default } from "./AdminDashboardV3";
