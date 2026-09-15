@@ -1,6 +1,8 @@
-﻿export const metadata = {
+import "./auth-modern.css";
+
+export const metadata = {
   title: "Luma AI",
-  description: "Luma AI Online",
+  description: "Luma Affiliate Intelligence Workspace",
 };
 
 export default function RootLayout({
