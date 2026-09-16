@@ -6,6 +6,7 @@ import OwnerMonitoring360 from "./OwnerMonitoring360";
 import OwnerFinanceControl from "./OwnerFinanceControl";
 import OwnerPlatformHealth from "./OwnerPlatformHealth";
 import OwnerTutorialControl from "./OwnerTutorialControl";
+import OwnerSupportDesk from "./OwnerSupportDesk";
 import AdminBroadcast from "./AdminBroadcast";
 import AdminBlog from "./AdminBlog";
 import AdminSocialModeration from "./AdminSocialModeration";
@@ -29,12 +30,13 @@ export default function AdminDashboardV3({workspaceId}:{workspaceId:string}){
   useEffect(()=>{void load()},[workspaceId]);
   useEffect(()=>{const handler=(event:Event)=>{const e=event as NavEvent;setTab(e.detail?.tab||"overview");if(e.detail?.section)setTimeout(()=>document.getElementById(e.detail!.section!)?.scrollIntoView({behavior:"smooth",block:"start"}),120)};window.addEventListener("luma-owner-nav",handler as EventListener);return()=>window.removeEventListener("luma-owner-nav",handler as EventListener)},[]);
 
-  const tabs=[["overview","Command Center"],["finance","Payments & Token"],["ai","AI & API"],["broadcast","Broadcast"],["content","Blog & Tutorial"],["social","Social"],["integrations","Integrations"],["system","System"]];
+  const tabs=[["overview","Command Center"],["support","Support Desk"],["finance","Payments & Token"],["ai","AI & API"],["broadcast","Broadcast"],["content","Blog & Tutorial"],["social","Social"],["integrations","Integrations"],["system","System"]];
   return <section id="administration" className="legacy-page-anchor owner-console">
-    <header className="owner-console-header"><div><span className="owner-kicker">LUMAWAY OWNER CONTROL</span><h1>Business Control Center</h1><p>Monitoring seluruh platform Lumaway dari satu console: customer, creator, store, revenue, token, referral, AI/API, content, integration, storage dan system health.</p></div><div className="owner-header-actions"><span className="owner-live"><i/>Production</span><button className="secondary" disabled={busy} onClick={()=>load()}>{busy?"Refreshing...":"Refresh"}</button></div></header>
+    <header className="owner-console-header"><div><span className="owner-kicker">LUMAWAY OWNER CONTROL</span><h1>Business Control Center</h1><p>Monitoring seluruh platform Lumaway dari satu console: customer, creator, store, revenue, support ticket, token, referral, AI/API, content, integration, storage dan system health.</p></div><div className="owner-header-actions"><span className="owner-live"><i/>Production</span><button className="secondary" disabled={busy} onClick={()=>load()}>{busy?"Refreshing...":"Refresh"}</button></div></header>
     <div className="owner-health-strip"><Metric label="Users" value={fmt(summary.users)} sub={`${fmt(summary.active_users)} active`}/><Metric label="Workspaces" value={fmt(summary.workspaces)} sub="customer databases"/><Metric label="Creators" value={fmt(summary.creators)} sub={`${fmt(summary.stores)} stores`}/><Metric label="GMV Monitored" value={money(summary.gmv)} sub={`${fmt(summary.orders)} orders`}/><Metric label="API Tokens" value={fmt(summary.api_total_tokens)} sub={`${fmt(summary.api_requests)} calls`}/><Metric label="Open Issues" value={fmt(summary.open_issues)} sub="production"/></div>
     <nav className="owner-tabbar">{tabs.map(([k,l])=><button key={k} className={tab===k?"active":""} onClick={()=>setTab(k)}>{l}</button>)}</nav>
     {tab==="overview"&&<OwnerMonitoring360/>}
+    {tab==="support"&&<OwnerSupportDesk workspaceId={workspaceId}/>} 
     {tab==="finance"&&<OwnerFinanceControl/>}
     {tab==="ai"&&<OwnerPlatformHealth mode="api"/>}
     {tab==="broadcast"&&<AdminBroadcast workspaceId={workspaceId}/>} 
