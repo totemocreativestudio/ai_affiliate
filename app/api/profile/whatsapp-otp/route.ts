@@ -2,6 +2,7 @@ import { createHash, randomBytes, randomInt } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerContext } from "../../../../lib/server-auth";
 import { getServerSecret } from "../../../../lib/server-secrets";
+import { conviaSendTemplate, DEFAULT_CONVIA_BASE_URL } from "../../../../lib/convia";
 
 export const runtime = "nodejs";
 
@@ -25,6 +26,9 @@ async function settings(admin: any) {
     "whatsapp_otp_template",
     "whatsapp_template_language",
     "whatsapp_graph_version",
+    "convia_base_url",
+    "convia_otp_template",
+    "convia_phone_number_id",
   ];
   const { data } = await admin
     .from("luma_platform_settings")
@@ -39,6 +43,9 @@ async function settings(admin: any) {
     template: process.env.WHATSAPP_OTP_TEMPLATE || saved.whatsapp_otp_template || "luma_otp",
     language: process.env.WHATSAPP_TEMPLATE_LANGUAGE || saved.whatsapp_template_language || "id",
     graphVersion: process.env.WHATSAPP_GRAPH_VERSION || saved.whatsapp_graph_version || "v24.0",
+    conviaBaseUrl: process.env.CONVIA_BASE_URL || saved.convia_base_url || DEFAULT_CONVIA_BASE_URL,
+    conviaTemplate: process.env.CONVIA_OTP_TEMPLATE || saved.convia_otp_template || "luma_otp",
+    conviaPhoneNumberId: process.env.CONVIA_WHATSAPP_PHONE_NUMBER_ID || saved.convia_phone_number_id || "",
   };
 }
 
@@ -95,6 +102,36 @@ async function sendViaMeta(token: string, cfg: any, phone: string, code: string)
   return { reference: raw?.messages?.[0]?.id || null, provider: "meta", sessionId: null };
 }
 
+async function sendViaConvia(apiKey: string, cfg: any, phone: string, code: string) {
+  const templateName = String(cfg.conviaTemplate || "luma_otp").trim();
+  if (!templateName) throw new Error("Convia authentication template belum dikonfigurasi owner.");
+  const raw = await conviaSendTemplate(
+    apiKey,
+    phone,
+    {
+      name: templateName,
+      language: cfg.language || "id",
+      components: [
+        {
+          type: "body",
+          parameters: [{ type: "text", text: code }],
+        },
+      ],
+    },
+    {
+      baseUrl: cfg.conviaBaseUrl || DEFAULT_CONVIA_BASE_URL,
+      whatsappPhoneNumberId: cfg.conviaPhoneNumberId || undefined,
+      autoCreateCustomer: true,
+    }
+  );
+  return {
+    reference: raw?.data?.message_id || null,
+    provider: "convia",
+    sessionId: null,
+    customerId: raw?.data?.customer_id || null,
+  };
+}
+
 export async function POST(req: NextRequest) {
   let ctx: any = null;
   let workspaceId = "";
@@ -112,9 +149,11 @@ export async function POST(req: NextRequest) {
 
     if (action === "request") {
       const cfg = await settings(ctx.admin);
-      const accessToken = await getServerSecret(ctx.admin, "luma_whatsapp_access_token");
+      const accessToken = cfg.provider === "convia"
+        ? await getServerSecret(ctx.admin, "luma_convia_api_key")
+        : await getServerSecret(ctx.admin, "luma_whatsapp_access_token");
       if (!accessToken) {
-        return NextResponse.json({ ok: false, error: "WhatsApp OTP belum dikonfigurasi oleh owner." }, { status: 503 });
+        return NextResponse.json({ ok: false, error: `${cfg.provider === "convia" ? "Convia" : "WhatsApp"} OTP belum dikonfigurasi oleh owner.` }, { status: 503 });
       }
 
       const code = String(randomInt(100000, 1000000));
@@ -137,7 +176,9 @@ export async function POST(req: NextRequest) {
 
       const sent = cfg.provider === "meta"
         ? await sendViaMeta(accessToken, cfg, phone, code)
-        : await sendViaFlowKirim(accessToken, cfg, phone, code);
+        : cfg.provider === "convia"
+          ? await sendViaConvia(accessToken, cfg, phone, code)
+          : await sendViaFlowKirim(accessToken, cfg, phone, code);
 
       await ctx.admin.from("luma_api_usage_events").insert({
         workspace_id: workspaceId,
@@ -147,7 +188,12 @@ export async function POST(req: NextRequest) {
         request_type: "otp_send",
         status: "success",
         reference: sent.reference,
-        metadata: { provider: sent.provider, template: cfg.template, session_id: sent.sessionId },
+        metadata: {
+          provider: sent.provider,
+          template: sent.provider === "convia" ? cfg.conviaTemplate : cfg.template,
+          session_id: sent.sessionId,
+          customer_id: "customerId" in sent ? sent.customerId : null,
+        },
       });
       return NextResponse.json({ ok: true, expires_in: 300, provider: sent.provider });
     }
