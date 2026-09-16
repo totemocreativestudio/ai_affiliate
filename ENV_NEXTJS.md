@@ -30,6 +30,12 @@ WHATSAPP_PROVIDER=flowkirim
 WHATSAPP_ACCESS_TOKEN=
 WHATSAPP_BASE_URL=https://scan.flowkirim.com
 WHATSAPP_DEVICE_ID=
+
+CONVIA_API_KEY=
+CONVIA_BASE_URL=https://api.convia.id/api/v1/public
+CONVIA_OTP_TEMPLATE=luma_otp
+CONVIA_WHATSAPP_PHONE_NUMBER_ID=
+
 WHATSAPP_PHONE_NUMBER_ID=
 WHATSAPP_OTP_TEMPLATE=luma_otp
 WHATSAPP_TEMPLATE_LANGUAGE=id
@@ -132,7 +138,7 @@ Never expose `XENDIT_SECRET_KEY` in frontend code.
 
 ## 6. WhatsApp OTP — FlowKirim
 
-Lumaway now supports FlowKirim as the primary WhatsApp OTP provider.
+Lumaway supports FlowKirim as a WhatsApp OTP provider.
 
 ```bash
 WHATSAPP_PROVIDER=flowkirim
@@ -148,27 +154,74 @@ OTP request flow:
 1. Lumaway generates a random 6-digit OTP.
 2. Only a salted SHA-256 hash is stored in `luma_otp_challenges`.
 3. OTP expires after 5 minutes and is limited to 5 verification attempts.
-4. Server calls:
+4. Server requests the active FlowKirim session using the Device ID.
+5. Server sends the OTP to the normalized WhatsApp JID.
+6. After the user submits the correct OTP, Lumaway marks the phone/WhatsApp number verified in Supabase Auth and the Lumaway profile.
 
-```text
-GET <WHATSAPP_BASE_URL>/api/whatsapp/sessions/<WHATSAPP_DEVICE_ID>
-Authorization: Bearer <WHATSAPP_ACCESS_TOKEN>
+## 7. WhatsApp CRM + optional OTP — Convia
+
+Convia is available as an alternative provider for CRM messaging and as an optional OTP provider.
+
+```bash
+CONVIA_API_KEY=
+CONVIA_BASE_URL=https://api.convia.id/api/v1/public
+CONVIA_OTP_TEMPLATE=luma_otp
+CONVIA_WHATSAPP_PHONE_NUMBER_ID=
 ```
 
-5. The active `session_id` returned by FlowKirim is used for:
+The key can also be saved from **LUMAWAY OWNER CONTROL → Integrations → WhatsApp CRM & OTP**. It is stored server-side in Supabase Vault under the Lumaway server-secret layer and is never returned to the browser.
+
+### CRM use cases
+
+Lumaway exposes an authenticated server route:
 
 ```text
-POST <WHATSAPP_BASE_URL>/api/whatsapp/messages/text
-Authorization: Bearer <WHATSAPP_ACCESS_TOKEN>
-Content-Type: application/json
+POST /api/whatsapp/crm/send
 ```
 
-6. Recipient is normalized to the WhatsApp JID format, for example `62812...@s.whatsapp.net`.
-7. After the user submits the correct OTP, Lumaway marks the phone/WhatsApp number verified in Supabase Auth and the Lumaway profile.
+Supported purposes:
 
-Owner Control → Integrations → WhatsApp now supports Save and Test Connection for FlowKirim.
+- `promotion`
+- `verification`
+- `information`
+- `payment`
+- `utility`
+- `support`
 
-### Optional Meta Cloud API fallback
+Supported Convia WhatsApp message types:
+
+- `text`
+- `image`
+- `document`
+- `audio`
+- `video`
+- `template`
+- `interactive`
+
+The route is restricted to workspace manager/admin/owner access and records usage in `luma_api_usage_events`.
+
+For messages outside the WhatsApp 24-hour customer-service window, use an approved WhatsApp template. Marketing, Utility and Authentication templates should be managed/approved in Convia/Meta before production sends.
+
+### Convia OTP
+
+Set:
+
+```bash
+WHATSAPP_PROVIDER=convia
+```
+
+Lumaway keeps the existing 6-digit OTP UX. The server generates the code and sends it through a Convia approved Authentication template (`CONVIA_OTP_TEMPLATE`, default `luma_otp`). The OTP hash, 5-minute expiry and maximum 5 attempts remain controlled by Lumaway.
+
+Owner **Test Connection** calls Convia's WhatsApp verification pricing endpoint. Do not hardcode transaction cost in Lumaway; use the provider response/current Meta pricing because pricing can change.
+
+### Convia API notes
+
+- Base endpoint: `https://api.convia.id/api/v1/public`
+- Authentication: `Authorization: Bearer <CONVIA_API_KEY>`
+- Standard send endpoint: `/messages/send`
+- A primary Convia WhatsApp number is used automatically; `CONVIA_WHATSAPP_PHONE_NUMBER_ID` is optional for multi-number setups.
+
+## 8. Optional Meta Cloud API fallback
 
 These variables remain supported if `WHATSAPP_PROVIDER=meta`:
 
@@ -180,7 +233,7 @@ WHATSAPP_GRAPH_VERSION=v24.0
 WHATSAPP_CHANNEL_URL=
 ```
 
-## 7. Deployment order
+## 9. Deployment order
 
 Recommended production order:
 
@@ -189,11 +242,12 @@ Recommended production order:
 3. Configure Google OAuth in Google Cloud and Supabase Auth.
 4. Add OpenAI server key and test Owner Control integration.
 5. Add Xendit secret + webhook token and configure the webhook.
-6. Add FlowKirim token + Device ID and use **Test Connection**.
-7. Redeploy Production after changing Vercel environment variables.
-8. Test from a non-owner user account.
+6. Configure at least one OTP provider: FlowKirim, Convia, or Meta.
+7. Add Convia if CRM messaging is required even when another OTP provider remains active.
+8. Redeploy Production after changing Vercel environment variables.
+9. Test from a non-owner user account.
 
-## 8. Production smoke test
+## 10. Production smoke test
 
 - Email/password sign-in works.
 - Google sign-in returns to Lumaway without 403.
@@ -201,6 +255,8 @@ Recommended production order:
 - AI Analytics can produce one server-side analysis.
 - Xendit checkout creates a payment URL.
 - Xendit test payment credits the correct token wallet exactly once.
-- WhatsApp OTP reaches the requested number.
+- Selected WhatsApp OTP provider reaches the requested number.
 - Wrong OTP fails; expired OTP fails; valid OTP verifies the phone.
+- Convia Test Connection succeeds when configured.
+- A Convia CRM text/template test can be sent from an authorized workspace manager flow.
 - No server secret is visible in browser DevTools, page source, client JS, or Git history.
