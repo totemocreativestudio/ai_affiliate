@@ -1,3 +1,6 @@
+export const DEFAULT_LUMA_AI_MODEL = "gpt-5.6-sol";
+if (!process.env.OPENAI_MODEL) process.env.OPENAI_MODEL = DEFAULT_LUMA_AI_MODEL;
+
 export const LUMA_SUPPORT_KNOWLEDGE = `
 Lumaway adalah web app Affiliate Intelligence berbasis workspace multi-user.
 
@@ -26,43 +29,7 @@ Aturan keamanan mutlak:
 8. Selalu panggil user dengan nama yang diberikan server, minimal sekali pada setiap jawaban.
 `;
 
-export const LUMA_SUPPORT_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    reply: { type: "string" },
-    solved: { type: "boolean" },
-    escalation_recommended: { type: "boolean" },
-    category: {
-      type: "string",
-      enum: ["general", "bug", "data", "billing", "referral", "ai", "account", "integration", "community"]
-    },
-    priority: { type: "string", enum: ["low", "normal", "high", "urgent"] },
-    suggested_actions: { type: "array", items: { type: "string" }, maxItems: 4 }
-  },
-  required: ["reply", "solved", "escalation_recommended", "category", "priority", "suggested_actions"]
-};
-
-export function supportTicketCode() {
-  const now = new Date();
-  const y = now.getUTCFullYear().toString().slice(-2);
-  const m = String(now.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(now.getUTCDate()).padStart(2, "0");
-  const rand = Math.random().toString(36).slice(2, 8).toUpperCase();
-  return `LUMA-${y}${m}${d}-${rand}`;
-}
-
-export function firstName(name: string | null | undefined) {
-  const clean = String(name || "").trim();
-  return clean ? clean.split(/\s+/)[0].slice(0, 40) : "Kak";
-}
-
-export function extractOpenAIText(data: any) {
-  if (typeof data?.output_text === "string") return data.output_text;
-  for (const item of data?.output || []) {
-    for (const content of item?.content || []) {
-      if (content?.type === "output_text" && content?.text) return content.text;
-    }
-  }
-  return "";
-}
+export const LUMA_SUPPORT_SCHEMA = {type:"object",additionalProperties:false,properties:{reply:{type:"string"},solved:{type:"boolean"},escalation_recommended:{type:"boolean"},category:{type:"string",enum:["general","bug","data","billing","referral","ai","account","integration","community"]},priority:{type:"string",enum:["low","normal","high","urgent"]},suggested_actions:{type:"array",items:{type:"string"},maxItems:4}},required:["reply","solved","escalation_recommended","category","priority","suggested_actions"]};
+export function supportTicketCode(){const now=new Date();const y=now.getUTCFullYear().toString().slice(-2);const m=String(now.getUTCMonth()+1).padStart(2,"0");const d=String(now.getUTCDate()).padStart(2,"0");const rand=Math.random().toString(36).slice(2,8).toUpperCase();return `LUMA-${y}${m}${d}-${rand}`;}
+export function firstName(name:string|null|undefined){const clean=String(name||"").trim();return clean?clean.split(/\s+/)[0].slice(0,40):"Kak";}
+export function extractOpenAIText(data:any){if(typeof data?.output_text==="string")return data.output_text;for(const item of data?.output||[])for(const content of item?.content||[])if(content?.type==="output_text"&&content?.text)return content.text;return "";}
