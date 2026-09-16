@@ -33,7 +33,7 @@ Pemeriksaan dilakukan terhadap production build lokal dengan Chromium.
 - Preview Vercel dibuat untuk review sebelum produksi.
 - Preview memakai noindex dan berada di balik Vercel Authentication.
 - Domain produksi belum dipindahkan.
-- Submission lead end-to-end pada Vercel belum dapat diaktifkan sampai `SUPABASE_URL` dan `SUPABASE_SERVICE_ROLE_KEY` tersedia sebagai server-only environment variables pada project marketing.
+- Submission lead end-to-end pada Vercel belum dapat diaktifkan sampai `MARKETING_SUPABASE_URL`, `MARKETING_SUPABASE_SECRET_KEY`, dan `LEAD_RATE_LIMIT_SALT` tersedia sebagai server-only environment variables pada project marketing.
 
 ## Gate sebelum produksi
 
