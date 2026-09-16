@@ -3,6 +3,7 @@ const ENV_MAP: Record<string,string> = {
   luma_xendit_secret_key: "XENDIT_SECRET_KEY",
   luma_xendit_webhook_token: "XENDIT_WEBHOOK_TOKEN",
   luma_whatsapp_access_token: "WHATSAPP_ACCESS_TOKEN",
+  luma_convia_api_key: "CONVIA_API_KEY",
 };
 
 export async function getServerSecret(admin: any, name: string) {
