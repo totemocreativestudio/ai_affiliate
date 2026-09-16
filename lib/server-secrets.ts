@@ -3,7 +3,7 @@ const ENV_MAP: Record<string,string[]> = {
   luma_openai_api_key: ["OPENAI_API_KEY"],
   luma_xendit_secret_key: ["XENDIT_SECRET_KEY", "XENDIT"],
   luma_xendit_public_key: ["XENDIT_PUBLIC_KEY"],
-  luma_xendit_webhook_token: ["XENDIT_WEBHOOK_TOKEN"],
+  luma_xendit_webhook_token: ["XENDIT_WEBHOOK_TOKEN", "XENDIT_WEBHOOK_TOKEN_API"],
   luma_whatsapp_access_token: ["WHATSAPP_ACCESS_TOKEN", "FLOWKIRIM_API"],
   luma_convia_api_key: ["CONVIA_API_KEY", "CONVIA_API"],
 };
