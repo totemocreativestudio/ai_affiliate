@@ -37,8 +37,8 @@ async function settings(admin: any) {
   const saved = Object.fromEntries((data || []).map((x: any) => [x.setting_key, x.setting_value || ""]));
   return {
     provider: process.env.WHATSAPP_PROVIDER || saved.whatsapp_provider || "flowkirim",
-    baseUrl: process.env.WHATSAPP_BASE_URL || saved.whatsapp_base_url || "https://scan.flowkirim.com",
-    deviceId: process.env.WHATSAPP_DEVICE_ID || saved.whatsapp_device_id || "",
+    baseUrl: process.env.WHATSAPP_BASE_URL || process.env.FLOWKIRIM_BASE_URL || saved.whatsapp_base_url || "https://scan.flowkirim.com",
+    deviceId: process.env.WHATSAPP_DEVICE_ID || process.env.FLOWKIRIM_DEVICE_ID || saved.whatsapp_device_id || "",
     phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || saved.whatsapp_phone_number_id || "",
     template: process.env.WHATSAPP_OTP_TEMPLATE || saved.whatsapp_otp_template || "luma_otp",
     language: process.env.WHATSAPP_TEMPLATE_LANGUAGE || saved.whatsapp_template_language || "id",
