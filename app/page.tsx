@@ -2,6 +2,7 @@
 
 import "./luma-production.css";
 import "./luma-legacy-extra.css";
+import "./luma-helpdesk.css";
 import { useEffect, useState } from "react";
 import { createClient } from "../lib/supabase-browser";
 import ProductMaster from "./components/ProductMaster";
@@ -18,6 +19,7 @@ import RestoredLegacyModules from "./components/RestoredLegacyModules";
 import NotificationCenter from "./components/NotificationCenter";
 import ContentHub from "./components/ContentHub";
 import SocialLumaway from "./components/SocialLumaway";
+import LumaHelpdeskAgent from "./components/LumaHelpdeskAgent";
 
 type Profile={id:string;email:string|null;full_name:string|null;role:string;active:boolean};
 type Workspace={id:string;name:string;slug:string;status:string};
@@ -38,5 +40,5 @@ export default function Home(){
  const isAdmin=profile.role==="admin";
  return <div className="luma-app"><LumaSidebar profile={profile} workspace={workspace} onLogout={logout}/><div className="app-shell"><header className="topbar"><div><span className="topbar-kicker">{isAdmin?"LUMAWAY OWNER":"LUMA WORKSPACE"}</span><span className="topbar-title">{isAdmin?"Business Control Center":"Affiliate Intelligence"}</span></div><div className="topbar-right"><NotificationCenter workspaceId={workspace.id} userId={profile.id}/><span className="connection-pill"><i></i>{workspace.name} · Active</span></div></header><main className="content">
  {isAdmin?<RestoredLegacyModules workspaceId={workspace.id} userId={profile.id} isAdmin/>:<><LegacyDashboard workspaceId={workspace.id}/><UploadCenter workspaceId={workspace.id}/><DatabaseCenter workspaceId={workspace.id}/><AIAnalytics workspaceId={workspace.id}/><ContentHub workspaceId={workspace.id}/><SocialLumaway workspaceId={workspace.id} userId={profile.id}/><RestoredLegacyModules workspaceId={workspace.id} userId={profile.id} isAdmin={false}/><section id="product-master" className="legacy-page-anchor"><div className="eyebrow">MASTER DATA</div><ProductMaster workspaceId={workspace.id}/></section><section id="listings" className="legacy-page-anchor"><Listings workspaceId={workspace.id}/></section><section id="shipping" className="legacy-page-anchor"><Shipping workspaceId={workspace.id}/></section><section id="creator-samples" className="legacy-page-anchor"><CreatorSamples workspaceId={workspace.id}/></section><section id="ratecard" className="legacy-page-anchor"><RatecardMaster workspaceId={workspace.id}/></section></>}
- {error&&<div className="flash error">{error}</div>}</main></div></div>
+ {error&&<div className="flash error">{error}</div>}</main></div>{!isAdmin&&<LumaHelpdeskAgent workspaceId={workspace.id} userId={profile.id} fullName={profile.full_name} email={profile.email}/>}</div>
 }
