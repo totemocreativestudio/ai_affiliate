@@ -6,7 +6,8 @@ import "./luma-helpdesk.css";
 import "./luma-fixes.css";
 import "./luma-responsive.css";
 import "./luma-subscription.css";
-import { useEffect, useState } from "react";
+import "./luma-ux-polish.css";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../lib/supabase-browser";
 import ProductMaster from "./components/ProductMaster";
 import Listings from "./components/Listings";
@@ -25,21 +26,286 @@ import SocialLumaway from "./components/SocialLumaway";
 import LumaHelpdeskAgent from "./components/LumaHelpdeskAgent";
 import UserTicketCenter from "./components/UserTicketCenter";
 import DashboardReminder from "./components/DashboardReminder";
+import PWAInstallButton from "./components/PWAInstallButton";
+import MobileQuickNav from "./components/MobileQuickNav";
 
-type Profile={id:string;email:string|null;full_name:string|null;role:string;active:boolean};type Workspace={id:string;name:string;slug:string;status:string};type AuthMode="signin"|"signup";
-function BrandLockup({light=false}:{light?:boolean}){return <div className={`lumaway-lockup ${light?"is-light":""}`}><img src="/luma-mark.png" alt=""/><div><strong>LUMAWAY<span>.</span></strong><small>Light Up Your Potential.</small></div></div>}
-function loadGoogleIdentity(){return new Promise<void>((resolve,reject)=>{if((window as any).google?.accounts?.id)return resolve();const existing=document.querySelector<HTMLScriptElement>('script[data-lumaway-google]');if(existing){existing.addEventListener("load",()=>resolve(),{once:true});existing.addEventListener("error",()=>reject(),{once:true});return}const script=document.createElement("script");script.src="https://accounts.google.com/gsi/client";script.async=true;script.defer=true;script.dataset.lumawayGoogle="1";script.onload=()=>resolve();script.onerror=()=>reject();document.head.appendChild(script)})}
-export default function Home(){
- const supabase=createClient();const [email,setEmail]=useState("");const [password,setPassword]=useState("");const [profile,setProfile]=useState<Profile|null>(null);const [workspace,setWorkspace]=useState<Workspace|null>(null);const [loading,setLoading]=useState(true);const [error,setError]=useState("");const [authMode,setAuthMode]=useState<AuthMode>("signin");const [showPassword,setShowPassword]=useState(false);const [termsAccepted,setTermsAccepted]=useState(false);const [authMessage,setAuthMessage]=useState("");
- useEffect(()=>{if(typeof window!=="undefined"){if(!window.location.hash)window.history.replaceState(null,"","#dashboard");const saved=window.localStorage.getItem("lumaway_theme");if(saved==="dark"||saved==="light")document.documentElement.dataset.theme=saved}void loadSession()},[]);
- useEffect(()=>{if(loading||profile||workspace)return;let cancelled=false;async function mountGoogle(){const host=document.getElementById("lumaway-google-button");if(!host)return;try{const cfg=await fetch("/api/auth/google-config",{cache:"no-store"}).then(r=>r.json());if(!cfg?.ok||!cfg.client_id)throw new Error();await loadGoogleIdentity();if(cancelled)return;const google=(window as any).google;google.accounts.id.initialize({client_id:cfg.client_id,callback:async(response:any)=>{setError("");setAuthMessage("");setLoading(true);try{const {data,error:idError}=await supabase.auth.signInWithIdToken({provider:"google",token:String(response?.credential||"")});if(idError||!data.user)throw idError||new Error();await loadLumaData(data.user.id)}catch{setError("error, terjadi kesalahan.")}finally{setLoading(false)}}});host.innerHTML="";google.accounts.id.renderButton(host,{type:"standard",theme:"outline",size:"large",text:"continue_with",shape:"rectangular",logo_alignment:"left",width:Math.max(260,Math.min(420,host.clientWidth||420))})}catch{host.innerHTML='<span class="google-auth-unavailable">Google Sign-In sementara tidak tersedia.</span>'}}void mountGoogle();return()=>{cancelled=true}},[loading,profile,workspace,authMode]);
- async function loadSession(){setError("");try{const {data:{session}}=await supabase.auth.getSession();if(session?.user)await loadLumaData(session.user.id)}finally{setLoading(false)}}
- async function loadLumaData(userId:string){setError("");const {data:profileData,error:profileError}=await supabase.from("profiles").select("id,email,full_name,role,active").eq("id",userId).single();if(profileError||!profileData){setError("error, terjadi kesalahan.");return}const {data:memberships,error:memberError}=await supabase.from("workspace_members").select("workspace_id,membership_role,created_at").eq("user_id",userId).order("created_at",{ascending:true});if(memberError||!memberships?.length){setError("error, terjadi kesalahan.");return}const preferred=typeof window!=="undefined"?window.localStorage.getItem("luma_active_workspace"):null;const selected=memberships.find((x:any)=>x.workspace_id===preferred)||memberships[0];const {data:workspaceData,error:workspaceError}=await supabase.from("workspaces").select("id,name,slug,status").eq("id",selected.workspace_id).single();if(workspaceError||!workspaceData){setError("error, terjadi kesalahan.");return}setProfile(profileData);setWorkspace(workspaceData);if(typeof window!=="undefined"){window.localStorage.setItem("luma_active_workspace",workspaceData.id);window.history.replaceState(null,"",profileData.role==="admin"?"#administration":"#dashboard")}}
- async function login(){if(!email||!password)return setError("Email dan password wajib diisi.");setError("");setAuthMessage("");setLoading(true);const {data,error:loginError}=await supabase.auth.signInWithPassword({email,password});if(loginError){setError("Email atau password tidak sesuai.");setLoading(false);return}if(data.user)await loadLumaData(data.user.id);setLoading(false)}
- async function signup(){if(!email||!password)return setError("Email dan password wajib diisi.");if(password.length<8)return setError("Gunakan password minimal 8 karakter.");if(!termsAccepted)return setError("Konfirmasi persetujuan akses workspace terlebih dahulu.");setError("");setAuthMessage("");setLoading(true);const {data,error:signupError}=await supabase.auth.signUp({email,password,options:{emailRedirectTo:`${window.location.origin}/#dashboard`}});if(signupError){setError("error, terjadi kesalahan.");setLoading(false);return}if(data.session)await supabase.auth.signOut();setAuthMessage("Akun berhasil dibuat. Verifikasi email, lalu login ke workspace Lumaway Anda.");setAuthMode("signin");setPassword("");setTermsAccepted(false);setLoading(false)}
- async function logout(){await supabase.auth.signOut();setProfile(null);setWorkspace(null);setPassword("");setError("")}function switchAuthMode(mode:AuthMode){setAuthMode(mode);setError("");setAuthMessage("")}
- if(loading||(profile&&!workspace))return <main className="auth-loading-screen lumaway-loading-screen"><BrandLockup/><div className="lumaway-loading-orbit"><i></i><i></i><i></i></div><strong>Menyiapkan workspace Anda</strong><span>Memuat dashboard Lumaway...</span></main>;
- if(!profile||!workspace)return <main className="standalone-auth"><section className="auth-shell"><aside className="auth-showcase"><BrandLockup light/><div className="auth-story"><span className="auth-kicker">AFFILIATE INTELLIGENCE WORKSPACE</span><h1>Turn affiliate data into clear decisions.</h1><p>Monitor creator performance, campaign support, product movement, and AI insights from one focused workspace.</p><div className="auth-insight-card"><div className="auth-insight-head"><span>Workspace intelligence</span><i>Live</i></div><div className="auth-spark-bars" aria-hidden="true"><span style={{height:"34%"}}/><span style={{height:"48%"}}/><span style={{height:"42%"}}/><span style={{height:"68%"}}/><span style={{height:"58%"}}/><span style={{height:"82%"}}/><span style={{height:"72%"}}/><span style={{height:"94%"}}/></div><div className="auth-insight-footer"><span>Creator performance</span><b>+24.8%</b></div></div></div></aside><section className="auth-form-pane"><div className="auth-form-wrap"><div className="auth-mode-switch"><button type="button" className={authMode==="signin"?"active":""} onClick={()=>switchAuthMode("signin")}>Sign in</button><button type="button" className={authMode==="signup"?"active":""} onClick={()=>switchAuthMode("signup")}>Create account</button></div><div className="auth-heading"><span className="auth-kicker dark">LUMAWAY WORKSPACE</span><h2>{authMode==="signin"?"Welcome back":"Create your Lumaway account"}</h2><p>{authMode==="signin"?"Sign in to continue to Affiliate Intelligence.":"Your workspace is provisioned automatically after sign-up."}</p></div><div id="lumaway-google-button" className="google-gsi-host"><span>Memuat Google Sign-In...</span></div><div className="auth-divider"><span>or continue with email</span></div><div className="auth-fields"><label><span>Email address</span><input type="email" value={email} autoComplete="email" placeholder="name@company.com" onChange={e=>setEmail(e.target.value)}/></label><label><span>Password</span><div className="password-field"><input type={showPassword?"text":"password"} value={password} autoComplete={authMode==="signin"?"current-password":"new-password"} placeholder="Minimum 8 characters" onChange={e=>setPassword(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&authMode==="signin")void login()}}/><button type="button" onClick={()=>setShowPassword(v=>!v)}>{showPassword?"Hide":"Show"}</button></div></label></div>{authMode==="signup"&&<label className="auth-consent"><input type="checkbox" checked={termsAccepted} onChange={e=>setTermsAccepted(e.target.checked)}/><span>I agree to the Lumaway workspace terms and privacy flow.</span></label>}{error&&<div className="auth-alert error"><span>!</span><p>{error}</p></div>}{authMessage&&<div className="auth-alert success"><span>✓</span><p>{authMessage}</p></div>}<button type="button" className="auth-primary-button" onClick={()=>authMode==="signin"?void login():void signup()}>{authMode==="signin"?"Sign in to Lumaway":"Create account"}<span>→</span></button></div></section></section></main>;
- const isAdmin=profile.role==="admin";
- return <div className="luma-app"><LumaSidebar profile={profile} workspace={workspace} onLogout={logout}/><div className="app-shell"><header className="topbar"><div><span className="topbar-kicker">{isAdmin?"LUMAWAY OWNER":"LUMAWAY WORKSPACE"}</span><span className="topbar-title">{isAdmin?"Business Control Center":"Affiliate Intelligence"}</span></div><div className="topbar-right"><NotificationCenter workspaceId={workspace.id} userId={profile.id}/><span className="connection-pill"><i></i>{workspace.name} · Active</span></div></header><main className="content">{isAdmin?<RestoredLegacyModules workspaceId={workspace.id} userId={profile.id} isAdmin/>:<><LegacyDashboard workspaceId={workspace.id}/><UploadCenter workspaceId={workspace.id}/><DatabaseCenter workspaceId={workspace.id}/><AIAnalytics workspaceId={workspace.id}/><ContentHub workspaceId={workspace.id}/><SocialLumaway workspaceId={workspace.id} userId={profile.id}/><RestoredLegacyModules workspaceId={workspace.id} userId={profile.id} isAdmin={false}/><UserTicketCenter workspaceId={workspace.id}/><section id="product-master" className="legacy-page-anchor"><div className="eyebrow">MASTER DATA</div><ProductMaster workspaceId={workspace.id}/></section><section id="listings" className="legacy-page-anchor"><Listings workspaceId={workspace.id}/></section><section id="shipping" className="legacy-page-anchor"><Shipping workspaceId={workspace.id}/></section><section id="creator-samples" className="legacy-page-anchor"><CreatorSamples workspaceId={workspace.id}/></section><section id="ratecard" className="legacy-page-anchor"><RatecardMaster workspaceId={workspace.id}/></section></>}{error&&<div className="flash error">{error}</div>}</main></div>{!isAdmin&&<><DashboardReminder workspaceId={workspace.id} userId={profile.id} workspaceStatus={workspace.status}/><LumaHelpdeskAgent workspaceId={workspace.id} userId={profile.id} fullName={profile.full_name} email={profile.email}/></>}</div>
+type Profile = { id: string; email: string | null; full_name: string | null; role: string; active: boolean };
+type Workspace = { id: string; name: string; slug: string; status: string };
+type AuthMode = "signin" | "signup";
+
+function BrandLockup({ light = false }: { light?: boolean }) {
+  return (
+    <div className={`lumaway-lockup ${light ? "is-light" : ""}`}>
+      <img src="/luma-mark.png" alt="" />
+      <div>
+        <strong>LUMAWAY<span>.</span></strong>
+        <small>Light Up Your Potential.</small>
+      </div>
+    </div>
+  );
+}
+
+function loadGoogleIdentity() {
+  return new Promise<void>((resolve, reject) => {
+    if ((window as any).google?.accounts?.id) return resolve();
+    const existing = document.querySelector<HTMLScriptElement>('script[data-lumaway-google]');
+    if (existing) {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", () => reject(), { once: true });
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.dataset.lumawayGoogle = "1";
+    script.onload = () => resolve();
+    script.onerror = () => reject();
+    document.head.appendChild(script);
+  });
+}
+
+function cleanAuthErrorQuery() {
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has("error") && !url.searchParams.has("error_code") && !url.searchParams.has("error_description")) return;
+  url.searchParams.delete("error");
+  url.searchParams.delete("error_code");
+  url.searchParams.delete("error_description");
+  window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash || "#dashboard"}`);
+}
+
+function scrollToHash(hash: string, smooth = false) {
+  const id = (hash || "#dashboard").replace(/^#/, "");
+  const target = document.getElementById(id);
+  if (!target) return false;
+  target.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
+  return true;
+}
+
+export default function Home() {
+  const supabase = useMemo(() => createClient(), []);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [authMode, setAuthMode] = useState<AuthMode>("signin");
+  const [showPassword, setShowPassword] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [authMessage, setAuthMessage] = useState("");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual";
+    cleanAuthErrorQuery();
+    if (!window.location.hash) window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#dashboard`);
+    const saved = window.localStorage.getItem("lumaway_theme");
+    if (saved === "dark" || saved === "light") document.documentElement.dataset.theme = saved;
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+    void loadSession();
+  }, []);
+
+  useEffect(() => {
+    if (!profile || !workspace) return;
+    const isAdmin = profile.role === "admin";
+    const restore = () => {
+      const desired = isAdmin ? "#administration" : window.location.hash && window.location.hash !== "#administration" ? window.location.hash : "#dashboard";
+      if (isAdmin && window.location.hash !== "#administration") window.history.replaceState(null, "", "#administration");
+      window.requestAnimationFrame(() => window.setTimeout(() => {
+        if (!scrollToHash(desired)) scrollToHash(isAdmin ? "#administration" : "#dashboard");
+      }, 40));
+    };
+    restore();
+    window.addEventListener("pageshow", restore);
+    const onHash = () => window.requestAnimationFrame(() => scrollToHash(window.location.hash, true));
+    window.addEventListener("hashchange", onHash);
+    return () => {
+      window.removeEventListener("pageshow", restore);
+      window.removeEventListener("hashchange", onHash);
+    };
+  }, [profile, workspace]);
+
+  useEffect(() => {
+    if (loading || profile || workspace) return;
+    let cancelled = false;
+    async function mountGoogle() {
+      const host = document.getElementById("lumaway-google-button");
+      if (!host) return;
+      try {
+        const cfg = await fetch("/api/auth/google-config", { cache: "no-store" }).then((response) => response.json());
+        if (!cfg?.ok || !cfg.client_id) throw new Error();
+        await loadGoogleIdentity();
+        if (cancelled) return;
+        const google = (window as any).google;
+        google.accounts.id.initialize({
+          client_id: cfg.client_id,
+          callback: async (response: any) => {
+            setError("");
+            setAuthMessage("");
+            setLoading(true);
+            try {
+              const { data, error: idError } = await supabase.auth.signInWithIdToken({
+                provider: "google",
+                token: String(response?.credential || ""),
+              });
+              if (idError || !data.user) throw idError || new Error();
+              await loadLumaData(data.user.id);
+            } catch {
+              setError("error, terjadi kesalahan.");
+            } finally {
+              setLoading(false);
+            }
+          },
+        });
+        host.innerHTML = "";
+        google.accounts.id.renderButton(host, {
+          type: "standard",
+          theme: document.documentElement.dataset.theme === "dark" ? "filled_black" : "outline",
+          size: "large",
+          text: "continue_with",
+          shape: "rectangular",
+          logo_alignment: "left",
+          width: Math.max(260, Math.min(420, host.clientWidth || 420)),
+        });
+      } catch {
+        host.innerHTML = '<span class="google-auth-unavailable">Google Sign-In sementara tidak tersedia.</span>';
+      }
+    }
+    void mountGoogle();
+    return () => { cancelled = true; };
+  }, [loading, profile, workspace, authMode, supabase]);
+
+  async function loadSession() {
+    setError("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) await loadLumaData(session.user.id);
+    } catch {
+      setError("Sesi tidak dapat dimuat. Silakan login kembali.");
+      await supabase.auth.signOut().catch(() => undefined);
+      setProfile(null);
+      setWorkspace(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadLumaData(userId: string) {
+    setError("");
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select("id,email,full_name,role,active")
+      .eq("id", userId)
+      .single();
+    if (profileError || !profileData) {
+      setError("Profile Lumaway tidak dapat dimuat.");
+      return;
+    }
+
+    const { data: memberships, error: memberError } = await supabase
+      .from("workspace_members")
+      .select("workspace_id,membership_role,created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true });
+    if (memberError || !memberships?.length) {
+      setError("Workspace Lumaway belum tersedia untuk akun ini.");
+      return;
+    }
+
+    const preferred = window.localStorage.getItem("luma_active_workspace");
+    const selected = memberships.find((item: any) => item.workspace_id === preferred) || memberships[0];
+    const { data: workspaceData, error: workspaceError } = await supabase
+      .from("workspaces")
+      .select("id,name,slug,status")
+      .eq("id", selected.workspace_id)
+      .single();
+    if (workspaceError || !workspaceData) {
+      setError("Workspace Lumaway tidak dapat dimuat.");
+      return;
+    }
+
+    setProfile(profileData as Profile);
+    setWorkspace(workspaceData as Workspace);
+    window.localStorage.setItem("luma_active_workspace", workspaceData.id);
+
+    const target = profileData.role === "admin"
+      ? "#administration"
+      : window.location.hash && window.location.hash !== "#administration"
+        ? window.location.hash
+        : "#dashboard";
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${target}`);
+  }
+
+  async function login() {
+    if (!email || !password) return setError("Email dan password wajib diisi.");
+    setError(""); setAuthMessage(""); setLoading(true);
+    const { data, error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+    if (loginError) { setError("Email atau password tidak sesuai."); setLoading(false); return; }
+    if (data.user) await loadLumaData(data.user.id);
+    setLoading(false);
+  }
+
+  async function signup() {
+    if (!email || !password) return setError("Email dan password wajib diisi.");
+    if (password.length < 8) return setError("Gunakan password minimal 8 karakter.");
+    if (!termsAccepted) return setError("Konfirmasi persetujuan akses workspace terlebih dahulu.");
+    setError(""); setAuthMessage(""); setLoading(true);
+    const { data, error: signupError } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/#dashboard` } });
+    if (signupError) { setError("error, terjadi kesalahan."); setLoading(false); return; }
+    if (data.session) await supabase.auth.signOut();
+    setAuthMessage("Akun berhasil dibuat. Verifikasi email, lalu login ke workspace Lumaway Anda.");
+    setAuthMode("signin"); setPassword(""); setTermsAccepted(false); setLoading(false);
+  }
+
+  async function logout() {
+    await supabase.auth.signOut();
+    setProfile(null); setWorkspace(null); setPassword(""); setError("");
+    window.history.replaceState(null, "", `${window.location.pathname}#dashboard`);
+  }
+
+  function switchAuthMode(mode: AuthMode) {
+    setAuthMode(mode); setError(""); setAuthMessage("");
+  }
+
+  if (loading || (profile && !workspace)) {
+    return <main className="auth-loading-screen lumaway-loading-screen"><BrandLockup /><div className="lumaway-loading-orbit"><i /><i /><i /></div><strong>Menyiapkan workspace Anda</strong><span>Memuat dashboard Lumaway...</span></main>;
+  }
+
+  if (!profile || !workspace) {
+    return <main className="standalone-auth"><section className="auth-shell">
+      <aside className="auth-showcase"><BrandLockup light /><div className="auth-story"><span className="auth-kicker">AFFILIATE INTELLIGENCE WORKSPACE</span><h1>Turn affiliate data into clear decisions.</h1><p>Monitor creator performance, campaign support, product movement, and AI insights from one focused workspace.</p><div className="auth-insight-card"><div className="auth-insight-head"><span>Workspace intelligence</span><i>Live</i></div><div className="auth-spark-bars" aria-hidden="true"><span style={{ height: "34%" }} /><span style={{ height: "48%" }} /><span style={{ height: "42%" }} /><span style={{ height: "68%" }} /><span style={{ height: "58%" }} /><span style={{ height: "82%" }} /><span style={{ height: "72%" }} /><span style={{ height: "94%" }} /></div><div className="auth-insight-footer"><span>Creator performance</span><b>+24.8%</b></div></div></div></aside>
+      <section className="auth-form-pane"><div className="auth-form-wrap"><div className="auth-mode-switch"><button type="button" className={authMode === "signin" ? "active" : ""} onClick={() => switchAuthMode("signin")}>Sign in</button><button type="button" className={authMode === "signup" ? "active" : ""} onClick={() => switchAuthMode("signup")}>Create account</button></div><div className="auth-heading"><span className="auth-kicker dark">LUMAWAY WORKSPACE</span><h2>{authMode === "signin" ? "Welcome back" : "Create your Lumaway account"}</h2><p>{authMode === "signin" ? "Sign in to continue to Affiliate Intelligence." : "Your workspace is provisioned automatically after sign-up."}</p></div><div id="lumaway-google-button" className="google-gsi-host"><span>Memuat Google Sign-In...</span></div><div className="auth-divider"><span>or continue with email</span></div><div className="auth-fields"><label><span>Email address</span><input type="email" value={email} autoComplete="email" placeholder="name@company.com" onChange={(e) => setEmail(e.target.value)} /></label><label><span>Password</span><div className="password-field"><input type={showPassword ? "text" : "password"} value={password} autoComplete={authMode === "signin" ? "current-password" : "new-password"} placeholder="Minimum 8 characters" onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && authMode === "signin") void login(); }} /><button type="button" onClick={() => setShowPassword((value) => !value)}>{showPassword ? "Hide" : "Show"}</button></div></label></div>{authMode === "signup" && <label className="auth-consent"><input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} /><span>I agree to the Lumaway workspace terms and privacy flow.</span></label>}{error && <div className="auth-alert error"><span>!</span><p>{error}</p></div>}{authMessage && <div className="auth-alert success"><span>✓</span><p>{authMessage}</p></div>}<button type="button" className="auth-primary-button" onClick={() => authMode === "signin" ? void login() : void signup()}>{authMode === "signin" ? "Sign in to Lumaway" : "Create account"}<span>→</span></button></div></section>
+    </section></main>;
+  }
+
+  const isAdmin = profile.role === "admin";
+  return <div className="luma-app">
+    <LumaSidebar profile={profile} workspace={workspace} onLogout={logout} />
+    <div className="app-shell">
+      <header className="topbar">
+        <div><span className="topbar-kicker">{isAdmin ? "LUMAWAY OWNER" : "LUMAWAY WORKSPACE"}</span><span className="topbar-title">{isAdmin ? "Business Control Center" : "Affiliate Intelligence"}</span></div>
+        <div className="topbar-right"><PWAInstallButton compact /><NotificationCenter workspaceId={workspace.id} userId={profile.id} /><span className="connection-pill"><i />{workspace.name} · Active</span></div>
+      </header>
+      <main className="content">
+        {isAdmin ? <RestoredLegacyModules workspaceId={workspace.id} userId={profile.id} isAdmin /> : <>
+          <LegacyDashboard workspaceId={workspace.id} />
+          <UploadCenter workspaceId={workspace.id} />
+          <DatabaseCenter workspaceId={workspace.id} />
+          <AIAnalytics workspaceId={workspace.id} />
+          <ContentHub workspaceId={workspace.id} />
+          <SocialLumaway workspaceId={workspace.id} userId={profile.id} />
+          <RestoredLegacyModules workspaceId={workspace.id} userId={profile.id} isAdmin={false} />
+          <UserTicketCenter workspaceId={workspace.id} />
+          <section id="product-master" className="legacy-page-anchor"><div className="eyebrow">MASTER DATA</div><ProductMaster workspaceId={workspace.id} /></section>
+          <section id="listings" className="legacy-page-anchor"><Listings workspaceId={workspace.id} /></section>
+          <section id="shipping" className="legacy-page-anchor"><Shipping workspaceId={workspace.id} /></section>
+          <section id="creator-samples" className="legacy-page-anchor"><CreatorSamples workspaceId={workspace.id} /></section>
+          <section id="ratecard" className="legacy-page-anchor"><RatecardMaster workspaceId={workspace.id} /></section>
+        </>}
+        {error && <div className="flash error">{error}</div>}
+      </main>
+    </div>
+    {!isAdmin && <><MobileQuickNav /><DashboardReminder workspaceId={workspace.id} userId={profile.id} workspaceStatus={workspace.status} /><LumaHelpdeskAgent workspaceId={workspace.id} userId={profile.id} fullName={profile.full_name} email={profile.email} /></>}
+  </div>;
 }
