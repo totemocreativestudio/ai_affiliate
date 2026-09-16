@@ -9,18 +9,24 @@ import "./luma-helpdesk.css";
 import ReferralCapture from "./components/ReferralCapture";
 
 export const metadata = {
-  title: "Luma AI",
-  description: "Luma AI Online",
+  title: "Lumaway",
+  description: "Lumaway — Light Up Your Potential.",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html lang="id">
-      <body><ReferralCapture />{children}</body>
-    </html>
-  );
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
+  colorScheme: "light dark",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f6f7fb" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b1020" },
+  ],
+};
+
+const themeBoot=`(()=>{try{const s=localStorage.getItem('lumaway_theme');const t=s==='dark'||s==='light'?s:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.theme=t}catch{}})();`;
+
+export default function RootLayout({ children }:Readonly<{children:React.ReactNode;}>) {
+  return <html lang="id" suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:themeBoot}}/></head><body><ReferralCapture />{children}</body></html>;
 }

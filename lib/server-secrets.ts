@@ -6,38 +6,9 @@ const ENV_MAP: Record<string,string[]> = {
   luma_xendit_webhook_token: ["XENDIT_WEBHOOK_TOKEN", "XENDIT_WEBHOOK_TOKEN_API"],
   luma_whatsapp_access_token: ["WHATSAPP_ACCESS_TOKEN", "FLOWKIRIM_API"],
   luma_convia_api_key: ["CONVIA_API_KEY", "CONVIA_API"],
+  luma_resend_api_key: ["RESEND_API_KEY"],
 };
-
-function getEnvironmentSecret(name: string) {
-  const candidates = ENV_MAP[name] || [];
-  for (const envName of candidates) {
-    const value = process.env[envName];
-    if (typeof value === "string" && value.trim()) return value.trim();
-  }
-  return "";
-}
-
-export function getServerSecretSource(name: string) {
-  const candidates = ENV_MAP[name] || [];
-  for (const envName of candidates) {
-    const value = process.env[envName];
-    if (typeof value === "string" && value.trim()) return `vercel:${envName}`;
-  }
-  return "secure-vault";
-}
-
-export async function getServerSecret(admin: any, name: string) {
-  const envSecret = getEnvironmentSecret(name);
-  if (envSecret) return envSecret;
-
-  const { data, error } = await admin.rpc("luma_get_server_secret", { p_name: name });
-  if (error) throw new Error(`Secret lookup failed: ${error.message}`);
-  return typeof data === "string" && data.trim() ? data.trim() : "";
-}
-
-export async function hasServerSecret(admin: any, name: string) {
-  if (getEnvironmentSecret(name)) return true;
-  const { data, error } = await admin.rpc("luma_server_secret_exists", { p_name: name });
-  if (error) return false;
-  return Boolean(data);
-}
+function getEnvironmentSecret(name: string) {const candidates = ENV_MAP[name] || [];for (const envName of candidates) {const value = process.env[envName];if (typeof value === "string" && value.trim()) return value.trim();}return "";}
+export function getServerSecretSource(name: string) {const candidates = ENV_MAP[name] || [];for (const envName of candidates) {const value = process.env[envName];if (typeof value === "string" && value.trim()) return `vercel:${envName}`;}return "secure-vault";}
+export async function getServerSecret(admin: any, name: string) {const envSecret = getEnvironmentSecret(name);if (envSecret) return envSecret;const { data, error } = await admin.rpc("luma_get_server_secret", { p_name: name });if (error) throw new Error(`Secret lookup failed: ${error.message}`);return typeof data === "string" && data.trim() ? data.trim() : "";}
+export async function hasServerSecret(admin: any, name: string) {if (getEnvironmentSecret(name)) return true;const { data, error } = await admin.rpc("luma_server_secret_exists", { p_name: name });if (error) return false;return Boolean(data);}
