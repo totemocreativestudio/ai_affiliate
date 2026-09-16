@@ -9,6 +9,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 12
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: build-verification-key
+      SUPABASE_PUBLISHABLE_KEY: build-verification-key
+      SUPABASE_SECRET_KEY: build-verification-secret
+      NEXT_PUBLIC_APP_URL: https://lumaway.online
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
