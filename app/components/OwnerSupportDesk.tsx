@@ -1,0 +1,31 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+
+type Row=Record<string,any>;
+
+export default function OwnerSupportDesk({workspaceId}:{workspaceId:string}){
+  const [tickets,setTickets]=useState<Row[]>([]);const [selected,setSelected]=useState<Row|null>(null);const [messages,setMessages]=useState<Row[]>([]);const [reply,setReply]=useState("");const [viaWhatsapp,setViaWhatsapp]=useState(true);const [busy,setBusy]=useState(false);const [filter,setFilter]=useState("");const [status,setStatus]=useState("");
+
+  async function load(ticketId?:string){
+    const params=new URLSearchParams({workspace_id:workspaceId});if(filter)params.set("status",filter);if(ticketId)params.set("ticket_id",ticketId);
+    const r=await fetch(`/api/admin/support/tickets?${params.toString()}`,{cache:"no-store"});const d=await r.json();if(!r.ok||!d.ok){setStatus(d.error||"Gagal memuat support queue.");return;}if(ticketId){setSelected((d.tickets||[])[0]||null);setMessages(d.messages||[]);}else{setTickets(d.tickets||[]);if(selected){const match=(d.tickets||[]).find((x:Row)=>x.id===selected.id);if(match)setSelected(match);}}
+  }
+  useEffect(()=>{void load()},[workspaceId,filter]);
+  useEffect(()=>{const timer=window.setInterval(()=>void load(),20000);return()=>window.clearInterval(timer)},[workspaceId,filter,selected?.id]);
+
+  async function openTicket(row:Row){setSelected(row);setStatus("");await load(row.id)}
+  async function sendReply(){if(!selected||!reply.trim()||busy)return;setBusy(true);setStatus("");try{const r=await fetch("/api/admin/support/tickets",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({workspace_id:workspaceId,ticket_id:selected.id,action:"reply",message:reply.trim(),via_whatsapp:viaWhatsapp})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||"Gagal mengirim balasan.");setReply("");setStatus(d.whatsapp_sent?"Balasan dikirim di dashboard dan WhatsApp.":"Balasan dikirim ke dashboard user.");await load(selected.id);await load();}catch(e:any){setStatus(e?.message||"Gagal mengirim balasan.");}finally{setBusy(false)}}
+  async function changeStatus(next:string){if(!selected||busy)return;setBusy(true);try{const r=await fetch("/api/admin/support/tickets",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({workspace_id:workspaceId,ticket_id:selected.id,action:"status",status:next})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||"Gagal update status.");setStatus(`Status ticket menjadi ${next}.`);await load(selected.id);await load();}catch(e:any){setStatus(e?.message||"Gagal update status.");}finally{setBusy(false)}}
+
+  const counts=useMemo(()=>({all:tickets.length,urgent:tickets.filter(x=>x.priority==="urgent").length,escalated:tickets.filter(x=>x.status==="escalated").length,open:tickets.filter(x=>["open","awaiting_user"].includes(x.status)).length}),[tickets]);
+  return <section className="owner-support-desk">
+    <div className="owner-section-title"><div><span className="owner-kicker">CUSTOMER SUPPORT</span><h2>Luma Support Desk</h2><p>Ticket dari Luma Agent, eskalasi WhatsApp, dan balasan owner dalam satu antrean.</p></div><button className="secondary" onClick={()=>void load()}>Refresh</button></div>
+    <div className="owner-health-strip support-health"><Metric label="Queue" value={counts.all}/><Metric label="Escalated" value={counts.escalated}/><Metric label="Open" value={counts.open}/><Metric label="Urgent" value={counts.urgent}/></div>
+    <div className="support-desk-layout">
+      <aside className="support-ticket-list"><div className="support-filter"><select value={filter} onChange={e=>setFilter(e.target.value)}><option value="">Semua status</option><option value="escalated">Escalated</option><option value="open">Open</option><option value="awaiting_user">Awaiting user</option><option value="resolved">Resolved</option><option value="closed">Closed</option></select></div>{tickets.length?tickets.map(t=><button key={t.id} className={selected?.id===t.id?"active":""} onClick={()=>void openTicket(t)}><div><strong>{t.ticket_code}</strong><span>{t.user?.full_name||t.user?.email||"User"}</span></div><small>{t.workspace?.name||"Workspace"} · {t.category}</small><div className="support-ticket-meta"><em className={`p-${t.priority}`}>{t.priority}</em><em>{t.status}</em></div></button>):<div className="empty-state"><strong>Belum ada ticket.</strong></div>}</aside>
+      <main className="support-ticket-detail">{selected?<><header><div><span>{selected.ticket_code}</span><h3>{selected.user?.full_name||selected.user?.email||"User"}</h3><p>{selected.workspace?.name||"Workspace"} · {selected.category} · {selected.priority}</p></div><select value={selected.status} onChange={e=>void changeStatus(e.target.value)}><option value="escalated">Escalated</option><option value="open">Open</option><option value="awaiting_user">Awaiting user</option><option value="resolved">Resolved</option><option value="closed">Closed</option></select></header><div className="support-transcript">{messages.map((m,i)=><div key={m.id||i} className={`support-msg ${m.sender_type}`}><small>{m.sender_type==="user"?selected.user?.full_name||"User":m.sender_type==="agent"?"Luma":m.sender_type==="owner"?"Owner Support":"System"}</small><p>{m.body}</p><time>{m.created_at?new Date(m.created_at).toLocaleString("id-ID"):""}</time></div>)}</div><div className="support-owner-compose"><textarea value={reply} onChange={e=>setReply(e.target.value)} placeholder={`Balas ${selected.user?.full_name||"user"}...`}/><label className="inline-check"><input type="checkbox" checked={viaWhatsapp} onChange={e=>setViaWhatsapp(e.target.checked)}/> Kirim juga ke WhatsApp jika nomor/tiket terhubung</label><div className="button-row"><button className="primary" disabled={busy||!reply.trim()} onClick={()=>void sendReply()}>{busy?"Mengirim...":"Kirim Balasan"}</button></div>{status&&<p className="muted">{status}</p>}</div></>:<div className="empty-state"><strong>Pilih ticket untuk melihat percakapan.</strong></div>}</main>
+    </div>
+  </section>;
+}
+function Metric({label,value}:{label:string;value:any}){return <div className="owner-metric"><span>{label}</span><b>{value}</b></div>}
