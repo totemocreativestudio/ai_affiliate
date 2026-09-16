@@ -1,0 +1,25 @@
+{
+  "name": "Lumaway — Affiliate Intelligence",
+  "short_name": "Lumaway",
+  "description": "Lumaway Affiliate Intelligence Workspace — Light Up Your Potential.",
+  "start_url": "/#dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b1020",
+  "theme_color": "#635bff",
+  "categories": ["business", "productivity", "analytics"],
+  "icons": [
+    {
+      "src": "/luma-mark.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {"name": "Dashboard", "url": "/#dashboard"},
+    {"name": "AI Analytics", "url": "/#ai-analytics"},
+    {"name": "Billing & Token", "url": "/#billing"}
+  ]
+}
