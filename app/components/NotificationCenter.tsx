@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "../../lib/supabase-browser";
+import LumaIcon from "./LumaIcon";
 
 type NotificationRow = {
   key: string;
@@ -53,7 +54,7 @@ function categoryLabel(category: string) {
 }
 
 export default function NotificationCenter({ workspaceId, userId }: { workspaceId: string; userId: string }) {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [rows, setRows] = useState<NotificationRow[]>([]);
   const [open, setOpen] = useState(false);
   const [toast, setToast] = useState<NotificationRow | null>(null);
@@ -190,10 +191,11 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
     }
 
     if (direct.length) {
-      await supabase.from("user_notifications").update({ is_read: true }).eq("user_id", userId).in(
-        "id",
-        direct.map((item) => item.id),
-      );
+      await supabase
+        .from("user_notifications")
+        .update({ is_read: true })
+        .eq("user_id", userId)
+        .in("id", direct.map((item) => item.id));
     }
 
     setRows((previous) => previous.map((item) => ({ ...item, read: true })));
@@ -202,7 +204,7 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
   return (
     <div className="notification-root">
       <button className="notification-bell" aria-label="Notifications" onClick={() => setOpen((value) => !value)}>
-        <span>♢</span>
+        <LumaIcon name="bell" />
         {unread > 0 && <b>{unread > 99 ? "99+" : unread}</b>}
       </button>
 
@@ -236,9 +238,7 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
                 </button>
               ))
             ) : (
-              <div className="empty-state">
-                <strong>Belum ada notifikasi.</strong>
-              </div>
+              <div className="empty-state"><strong>Belum ada notifikasi.</strong></div>
             )}
           </div>
         </div>
