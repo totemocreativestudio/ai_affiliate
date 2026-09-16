@@ -29,8 +29,8 @@ async function getSettings(admin: any) {
   const saved = Object.fromEntries((data || []).map((x: any) => [x.setting_key, x.setting_value || ""]));
   return {
     whatsapp_provider: process.env.WHATSAPP_PROVIDER || saved.whatsapp_provider || "flowkirim",
-    whatsapp_base_url: process.env.WHATSAPP_BASE_URL || saved.whatsapp_base_url || "https://scan.flowkirim.com",
-    whatsapp_device_id: process.env.WHATSAPP_DEVICE_ID || saved.whatsapp_device_id || "",
+    whatsapp_base_url: process.env.WHATSAPP_BASE_URL || process.env.FLOWKIRIM_BASE_URL || saved.whatsapp_base_url || "https://scan.flowkirim.com",
+    whatsapp_device_id: process.env.WHATSAPP_DEVICE_ID || process.env.FLOWKIRIM_DEVICE_ID || saved.whatsapp_device_id || "",
     whatsapp_phone_number_id: process.env.WHATSAPP_PHONE_NUMBER_ID || saved.whatsapp_phone_number_id || "",
     whatsapp_otp_template: process.env.WHATSAPP_OTP_TEMPLATE || saved.whatsapp_otp_template || "luma_otp",
     whatsapp_template_language: process.env.WHATSAPP_TEMPLATE_LANGUAGE || saved.whatsapp_template_language || "id",
@@ -43,7 +43,7 @@ async function getSettings(admin: any) {
 }
 
 async function testFlowKirim(token: string, baseUrl: string, deviceId: string) {
-  if (!deviceId) throw new Error("FlowKirim Device ID belum diisi.");
+  if (!deviceId) throw new Error("FlowKirim Device ID belum diisi. Ambil ID perangkat dari menu Perangkat/Devices di dashboard FlowKirim lalu simpan sebagai FLOWKIRIM_DEVICE_ID atau WHATSAPP_DEVICE_ID.");
   const r = await fetch(`${baseUrl.replace(/\/$/, "")}/api/whatsapp/sessions/${encodeURIComponent(deviceId)}`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
