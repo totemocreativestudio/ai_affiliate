@@ -1,24 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerContext } from "../../../../lib/server-auth";
-import { hasServerSecret } from "../../../../lib/server-secrets";
+import { getServerSecretSource, hasServerSecret } from "../../../../lib/server-secrets";
 
 export const runtime = "nodejs";
 const SECRET_KEY = "luma_xendit_secret_key";
+const PUBLIC_KEY = "luma_xendit_public_key";
 const WEBHOOK_TOKEN = "luma_xendit_webhook_token";
 
 export async function GET(req: NextRequest) {
   try {
     const workspaceId = new URL(req.url).searchParams.get("workspace_id") || "";
     const ctx = await getServerContext(workspaceId);
-    const [secretConfigured, webhookConfigured] = await Promise.all([
+    const [secretConfigured, publicConfigured, webhookConfigured] = await Promise.all([
       hasServerSecret(ctx.admin, SECRET_KEY),
+      hasServerSecret(ctx.admin, PUBLIC_KEY),
       hasServerSecret(ctx.admin, WEBHOOK_TOKEN),
     ]);
     return NextResponse.json({
       ok: true,
       configured: secretConfigured,
+      public_key_configured: publicConfigured,
       webhook_configured: webhookConfigured,
-      source: process.env.XENDIT_SECRET_KEY ? "vercel" : secretConfigured ? "secure-vault" : "none",
+      source: secretConfigured ? getServerSecretSource(SECRET_KEY) : "none",
       can_configure: ctx.platformAdmin,
     });
   } catch (error: any) {
