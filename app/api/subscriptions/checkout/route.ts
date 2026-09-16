@@ -75,6 +75,29 @@ export async function POST(req: NextRequest) {
       .limit(1)
       .maybeSingle();
 
+    const currentPlan = current?.luma_subscription_plans;
+    const currentIsActivePaid = Boolean(
+      current &&
+        currentPlan &&
+        !currentPlan.is_trial &&
+        String(current.status).toLowerCase() === "active" &&
+        current.ends_at &&
+        new Date(current.ends_at).getTime() > Date.now(),
+    );
+
+    if (
+      currentIsActivePaid &&
+      Number(plan.sort_order || 0) < Number(currentPlan.sort_order || 0)
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Paket aktif tidak dapat diturunkan sebelum masa aktif berakhir. Anda tetap dapat memperpanjang paket yang sama atau upgrade ke tier yang lebih tinggi.",
+        },
+        { status: 409 },
+      );
+    }
+
     const upgrade = calculateUpgrade(current, plan);
     const baseAmount = Number(plan.price || 0);
     const upgradeCredit = Number(upgrade?.credit_amount || 0);
