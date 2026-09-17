@@ -1,6 +1,8 @@
 import type { NextConfig } from 'next';
 const config: NextConfig = {
+ basePath: '/web',
  poweredByHeader: false,
+ async redirects() { return [{source: '/', destination: '/home', permanent: false}]; },
  async headers() { return [{source: '/:path*', headers: [
   {key:'X-Content-Type-Options',value:'nosniff'},
   {key:'Referrer-Policy',value:'strict-origin-when-cross-origin'},
