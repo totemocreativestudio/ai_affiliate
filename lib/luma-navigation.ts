@@ -55,10 +55,27 @@ export function navigateToSection(section: string, options: { replace?: boolean 
 }
 
 export function normalizeLumawayUrl(url: string) {
-  if (!url) return routeForSection("dashboard");
-  if (url.startsWith("/#")) return routeForSection(url.slice(2));
-  if (url.startsWith("#")) return routeForSection(url.slice(1));
-  return url;
+  const value = String(url || "").trim();
+  if (!value) return routeForSection("dashboard");
+
+  if (value === "/" || value === "/?auth=signin" || value === "?auth=signin") return `${APP_BASE}/login`;
+  if (value === "/?auth=signup" || value === "?auth=signup") return `${APP_BASE}/register`;
+  if (value === "/login") return `${APP_BASE}/login`;
+  if (value === "/register") return `${APP_BASE}/register`;
+
+  if (value.startsWith("/#")) return routeForSection(value.slice(2));
+  if (value.startsWith("#")) return routeForSection(value.slice(1));
+
+  try {
+    const parsed = new URL(value, "https://www.lumaway.online");
+    if (parsed.pathname === "/" && parsed.searchParams.get("auth") === "signin") return `${APP_BASE}/login`;
+    if (parsed.pathname === "/" && parsed.searchParams.get("auth") === "signup") return `${APP_BASE}/register`;
+    if (parsed.hash) return routeForSection(parsed.hash.replace(/^#/, ""));
+  } catch {
+    // Keep unknown relative or external URLs untouched.
+  }
+
+  return value;
 }
 
 export function navigateLumawayUrl(url: string) {
