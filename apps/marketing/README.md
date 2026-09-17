@@ -1,6 +1,6 @@
 # Lumaway Marketing Website
 
-Website marketing berbahasa Indonesia, terpisah dari aplikasi Lumaway yang tetap berada di root repository.
+Website marketing berbahasa Indonesia, terpisah dari aplikasi Lumaway yang tetap berada di root repository. Namespace publik marketing dicadangkan di `/web/*`, dengan homepage kanonis `https://lumaway.online/web/home`.
 
 ## Menjalankan
 
@@ -24,7 +24,7 @@ Stack: Next.js 16.3.5 App Router, React 19, TypeScript, Tailwind CSS 4. Font DM 
 - `supabase/migrations/`: tabel lead dan outbox terpisah dari tabel aplikasi.
 - `tests/`: validasi dan perilaku kegagalan API leads.
 
-Dashboard tetap di root. Root tsconfig mengecualikan apps/marketing agar dua aplikasi tidak memeriksa tipe satu sama lain. Tidak ada perubahan dependency root atau pemindahan app. Tahap berikutnya bisa memindahkan root app ke apps/web dan mengekstrak packages/brand, ui, analytics, config, types setelah konfigurasi deployment lama dipastikan.
+Dashboard tetap di root. Root tsconfig mengecualikan apps/marketing agar dua aplikasi tidak memeriksa tipe satu sama lain. Tidak ada perubahan dependency root atau pemindahan app. Marketing memakai `basePath: '/web'`; route `/web` mengarah sementara ke `/web/home`. Tautan internal, aset publik, endpoint lead, metadata, dan sitemap berada di namespace yang sama.
 
 ## Halaman
 
@@ -65,16 +65,18 @@ Buat project marketing terpisah dengan Git repository yang sama:
 - Preview branch: branch PR marketing
 - Isi environment development/preview/production terpisah.
 
+Project dashboard di root menjadi pintu masuk domain `lumaway.online`. Isi environment server `MARKETING_ORIGIN` pada project dashboard dengan origin production project marketing, misalnya `https://lumaway-marketing.vercel.app` tanpa trailing slash. Jangan isi dengan `https://lumaway.online`, karena itu akan membuat rewrite berputar. Root `next.config.ts` hanya meneruskan `/web` dan `/web/*` ke origin ini; route dashboard lain tidak berubah.
+
 Gunakan auto-deploy Git bawaan Vercel setelah project terhubung. vercel.json tidak diperlukan. Project dashboard tetap Root Directory lama; jangan ubah sebelum migrasi disengaja.
 
-Urutan domain:
+Urutan aktivasi path:
 
-1. Pastikan aplikasi lama tetap berjalan pada deployment yang diketahui.
-2. Hubungkan `app.lumaway.online` ke project dashboard. Sesuaikan URL Supabase Auth/OAuth callback, NEXT_PUBLIC_APP_URL, dan konfigurasi pihak ketiga pada app.
-3. Validasi login, signup, verifikasi email, dan Google OAuth di subdomain app.
-4. Deploy marketing preview; validasi endpoint leads dan kebijakan produk.
-5. Baru hubungkan `lumaway.online` ke project marketing. Hindari memindahkan domain sebelum app subdomain siap.
-6. Tetapkan MARKETING_INDEXABLE=true hanya ketika domain produksi, status fitur, kebijakan, forms, serta auth links sudah diverifikasi. Preview selalu noindex (VERCEL_ENV=preview).
+1. Pastikan aplikasi dashboard pada `lumaway.online` tetap berjalan pada deployment yang diketahui.
+2. Deploy project marketing dengan Root Directory `apps/marketing`; verifikasi `/web/home` pada origin project tersebut.
+3. Isi `MARKETING_ORIGIN` pada project dashboard dengan origin production marketing, lalu deploy ulang dashboard.
+4. Validasi `https://lumaway.online/web/home`, aset `/web/*`, navigasi, dan endpoint `/web/api/leads`.
+5. Validasi login, signup, verifikasi email, dan Google OAuth pada tujuan aplikasi yang dikonfigurasi melalui `NEXT_PUBLIC_APP_URL`.
+6. Tetapkan `MARKETING_INDEXABLE=true` hanya setelah path produksi, status fitur, kebijakan, formulir, serta auth links diverifikasi. Preview selalu noindex (`VERCEL_ENV=preview`). Robots root domain tetap harus mengizinkan `/web/` ketika indexing diaktifkan.
 
 Root routes `/login` dan `/register` ditambahkan sebagai redirect ke layar auth yang sudah ada. `/register` memakai `?auth=signup`, dibaca oleh satu tambahan kecil pada effect root app. Login/daftar website menuju subdomain app; website tidak bergantung pada rendering dashboard.
 

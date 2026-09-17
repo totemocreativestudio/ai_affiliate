@@ -1,10 +1,12 @@
 # Validasi LUMAWAY Marketing
 
+Target publik: `https://lumaway.online/web/home`. Seluruh route marketing berada di bawah `/web/*`; dashboard dan route aplikasi lain tetap di luar namespace tersebut.
+
 Tanggal validasi: 16 September 2026
 
 ## Hasil build dan test
 
-- `npm run build`: lulus; 41 halaman/rute berhasil dibuat.
+- `npm run build`: lulus; 42 halaman/rute berhasil dibuat, termasuk route `/home` yang dipublikasikan sebagai `/web/home`.
 - `npm test`: lulus; 5 skenario untuk consent, atribusi, same-origin, batas payload, kegagalan penyimpanan, rate limit, idempotensi, dan respons sukses.
 - TypeScript/Next.js production build: lulus tanpa error.
 
@@ -41,4 +43,5 @@ Pemeriksaan dilakukan terhadap production build lokal dengan Chromium.
 2. Jalankan satu submission lead nyata dan pastikan ID tersimpan serta outbox terbentuk.
 3. Verifikasi `https://app.lumaway.online/login` dan `/register`, termasuk redirect/callback autentikasi.
 4. Review konten dan status Beta/Direncanakan oleh pemilik produk.
-5. Set `MARKETING_INDEXABLE=true` hanya pada Production setelah domain `lumaway.online` terhubung.
+5. Isi `MARKETING_ORIGIN` pada project dashboard dengan origin deployment marketing (bukan `lumaway.online`) dan verifikasi rewrite `/web/*`.
+6. Set `MARKETING_INDEXABLE=true` hanya pada Production setelah `https://lumaway.online/web/home`, formulir, dan robots root domain terverifikasi.

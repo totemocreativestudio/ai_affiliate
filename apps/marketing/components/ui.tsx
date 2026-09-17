@@ -4,8 +4,8 @@ import {ArrowUpRight,ArrowRight,Plus} from 'lucide-react';
 import {capabilities,faqs} from '@/content/products';
 import {articles} from '@/content/articles';
 import {serializeSchema} from '@/lib/seo';
-import {appLinks} from '@/lib/config';
-export function Brand({light=false}:{light?:boolean}) {return <Link href="/" className={`brand ${light?'brand-light':''}`} aria-label="Lumaway beranda"><Image src="/brand/luma-mark.png" alt="" width={34} height={36}/><span>LUMAWAY<span className="brand-period">.</span></span></Link>}
+import {appLinks,marketingPath} from '@/lib/config';
+export function Brand({light=false}:{light?:boolean}) {return <Link href="/home" className={`brand ${light?'brand-light':''}`} aria-label="Lumaway beranda"><Image src={marketingPath('/brand/luma-mark.png')} alt="" width={34} height={36}/><span>LUMAWAY<span className="brand-period">.</span></span></Link>}
 export function ButtonLink({href,children,secondary=false,event}:{href:string;children:React.ReactNode;secondary?:boolean;event?:string}){return <Link href={href} className={`button ${secondary?'button-secondary':''}`} data-event={event}>{children}<ArrowUpRight size={17} aria-hidden="true"/></Link>}
 export function SectionHeading({eyebrow,title,description}:{eyebrow:string;title:string;description?:string}){return <div className="section-heading"><span className="eyebrow">{eyebrow}</span><h2>{title}</h2>{description&&<p>{description}</p>}</div>}
 export function Status({value}:{value:'beta'|'planned'}){return <span className={`status ${value}`}>{value==='beta'?'Beta':'Direncanakan'}</span>}

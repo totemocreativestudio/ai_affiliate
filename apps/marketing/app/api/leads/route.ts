@@ -1,11 +1,13 @@
 import {createHmac} from 'node:crypto';
 import {leadSchema,sanitizedAttribution} from '@/lib/leads';
+import {site} from '@/lib/config';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 function json(body:unknown,status=200){return Response.json(body,{status,headers:{'Cache-Control':'no-store'}})}
 export async function POST(request:Request){
- const expected=new URL(request.url).origin;const origin=request.headers.get('origin');
- if(!origin||origin!==expected)return json({error:'Asal permintaan tidak diizinkan.'},403);
+ const origin=request.headers.get('origin');const allowedOrigins=new Set([new URL(request.url).origin,new URL(site.url).origin]);
+ if(process.env.VERCEL){const host=request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();const protocol=request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim()||'https';if(host)allowedOrigins.add(`${protocol}://${host}`)}
+ if(!origin||!allowedOrigins.has(origin))return json({error:'Asal permintaan tidak diizinkan.'},403);
  if(!request.headers.get('content-type')?.startsWith('application/json'))return json({error:'Format permintaan tidak didukung.'},415);
  const reader=request.body?.getReader();if(!reader)return json({error:'Data diperlukan.'},400);
  let text='';let bytes=0;const decoder=new TextDecoder();
