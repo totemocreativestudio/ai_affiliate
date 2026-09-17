@@ -115,8 +115,8 @@ export default function Home() {
     if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual";
     cleanAuthErrorQuery();
 
-    const requestedMode = new URLSearchParams(window.location.search).get("auth");
-    if (requestedMode === "signup" || window.location.pathname === `${APP_BASE}/register`) setAuthMode("signup");
+    const initialAuthMode = new URLSearchParams(window.location.search).get("auth");
+    if (initialAuthMode === "signup" || window.location.pathname === `${APP_BASE}/register`) setAuthMode("signup");
 
     const legacyHash = window.location.hash.replace(/^#/, "");
     if (legacyHash) {
@@ -207,10 +207,11 @@ export default function Home() {
       if (session?.user) {
         await loadLumaData(session.user.id);
       } else {
-        const requestedMode = new URLSearchParams(window.location.search).get("auth");
-        const authPath = requestedMode === "signup" || window.location.pathname === `${APP_BASE}/register`
+        const sessionRequestedMode = new URLSearchParams(window.location.search).get("auth");
+        const authPath = sessionRequestedMode === "signup" || window.location.pathname === `${APP_BASE}/register`
           ? `${APP_BASE}/register`
           : `${APP_BASE}/login`;
+        setAuthMode(authPath === `${APP_BASE}/register` ? "signup" : "signin");
         window.history.replaceState(null, "", authPath);
       }
     } catch {
