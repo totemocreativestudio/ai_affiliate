@@ -9,25 +9,25 @@ body:not(:has(.owner-sidebar)) .content:not(:has(> .route-active)) > #dashboard{
 body:has(.owner-sidebar) .content:not(:has(> .route-active)) > #administration{display:block!important}
 
 /* Sidebar density + correctly sized chevrons. */
-.sidebar{overflow:visible!important}
+.sidebar{overflow:hidden!important}
 .side-nav{overflow-y:auto!important;overflow-x:hidden!important}
 .side-group{margin:0!important}
 .side-group summary{min-height:34px!important;padding:5px 10px!important;gap:6px!important;border-radius:8px!important;line-height:1.15!important}
 .side-group summary > span:first-child{min-width:0;gap:8px!important;align-items:center!important}
 .side-group summary > .chevron,
-.side-group summary svg.chevron{width:13px!important;height:13px!important;min-width:13px!important;max-width:13px!important;flex:0 0 13px!important;color:#8190ad!important;stroke-width:2!important;margin:0!important}
+.side-group summary svg.chevron{width:12px!important;height:12px!important;min-width:12px!important;max-width:12px!important;flex:0 0 12px!important;color:#8190ad!important;stroke-width:2!important;margin:0!important}
 .side-group[open] summary > .chevron,
 .side-group[open] summary svg.chevron{transform:rotate(180deg)!important}
-.side-subnav{padding:1px 0 4px 38px!important;gap:0!important;margin:0!important}
+.side-subnav{padding:1px 0 4px 36px!important;gap:0!important;margin:0!important}
 .side-subnav a,.side-subnav button{min-height:28px!important;padding:4px 8px!important;line-height:1.2!important;margin:0!important;font-size:12px!important;border-radius:7px!important}
 .user-grouped-nav>a,.owner-nav>button{min-height:36px!important;margin:1px 0!important;padding-top:6px!important;padding-bottom:6px!important}
 .sidebar-controls{display:block!important;padding:0!important;margin:6px 8px 8px!important}
 .sidebar-controls .theme-toggle{width:100%!important;min-height:36px!important}
 .sidebar-controls .sidebar-collapse{display:none!important}
-/* Expand/minimize belongs to the sidebar edge, independent from the theme switch. */
-.sidebar-edge-collapse{position:absolute!important;right:-13px!important;top:42vh!important;transform:translateY(-50%)!important;z-index:140!important;width:27px!important;height:40px!important;border:1px solid #334158!important;background:#182235!important;color:#cbd5e5!important;border-radius:0 9px 9px 0!important;display:grid!important;place-items:center!important;box-shadow:4px 8px 22px rgba(4,10,20,.18)!important;cursor:pointer!important;padding:0!important}
-.sidebar-edge-collapse svg{width:13px!important;height:13px!important;min-width:13px!important;stroke-width:2!important}
-.sidebar.is-collapsed .sidebar-edge-collapse svg{transform:rotate(180deg)!important}
+/* Expand/minimize lives inside the sidebar and is independent from the theme switch. */
+.sidebar-edge-collapse{position:absolute!important;right:8px!important;top:50%!important;transform:translateY(-50%)!important;z-index:140!important;width:28px!important;height:44px!important;border:1px solid #334158!important;background:#182235!important;color:#cbd5e5!important;border-radius:9px!important;display:grid!important;place-items:center!important;box-shadow:none!important;cursor:pointer!important;padding:0!important}
+.sidebar-edge-collapse svg{width:13px!important;height:13px!important;min-width:13px!important;stroke-width:2!important;transform:rotate(90deg)!important}
+.sidebar.is-collapsed .sidebar-edge-collapse svg{transform:rotate(-90deg)!important}
 .sidebar-edge-collapse:hover{background:#202c42!important;color:#fff!important}
 .sidebar .brand{padding-right:8px!important}
 
@@ -42,12 +42,12 @@ body:has(.owner-sidebar) .content:not(:has(> .route-active)) > #administration{d
 .ai-history-scroll{width:100%!important;overflow-x:auto!important;overflow-y:visible!important;padding-bottom:2px!important}
 .ai-history-scroll table{margin-bottom:0!important}
 .history-action-cell{width:52px!important;min-width:52px!important;text-align:right!important;overflow:visible!important;position:relative!important}
-.history-action-trigger{font-size:0!important;width:38px!important;min-width:38px!important;height:36px!important;padding:0!important;display:inline-grid!important;place-items:center!important;overflow:hidden!important;border-radius:9px!important}
-.history-action-trigger::before{content:"⌄";font-size:19px!important;line-height:1!important;font-weight:700!important;color:#475467!important;transform:translateY(-2px)!important}
+.history-action-trigger{font-size:0!important;width:38px!important;min-width:38px!important;height:36px!important;padding:0!important;display:inline-grid!important;place-items:center!important;overflow:visible!important;border-radius:9px!important}
+.history-action-trigger::before{content:"⌄";font-size:18px!important;line-height:1!important;font-weight:800!important;color:#475467!important;transform:translateY(-2px)!important}
 .ai-history-menu,.ai-history-menu-up{position:fixed!important;z-index:10000!important;width:170px!important;overflow:visible!important;max-height:none!important;border-radius:12px!important;box-shadow:0 14px 34px rgba(16,24,40,.16)!important}
 .ai-history-menu button,.ai-history-menu-up button{min-height:38px!important;white-space:nowrap!important;margin:0!important}
 
-/* Readable dark mode: use solid surfaces and high contrast rather than mixed duotone text. */
+/* Readable dark mode: solid surfaces and high contrast instead of mixed duotone text. */
 html[data-theme="dark"]{
   --luma-bg:#080e1b;
   --luma-panel:#111a2b;
@@ -109,7 +109,7 @@ html[data-theme="dark"] .content p,
 html[data-theme="dark"] .content li,
 html[data-theme="dark"] .content label,
 html[data-theme="dark"] .content td,
-html[data-theme="dark"] .content span:not(.status-pill):not(.notification-category):not(.role-badge):not(.eyebrow){color:#d9e2ef!important}
+html[data-theme="dark"] .content span:not(.status-pill):not(.notification-category):not(.role-badge):not(.eyebrow):not(.kpi-delta){color:#d9e2ef!important}
 html[data-theme="dark"] .muted,
 html[data-theme="dark"] .content small,
 html[data-theme="dark"] .field-note,
@@ -117,6 +117,9 @@ html[data-theme="dark"] .pager-info,
 html[data-theme="dark"] .ai-status,
 html[data-theme="dark"] .dashboard-intro{color:#a7b4c8!important}
 html[data-theme="dark"] .eyebrow{color:#9b93ff!important}
+html[data-theme="dark"] .kpi-delta.up{color:#5fe0a3!important}
+html[data-theme="dark"] .kpi-delta.down{color:#ff7f8e!important}
+html[data-theme="dark"] .kpi-delta.flat{color:#a7b4c8!important}
 html[data-theme="dark"] table,
 html[data-theme="dark"] .scroll table{background:#111a2b!important;color:#e7edf7!important}
 html[data-theme="dark"] thead th,
