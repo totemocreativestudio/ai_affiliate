@@ -1,0 +1,24 @@
+/* Runtime guard: keep Lumaway visible during invalid hash, startup, and route errors. */
+.content:not(:has(> .legacy-page-anchor:target)) > #dashboard{display:block}
+body:has(.owner-sidebar) .content:not(:has(> #administration:target)) > #administration{display:block!important}
+
+.lumaway-route-state{min-height:100dvh;display:grid;place-items:center;padding:24px;background:#f6f7fb;color:#101828}
+.lumaway-route-card{width:min(420px,100%);display:grid;justify-items:center;gap:14px;text-align:center;padding:30px 26px;background:#fff;border:1px solid #e4e7ec;border-radius:20px;box-shadow:0 18px 60px rgba(15,23,42,.10)}
+.lumaway-route-card img{width:54px;height:54px;object-fit:contain;filter:drop-shadow(0 10px 22px rgba(99,91,255,.18))}
+.lumaway-route-card h1{margin:2px 0 0;font-size:20px;letter-spacing:-.025em}
+.lumaway-route-card p{margin:0;color:#667085;font-size:13px;line-height:1.6}
+.lumaway-route-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:4px}
+.lumaway-route-actions button,.lumaway-route-actions a{min-height:40px;padding:9px 14px;border-radius:10px;border:1px solid #d0d5dd;background:#fff;color:#344054;text-decoration:none;font:inherit;font-weight:700;cursor:pointer}
+.lumaway-route-actions .primary{background:#635bff!important;border-color:#635bff!important;color:#fff!important}
+.lumaway-route-spinner{width:36px;height:36px;border-radius:50%;border:3px solid #e8e7ff;border-top-color:#635bff;animation:lumawaySpin .8s linear infinite}
+@keyframes lumawaySpin{to{transform:rotate(360deg)}}
+
+html[data-theme="dark"] .lumaway-route-state{background:#0b1020;color:#f5f7ff}
+html[data-theme="dark"] .lumaway-route-card{background:#111827;border-color:#2a3548;box-shadow:0 18px 60px rgba(0,0,0,.28)}
+html[data-theme="dark"] .lumaway-route-card p{color:#aeb9cb}
+html[data-theme="dark"] .lumaway-route-actions button,html[data-theme="dark"] .lumaway-route-actions a{background:#151f31;border-color:#344158;color:#e4e9f3}
+
+@media(max-width:760px){
+  .lumaway-route-state{padding:16px;min-height:100svh}
+  .lumaway-route-card{padding:26px 20px;border-radius:16px}
+}
