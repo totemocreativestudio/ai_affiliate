@@ -17,6 +17,7 @@ const sidebar = read("app/components/LumaSidebar.tsx");
 const notifications = read("app/components/NotificationCenter.tsx");
 const analytics = read("app/components/AIAnalytics.tsx");
 const finalCss = read("app/luma-final-fixes.css");
+const serviceWorker = read("public/sw.js");
 
 if (!navigation.includes('export const APP_BASE = "/app.lumaway"')) {
   fail("APP_BASE must stay at /app.lumaway");
@@ -79,6 +80,10 @@ for (const [legacyPath, target] of [
   }
 }
 
+if (!navigation.includes('value === "/?auth=signin"') || !navigation.includes('value === "/?auth=signup"')) {
+  fail("legacy root auth URLs must normalize to /app.lumaway login/register");
+}
+
 if (!sidebar.includes('className="sidebar-edge-collapse"')) {
   fail("desktop sidebar expand/minimize control is missing");
 }
@@ -100,6 +105,19 @@ if (!finalCss.includes(".sidebar-edge-collapse{position:absolute")) {
 }
 if (!finalCss.includes('html[data-theme="dark"] .notification-bell')) {
   fail("night-mode notification contrast override is missing");
+}
+
+if (!serviceWorker.includes('const CACHE = "lumaway-shell-v3"')) {
+  fail("service worker cache version must be bumped after routing overhaul");
+}
+if (serviceWorker.includes('caches.match("/")')) {
+  fail("service worker must not use the root route as an offline navigation fallback");
+}
+if (!serviceWorker.includes('fetch(request, { cache: "no-store" })')) {
+  fail("navigation requests must prefer the latest server shell");
+}
+if (!serviceWorker.includes('url.pathname.startsWith("/_next/")')) {
+  fail("service worker must explicitly bypass Next.js chunk caching");
 }
 
 if (!process.exitCode) {
