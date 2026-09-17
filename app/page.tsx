@@ -97,6 +97,8 @@ export default function Home() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    const requestedMode = new URLSearchParams(window.location.search).get("auth");
+    if (requestedMode === "signup") setAuthMode("signup");
     if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual";
     cleanAuthErrorQuery();
     if (!window.location.hash) window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#dashboard`);
