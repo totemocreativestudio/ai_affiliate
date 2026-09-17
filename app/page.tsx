@@ -7,8 +7,10 @@ import "./luma-fixes.css";
 import "./luma-responsive.css";
 import "./luma-subscription.css";
 import "./luma-ux-polish.css";
+import "./luma-final-fixes.css";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../lib/supabase-browser";
+import { APP_BASE, isAuthPath, navigateToSection, routeForSection, sectionFromPath } from "../lib/luma-navigation";
 import ProductMaster from "./components/ProductMaster";
 import Listings from "./components/Listings";
 import Shipping from "./components/Shipping";
@@ -71,15 +73,28 @@ function cleanAuthErrorQuery() {
   url.searchParams.delete("error");
   url.searchParams.delete("error_code");
   url.searchParams.delete("error_description");
-  window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash || "#dashboard"}`);
+  window.history.replaceState(null, "", `${url.pathname}${url.search}`);
 }
 
-function scrollToHash(hash: string, smooth = false) {
-  const id = (hash || "#dashboard").replace(/^#/, "");
-  const target = document.getElementById(id);
-  if (!target) return false;
-  target.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
-  return true;
+function activateCurrentRoute(isAdmin: boolean) {
+  const fallback = isAdmin ? "administration" : "dashboard";
+  let section = sectionFromPath(window.location.pathname) || fallback;
+  if (isAdmin) section = "administration";
+  if (!isAdmin && section === "administration") section = "dashboard";
+
+  const pages = Array.from(document.querySelectorAll<HTMLElement>(".content > .legacy-page-anchor"));
+  let found = false;
+  for (const page of pages) {
+    const active = page.id === section;
+    page.classList.toggle("route-active", active);
+    if (active) found = true;
+  }
+
+  if (!found && section !== fallback) {
+    navigateToSection(fallback, { replace: true });
+    return false;
+  }
+  return found;
 }
 
 export default function Home() {
@@ -97,11 +112,17 @@ export default function Home() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const requestedMode = new URLSearchParams(window.location.search).get("auth");
-    if (requestedMode === "signup") setAuthMode("signup");
     if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual";
     cleanAuthErrorQuery();
-    if (!window.location.hash) window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#dashboard`);
+
+    const requestedMode = new URLSearchParams(window.location.search).get("auth");
+    if (requestedMode === "signup" || window.location.pathname === `${APP_BASE}/register`) setAuthMode("signup");
+
+    const legacyHash = window.location.hash.replace(/^#/, "");
+    if (legacyHash) {
+      window.history.replaceState(null, "", routeForSection(legacyHash));
+    }
+
     const saved = window.localStorage.getItem("lumaway_theme");
     if (saved === "dark" || saved === "light") document.documentElement.dataset.theme = saved;
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => undefined);
@@ -112,19 +133,20 @@ export default function Home() {
     if (!profile || !workspace) return;
     const isAdmin = profile.role === "admin";
     const restore = () => {
-      const desired = isAdmin ? "#administration" : window.location.hash && window.location.hash !== "#administration" ? window.location.hash : "#dashboard";
-      if (isAdmin && window.location.hash !== "#administration") window.history.replaceState(null, "", "#administration");
-      window.requestAnimationFrame(() => window.setTimeout(() => {
-        if (!scrollToHash(desired)) scrollToHash(isAdmin ? "#administration" : "#dashboard");
-      }, 40));
+      window.requestAnimationFrame(() => window.setTimeout(() => activateCurrentRoute(isAdmin), 30));
+    };
+    const navigate = () => {
+      restore();
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     };
     restore();
     window.addEventListener("pageshow", restore);
-    const onHash = () => window.requestAnimationFrame(() => scrollToHash(window.location.hash, true));
-    window.addEventListener("hashchange", onHash);
+    window.addEventListener("popstate", navigate);
+    window.addEventListener("lumaway-routechange", navigate as EventListener);
     return () => {
       window.removeEventListener("pageshow", restore);
-      window.removeEventListener("hashchange", onHash);
+      window.removeEventListener("popstate", navigate);
+      window.removeEventListener("lumaway-routechange", navigate as EventListener);
     };
   }, [profile, workspace]);
 
@@ -182,12 +204,21 @@ export default function Home() {
     setError("");
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) await loadLumaData(session.user.id);
+      if (session?.user) {
+        await loadLumaData(session.user.id);
+      } else {
+        const requestedMode = new URLSearchParams(window.location.search).get("auth");
+        const authPath = requestedMode === "signup" || window.location.pathname === `${APP_BASE}/register`
+          ? `${APP_BASE}/register`
+          : `${APP_BASE}/login`;
+        window.history.replaceState(null, "", authPath);
+      }
     } catch {
       setError("Sesi tidak dapat dimuat. Silakan login kembali.");
       await supabase.auth.signOut().catch(() => undefined);
       setProfile(null);
       setWorkspace(null);
+      window.history.replaceState(null, "", `${APP_BASE}/login`);
     } finally {
       setLoading(false);
     }
@@ -231,12 +262,13 @@ export default function Home() {
     setWorkspace(workspaceData as Workspace);
     window.localStorage.setItem("luma_active_workspace", workspaceData.id);
 
+    const currentSection = sectionFromPath(window.location.pathname);
     const target = profileData.role === "admin"
-      ? "#administration"
-      : window.location.hash && window.location.hash !== "#administration"
-        ? window.location.hash
-        : "#dashboard";
-    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${target}`);
+      ? "administration"
+      : !currentSection || isAuthPath(window.location.pathname) || currentSection === "administration"
+        ? "dashboard"
+        : currentSection;
+    navigateToSection(target, { replace: true });
   }
 
   async function login() {
@@ -253,21 +285,27 @@ export default function Home() {
     if (password.length < 8) return setError("Gunakan password minimal 8 karakter.");
     if (!termsAccepted) return setError("Konfirmasi persetujuan akses workspace terlebih dahulu.");
     setError(""); setAuthMessage(""); setLoading(true);
-    const { data, error: signupError } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/#dashboard` } });
+    const { data, error: signupError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: `${window.location.origin}${routeForSection("dashboard")}` },
+    });
     if (signupError) { setError("error, terjadi kesalahan."); setLoading(false); return; }
     if (data.session) await supabase.auth.signOut();
     setAuthMessage("Akun berhasil dibuat. Verifikasi email, lalu login ke workspace Lumaway Anda.");
     setAuthMode("signin"); setPassword(""); setTermsAccepted(false); setLoading(false);
+    window.history.replaceState(null, "", `${APP_BASE}/login`);
   }
 
   async function logout() {
     await supabase.auth.signOut();
     setProfile(null); setWorkspace(null); setPassword(""); setError("");
-    window.history.replaceState(null, "", `${window.location.pathname}#dashboard`);
+    window.history.replaceState(null, "", `${APP_BASE}/login`);
   }
 
   function switchAuthMode(mode: AuthMode) {
     setAuthMode(mode); setError(""); setAuthMessage("");
+    window.history.replaceState(null, "", mode === "signup" ? `${APP_BASE}/register` : `${APP_BASE}/login`);
   }
 
   if (loading || (profile && !workspace)) {

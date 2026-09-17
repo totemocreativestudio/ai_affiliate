@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "../../lib/supabase-browser";
+import { navigateLumawayUrl } from "../../lib/luma-navigation";
 import LumaIcon from "./LumaIcon";
 
 type NotificationRow = {
@@ -119,11 +120,7 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
     }));
 
     const list = [...globalRows, ...directRows]
-      .sort(
-        (a, b) =>
-          new Date(b.published_at || b.created_at).getTime() -
-          new Date(a.published_at || a.created_at).getTime(),
-      )
+      .sort((a, b) => new Date(b.published_at || b.created_at).getTime() - new Date(a.published_at || a.created_at).getTime())
       .slice(0, 80);
 
     if (!firstLoad.current) {
@@ -141,15 +138,12 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
   useEffect(() => {
     void load();
     const timer = window.setInterval(() => void load(), 15000);
-    const onVisible = () => {
-      if (document.visibilityState === "visible") void load();
-    };
+    const onVisible = () => { if (document.visibilityState === "visible") void load(); };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };
-    // load intentionally refreshes current workspace/user notifications.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId, userId]);
 
@@ -158,12 +152,7 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
   async function markRead(row: NotificationRow, clicked = false) {
     if (row.source === "broadcast") {
       await supabase.from("luma_notification_reads").upsert(
-        {
-          notification_id: row.id,
-          user_id: userId,
-          read_at: new Date().toISOString(),
-          clicked_at: clicked ? new Date().toISOString() : null,
-        },
+        { notification_id: row.id, user_id: userId, read_at: new Date().toISOString(), clicked_at: clicked ? new Date().toISOString() : null },
         { onConflict: "notification_id,user_id" },
       );
     } else {
@@ -174,8 +163,7 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
 
     if (clicked && row.action_url) {
       setOpen(false);
-      if (row.action_url.startsWith("#")) window.location.hash = row.action_url.slice(1);
-      else window.location.assign(row.action_url);
+      navigateLumawayUrl(row.action_url);
     }
   }
 
@@ -191,11 +179,7 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
     }
 
     if (direct.length) {
-      await supabase
-        .from("user_notifications")
-        .update({ is_read: true })
-        .eq("user_id", userId)
-        .in("id", direct.map((item) => item.id));
+      await supabase.from("user_notifications").update({ is_read: true }).eq("user_id", userId).in("id", direct.map((item) => item.id));
     }
 
     setRows((previous) => previous.map((item) => ({ ...item, read: true })));
@@ -203,7 +187,7 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
 
   return (
     <div className="notification-root">
-      <button className="notification-bell" aria-label="Notifications" onClick={() => setOpen((value) => !value)}>
+      <button className="notification-bell" aria-label="Notifications" title="Notifications" onClick={() => setOpen((value) => !value)}>
         <LumaIcon name="bell" />
         {unread > 0 && <b>{unread > 99 ? "99+" : unread}</b>}
       </button>
@@ -211,35 +195,21 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
       {open && (
         <div className="notification-popover">
           <div className="notification-head">
-            <div>
-              <strong>Notifications</strong>
-              <span>{unread} belum dibaca</span>
-            </div>
+            <div><strong>Notifications</strong><span>{unread} belum dibaca</span></div>
             <button onClick={() => void markAll()}>Mark all read</button>
           </div>
           <div className="notification-list">
-            {rows.length ? (
-              rows.map((row) => (
-                <button
-                  key={row.key}
-                  className={`notification-item ${row.read ? "read" : "unread"}`}
-                  onClick={() => void markRead(row, true)}
-                >
-                  {row.image_url && <img src={row.image_url} alt="" />}
-                  <div>
-                    <span className={`notification-category n-${row.category}`}>{categoryLabel(row.category)}</span>
-                    <strong>{row.title}</strong>
-                    <p>{row.body}</p>
-                    <small>
-                      {row.published_at ? new Date(row.published_at).toLocaleString("id-ID") : ""}
-                      {row.action_label ? ` · ${row.action_label}` : ""}
-                    </small>
-                  </div>
-                </button>
-              ))
-            ) : (
-              <div className="empty-state"><strong>Belum ada notifikasi.</strong></div>
-            )}
+            {rows.length ? rows.map((row) => (
+              <button key={row.key} className={`notification-item ${row.read ? "read" : "unread"}`} onClick={() => void markRead(row, true)}>
+                {row.image_url && <img src={row.image_url} alt="" />}
+                <div>
+                  <span className={`notification-category n-${row.category}`}>{categoryLabel(row.category)}</span>
+                  <strong>{row.title}</strong>
+                  <p>{row.body}</p>
+                  <small>{row.published_at ? new Date(row.published_at).toLocaleString("id-ID") : ""}{row.action_label ? ` · ${row.action_label}` : ""}</small>
+                </div>
+              </button>
+            )) : <div className="empty-state"><strong>Belum ada notifikasi.</strong></div>}
           </div>
         </div>
       )}

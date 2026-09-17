@@ -1,0 +1,29 @@
+name: Lumaway development checks
+
+on:
+  push:
+    branches:
+      - ux-pwa-proration-fixes
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: build-verification-key
+      SUPABASE_PUBLISHABLE_KEY: build-verification-key
+      SUPABASE_SECRET_KEY: build-verification-secret
+      NEXT_PUBLIC_APP_URL: https://www.lumaway.online
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run build
