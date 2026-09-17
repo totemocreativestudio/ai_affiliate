@@ -1,6 +1,7 @@
 "use client";
 import { useEffect,useMemo,useState } from "react";
 import { createClient } from "../../lib/supabase-browser";
+import { navigateToSection, routeForSection } from "../../lib/luma-navigation";
 type Row=Record<string,any>;
 const KEY="lumaway_dashboard_reminder_dismissed_at";const THIRTY=30*60*1000;
 export default function DashboardReminder({workspaceId,userId,workspaceStatus}:{workspaceId:string;userId:string;workspaceStatus?:string}){
@@ -12,5 +13,5 @@ export default function DashboardReminder({workspaceId,userId,workspaceStatus}:{
  useEffect(()=>{if(!issues.length)setVisible(false)},[issues.length]);
  function close(){localStorage.setItem(KEY,String(Date.now()));setVisible(false)}
  if(!visible||!issues.length)return null;
- return <div className="dashboard-reminder"><button className="dashboard-reminder-close" onClick={close}>×</button><div><span className="dashboard-reminder-kicker">PENGINGAT AKUN</span><b>Perlu perhatian</b>{issues.map((x,i)=><p key={i}>{x}</p>)}<div className="dashboard-reminder-actions"><a href="#billing">Buka Billing & Token</a></div></div></div>
+ return <div className="dashboard-reminder"><button className="dashboard-reminder-close" onClick={close}>×</button><div><span className="dashboard-reminder-kicker">PENGINGAT AKUN</span><b>Perlu perhatian</b>{issues.map((x,i)=><p key={i}>{x}</p>)}<div className="dashboard-reminder-actions"><a href={routeForSection("billing")} onClick={(event)=>{event.preventDefault();navigateToSection("billing");setVisible(false)}}>Buka Billing & Token</a></div></div></div>
 }
