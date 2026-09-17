@@ -10,7 +10,9 @@ const fail = (message) => {
 };
 
 const navigation = read("lib/luma-navigation.ts");
-const page = read("app/page.tsx");
+const rootPage = read("app/page.tsx");
+const appShell = read("app/LumawayWorkspaceApp.tsx");
+const catchAll = read("app/app.lumaway/[[...route]]/page.tsx");
 const sidebar = read("app/components/LumaSidebar.tsx");
 const notifications = read("app/components/NotificationCenter.tsx");
 const analytics = read("app/components/AIAnalytics.tsx");
@@ -39,8 +41,17 @@ for (const route of [
   }
 }
 
+if (!exists("app/LumawayWorkspaceApp.tsx")) {
+  fail("Lumaway workspace app shell is missing");
+}
+if (!rootPage.includes('redirect("/app.lumaway/login")')) {
+  fail("root route must redirect directly to /app.lumaway/login");
+}
 if (!exists("app/app.lumaway/[[...route]]/page.tsx")) {
   fail("Lumaway catch-all route is missing");
+}
+if (!catchAll.includes('LumawayWorkspaceApp')) {
+  fail("Lumaway catch-all route must render the workspace app shell");
 }
 if (!exists("app/app.lumaway/[[...route]]/loading.tsx")) {
   fail("route-level Lumaway loading state is missing");
@@ -49,13 +60,13 @@ if (exists("app/app.lumaway/[[...slug]]/page.tsx")) {
   fail("duplicate catch-all route [[...slug]] must not exist");
 }
 
-if (!page.includes("routeForSection(legacyHash)")) {
+if (!appShell.includes("routeForSection(legacyHash)")) {
   fail("legacy hash migration must remain available");
 }
-if (!page.includes('navigateToSection(target, { replace: true })')) {
+if (!appShell.includes('navigateToSection(target, { replace: true })')) {
   fail("post-login navigation must resolve through path-based routing");
 }
-if (!page.includes('`${APP_BASE}/login`') || !page.includes('`${APP_BASE}/register`')) {
+if (!appShell.includes('`${APP_BASE}/login`') || !appShell.includes('`${APP_BASE}/register`')) {
   fail("login/register must use /app.lumaway paths");
 }
 
