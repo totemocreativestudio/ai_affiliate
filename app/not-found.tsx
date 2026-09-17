@@ -6,7 +6,7 @@ export default function NotFound() {
         <h1>Halaman tidak ditemukan</h1>
         <p>Alamat ini tidak tersedia di workspace Lumaway. Gunakan Dashboard untuk kembali ke area kerja Anda.</p>
         <div className="lumaway-route-actions">
-          <a className="primary" href="/#dashboard">Buka Dashboard</a>
+          <a className="primary" href="/app.lumaway/dashboard">Buka Dashboard</a>
         </div>
       </section>
     </main>
