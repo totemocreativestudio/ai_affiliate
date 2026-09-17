@@ -7,6 +7,7 @@ import "./product-ui.css";
 import "./production-polish.css";
 import "./luma-helpdesk.css";
 import "./runtime-guard.css";
+import "./luma-route-ui-hotfix.css";
 import ReferralCapture from "./components/ReferralCapture";
 
 export const metadata = {
