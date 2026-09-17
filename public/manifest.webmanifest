@@ -2,7 +2,7 @@
   "name": "Lumaway — Affiliate Intelligence",
   "short_name": "Lumaway",
   "description": "Lumaway Affiliate Intelligence Workspace — Light Up Your Potential.",
-  "start_url": "/#dashboard",
+  "start_url": "/app.lumaway/dashboard",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
@@ -18,8 +18,8 @@
     }
   ],
   "shortcuts": [
-    {"name": "Dashboard", "url": "/#dashboard"},
-    {"name": "AI Analytics", "url": "/#ai-analytics"},
-    {"name": "Billing & Token", "url": "/#billing"}
+    {"name": "Dashboard", "url": "/app.lumaway/dashboard"},
+    {"name": "AI Analytics", "url": "/app.lumaway/ai-analytics"},
+    {"name": "Billing & Token", "url": "/app.lumaway/billing"}
   ]
 }
