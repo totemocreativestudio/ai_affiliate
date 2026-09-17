@@ -9,7 +9,7 @@ export default function ErrorBoundary({ reset }: { error: Error & { digest?: str
         <p>Halaman Lumaway tidak dapat dimuat dengan sempurna. Coba muat ulang tanpa keluar dari akun Anda.</p>
         <div className="lumaway-route-actions">
           <button type="button" className="primary" onClick={() => reset()}>Coba lagi</button>
-          <a href="/#dashboard">Kembali ke Dashboard</a>
+          <a href="/app.lumaway/dashboard">Kembali ke Dashboard</a>
         </div>
       </section>
     </main>
