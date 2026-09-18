@@ -36,7 +36,7 @@ function parseDelimited(text:string){
 function uniqueHeaders(values:string[]){
   const used=new Map<string,number>();
   return values.map((value,index)=>{
-    const base=String(value||`Column ${index+1}`).trim()||`Column ${index+1}`;
+    const base=String(value||columnLabel(index)).trim()||columnLabel(index);
     const count=used.get(base)||0;used.set(base,count+1);
     return count? `${base} ${count+1}`:base;
   });
@@ -164,24 +164,61 @@ export default function InternalExcelGrid({workspaceId}:{workspaceId:string}){
   function exportCsv(){
     const esc=(x:any)=>`"${String(x??"").replaceAll('"','""')}"`;const csv=[columns.map(esc).join(","),...rows.map(r=>columns.map(c=>esc(r.row_data[c])).join(","))].join("\n");const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`lumaway-${sheets.find(x=>x.id===sheetId)?.name||"sheet"}.csv`;a.click();URL.revokeObjectURL(a.href);
   }
+  function updateDbCell(id:number,field:string,value:string){setDbRows(v=>v.map(row=>Number(row.id)===id?{...row,[field]:value}:row))}
+  async function saveDbRow(row:Record<string,any>){
+    if(!row?.id)return;setDbBusy(true);
+    const payload=Object.fromEntries(DB_FIELDS[dbTarget].map(field=>[field,dbValue(field,row[field])]));
+    const {error}=await supabase.from(dbTarget).update({...payload,updated_at:new Date().toISOString()}).eq("workspace_id",workspaceId).eq("id",row.id);
+    setDbBusy(false);setStatus(error?error.message:"Database tersimpan ✓");
+  }
+  async function deleteDbRow(id:number){
+    if(!confirm("Hapus record database ini?"))return;
+    const {error}=await supabase.from(dbTarget).delete().eq("workspace_id",workspaceId).eq("id",id);
+    if(error)return setStatus(error.message);setDbRows(v=>v.filter(row=>Number(row.id)!==id));setStatus("Record database dihapus.");
+  }
+  async function addDbRow(){
+    setDbBusy(true);
+    const seed=dbTarget==="creator_samples"?{workspace_id:workspaceId,sample_status:"sent",qty:1}:{workspace_id:workspaceId,status:"Pending",qty:0};
+    const fields=["id",...DB_FIELDS[dbTarget]].join(",");
+    const {data,error}=await supabase.from(dbTarget).insert(seed).select(fields).single();
+    setDbBusy(false);if(error)return setStatus(error.message);setDbRows(v=>[data as Record<string,any>,...v]);setStatus("Record baru dibuat. Isi cell lalu Save.");
+  }
   async function readImport(file:File|null){
     if(!file)return;
     if(file.size>10*1024*1024){setStatus("File import maksimal 10 MB.");return}
     const text=await file.text();const parsed=parseDelimited(text);
     if(parsed.length<1){setStatus("File tidak memiliki data.");return}
     const headers=uniqueHeaders(parsed[0]||[]);const data=parsed.slice(1).filter(r=>r.some(Boolean)).slice(0,5000);
-    setImportName(file.name.replace(/\.[^.]+$/,"")||"Imported Sheet");setImportHeaders(headers);setMappedHeaders(headers);setImportRows(data);setStatus(data.length>=5000?"Preview dibatasi 5.000 row per import.":"File siap direview sebelum import.");
+    setImportName(file.name.replace(/\.[^.]+$/,"")||"Imported Sheet");setImportHeaders(headers);setMappedHeaders(headers);setImportRows(data);setImportTarget(detectImportTarget(file.name,headers));setStatus(data.length>=5000?"Preview dibatasi 5.000 row per import.":"File siap direview. Lumaway akan mendeteksi database tujuan secara otomatis.");
   }
   async function commitImport(){
     if(!importRows.length||!mappedHeaders.length)return;setBusy(true);setStatus("Mengimpor data...");
     try{
-      const safeHeaders=uniqueHeaders(mappedHeaders.map((x,i)=>String(x||importHeaders[i]||`Column ${i+1}`).trim()));
+      const safeHeaders=uniqueHeaders(mappedHeaders.map((x,i)=>String(x||importHeaders[i]||columnLabel(i)).trim()));
       const created=await supabase.from("workspace_grid_sheets").insert({workspace_id:workspaceId,name:importName.trim()||"Imported Sheet",columns_json:safeHeaders}).select("id,name,columns_json").single();
       if(created.error)throw created.error;
-      const payload=importRows.map((values,index)=>({workspace_id:workspaceId,sheet_id:created.data.id,row_order:index+1,row_data:Object.fromEntries(safeHeaders.map((header,i)=>[header,String(values[i]??"")]))}));
+      const objects=importRows.map(values=>Object.fromEntries(safeHeaders.map((header,i)=>[header,String(values[i]??"")])));
+      const payload=objects.map((row,index)=>({workspace_id:workspaceId,sheet_id:created.data.id,row_order:index+1,row_data:row}));
       for(let i=0;i<payload.length;i+=500){const part=payload.slice(i,i+500);const {error}=await supabase.from("workspace_grid_rows").insert(part);if(error)throw error}
-      await loadSheets();setSheetId(created.data.id);setMode("sheet");setImportRows([]);setImportHeaders([]);setMappedHeaders([]);setStatus(`${payload.length.toLocaleString("id-ID")} row berhasil diimpor.`);
-    }catch{setStatus("error, terjadi kesalahan.")}finally{setBusy(false)}
+      let syncMessage="";
+      if(importTarget!=="sheet_only"){
+        const platformHeader=safeHeaders.find(h=>normalized(h)==="platform");
+        const platform=platformHeader?String(objects[0]?.[platformHeader]||"Other"):"Other";
+        const importId=`GRID-${crypto.randomUUID().replace(/-/g,"").slice(0,10).toUpperCase()}`;
+        const batchSize=300;const total=Math.ceil(objects.length/batchSize);
+        for(let i=0;i<total;i++){
+          const response=await fetch("/api/import",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+            workspace_id:workspaceId,data_type:importTarget,platform,start_date:"",end_date:"",
+            filename:`${importName||"excel-sync"}.csv`,import_id:importId,batch_index:i,total_batches:total,
+            rows:objects.slice(i*batchSize,(i+1)*batchSize)
+          })});
+          const result=await response.json();
+          if(!response.ok||!result.ok)throw new Error(result.error||"Sinkron database gagal.");
+        }
+        syncMessage=` · otomatis masuk ke database ${importTarget.replaceAll("_"," ")}`;
+      }
+      await loadSheets();setSheetId(created.data.id);setMode("sheet");setImportRows([]);setImportHeaders([]);setMappedHeaders([]);setStatus(`${payload.length.toLocaleString("id-ID")} row berhasil diimpor${syncMessage}.`);
+    }catch(error:any){setStatus(error?.message||"error, terjadi kesalahan.")}finally{setBusy(false)}
   }
 
   return <section id="excel-sync" className="legacy-page-anchor internal-sheet-page">
