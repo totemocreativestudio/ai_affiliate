@@ -100,12 +100,16 @@ export async function POST(req:NextRequest){
     if(!text) throw new Error("Empty AI response");
     const result=JSON.parse(text);
 
-    await ctx.admin.from("luma_api_usage_events").insert({
-      workspace_id:workspaceId,user_id:ctx.user.id,provider:"openai",service:"affiliate_mockup_generator",
-      request_type:"free_creative_mockup",model,status:"success",
-      input_tokens:Number(raw?.usage?.input_tokens||0),output_tokens:Number(raw?.usage?.output_tokens||0),total_tokens:Number(raw?.usage?.total_tokens||0),
-      metadata:{free_for_user:true,product:brief.product},
-    }).catch(()=>undefined);
+    try {
+      await ctx.admin.from("luma_api_usage_events").insert({
+        workspace_id:workspaceId,user_id:ctx.user.id,provider:"openai",service:"affiliate_mockup_generator",
+        request_type:"free_creative_mockup",model,status:"success",
+        input_tokens:Number(raw?.usage?.input_tokens||0),output_tokens:Number(raw?.usage?.output_tokens||0),total_tokens:Number(raw?.usage?.total_tokens||0),
+        metadata:{free_for_user:true,product:brief.product},
+      });
+    } catch {
+      // Usage telemetry must never block a free generator result.
+    }
 
     return NextResponse.json({ok:true,free:true,result});
   }catch{
