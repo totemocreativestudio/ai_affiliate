@@ -54,6 +54,15 @@ export async function POST(req:NextRequest){
     workspaceId=String(body.workspace_id||"");
     const message=String(body.message||"").trim().slice(0,4000);
     const action=String(body.action||"chat");
+    const imageDataUrl=String(body.image_data_url||"");
+    const imageName=String(body.image_name||"").slice(0,180);
+    const imageType=String(body.image_type||"").toLowerCase();
+    const imageSize=Number(body.image_size||0);
+    if(imageDataUrl){
+      if(!["image/jpeg","image/png","image/webp"].includes(imageType))return NextResponse.json({ok:false,error:"Lampiran harus berupa foto."},{status:400});
+      if(imageSize>2*1024*1024)return NextResponse.json({ok:false,error:"Ukuran foto melebihi 2 MB. Silakan unggah file yang lebih kecil."},{status:413});
+      if(!imageDataUrl.startsWith(`data:${imageType};base64,`))return NextResponse.json({ok:false,error:"Format foto tidak valid."},{status:400});
+    }
     if(!workspaceId)return NextResponse.json({ok:false,error:"workspace_id required"},{status:400});
     ctx=await getServerContext(workspaceId);
     if(ctx.platformAdmin)return NextResponse.json({ok:false,error:"Luma Help Desk ditujukan untuk dashboard user. Gunakan Support Desk pada Owner Control."},{status:403});
@@ -68,15 +77,36 @@ export async function POST(req:NextRequest){
     }
     if(!message)return NextResponse.json({ok:false,error:"Pesan tidak boleh kosong."},{status:400});
 
-    await ctx.admin.from("luma_support_messages").insert({ticket_id:ticket.id,workspace_id:workspaceId,user_id:ctx.user.id,sender_type:"user",sender_user_id:ctx.user.id,body:message,metadata:{page:String(body.page||"").slice(0,120)}});
+    let attachmentPath:string|null=null;
+    if(imageDataUrl){
+      const raw=imageDataUrl.split(",")[1]||"";
+      const bytes=Buffer.from(raw,"base64");
+      if(bytes.byteLength>2*1024*1024)return NextResponse.json({ok:false,error:"Ukuran foto melebihi 2 MB. Silakan unggah file yang lebih kecil."},{status:413});
+      const extension=imageType==="image/png"?"png":imageType==="image/webp"?"webp":"jpg";
+      const bucket="luma-support-attachments";
+      try{await ctx.admin.storage.createBucket(bucket,{public:false,fileSizeLimit:2*1024*1024,allowedMimeTypes:["image/jpeg","image/png","image/webp"]})}catch{}
+      attachmentPath=`${ctx.user.id}/${ticket.id}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+      const uploaded=await ctx.admin.storage.from(bucket).upload(attachmentPath,bytes,{contentType:imageType,upsert:false});
+      if(uploaded.error)throw uploaded.error;
+    }
+    await ctx.admin.from("luma_support_messages").insert({
+      ticket_id:ticket.id,workspace_id:workspaceId,user_id:ctx.user.id,sender_type:"user",sender_user_id:ctx.user.id,body:message,
+      metadata:{page:String(body.page||"").slice(0,120),attachment_path:attachmentPath,attachment_name:imageName||null,attachment_type:imageType||null}
+    });
     const {data:history}=await ctx.admin.from("luma_support_messages").select("sender_type,body,created_at").eq("ticket_id",ticket.id).eq("user_id",ctx.user.id).order("created_at",{ascending:false}).limit(16);
     const ordered=(history||[]).reverse().map((x:any)=>({role:x.sender_type==="user"?"user":x.sender_type==="owner"?"support_owner":"luma_agent",content:x.body}));
 
     const apiKey=await getServerSecret(ctx.admin,"luma_openai_api_key");
     if(!apiKey)return NextResponse.json({ok:false,error:"Luma Agent belum aktif karena OpenAI integration belum dikonfigurasi owner.",ticket_id:ticket.id},{status:503});
-    const model=process.env.LUMA_SUPPORT_MODEL||process.env.OPENAI_MODEL||"gpt-5-mini";
+    const model=process.env.LUMA_SUPPORT_MODEL||process.env.OPENAI_MODEL||"gpt-5.4";
     const instructions=`Anda adalah Luma, AI Help Desk resmi Lumaway. Nama user aktif: ${userName}. Workspace user: ${String(workspace?.name||"Lumaway").slice(0,120)}.\n\n${LUMA_SUPPORT_KNOWLEDGE}\n\nJawab hanya tentang Lumaway. Jangan pernah membahas atau membocorkan admin/owner dashboard, credential, secret, data user lain, atau workspace lain. Jangan menyebut bahwa Anda memiliki akses ke hal-hal tersebut. Gunakan konteks percakapan user ini saja. Jika user frustrasi, akui kendalanya dengan wajar lalu fokus ke langkah penyelesaian. Bila belum solve, tandai escalation_recommended=true.`;
-    const response=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${apiKey}`,"Content-Type":"application/json"},body:JSON.stringify({model,instructions,input:JSON.stringify({current_page:String(body.page||""),conversation:ordered}),text:{format:{type:"json_schema",name:"luma_support_reply",schema:LUMA_SUPPORT_SCHEMA,strict:true}},store:false})});
+    const supportInput=imageDataUrl
+      ? [{role:"user",content:[
+          {type:"input_text",text:JSON.stringify({current_page:String(body.page||""),conversation:ordered,note:"User melampirkan foto kendala. Analisis foto hanya untuk membantu penggunaan Lumaway."})},
+          {type:"input_image",image_url:imageDataUrl}
+        ]}]
+      : JSON.stringify({current_page:String(body.page||""),conversation:ordered});
+    const response=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${apiKey}`,"Content-Type":"application/json"},body:JSON.stringify({model,instructions,input:supportInput,text:{format:{type:"json_schema",name:"luma_support_reply",schema:LUMA_SUPPORT_SCHEMA,strict:true}},store:false})});
     const raw=await response.json();if(!response.ok)throw new Error(raw?.error?.message||`OpenAI request failed (${response.status})`);
     const output=extractOpenAIText(raw);if(!output)throw new Error("Luma Agent tidak menerima respons AI.");
     const result=JSON.parse(output);
