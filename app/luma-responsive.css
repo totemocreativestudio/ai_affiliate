@@ -121,3 +121,24 @@ html[data-theme="dark"] .generator-safety-note{background:#2b2110;border-color:#
 html[data-theme="dark"] .review-mockup{background:#121a2a!important;border-color:#273247!important}
 html[data-theme="dark"] .review-mockup p{color:#cbd5e1!important}
 @media(max-width:640px){.generator-scroll{grid-auto-columns:85vw}.generator-form.grid{grid-template-columns:1fr!important}.affiliate-generator .section-head{align-items:flex-start}.free-tool-badge{margin-top:3px}}
+
+
+/* Header hierarchy + complete dark/mobile surface pass */
+.topbar-brand-copy{display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:0}
+.topbar-kicker{line-height:1;font-size:8px!important;letter-spacing:.16em!important}
+.topbar-title{line-height:1.2;font-size:13px!important;margin:0!important}
+html[data-theme="dark"] body,html[data-theme="dark"] .luma-app,html[data-theme="dark"] .app-shell{background:#081120!important;color:#edf2ff!important}
+html[data-theme="dark"] .topbar{background:rgba(11,19,34,.96)!important;border-color:#273247!important}
+html[data-theme="dark"] .topbar-title{color:#f8fafc!important}
+html[data-theme="dark"] .topbar-kicker{color:#8898b4!important}
+html[data-theme="dark"] .connection-pill,html[data-theme="dark"] .notification-bell,html[data-theme="dark"] .pwa-install-button{background:#121a2a!important;color:#e8eef8!important;border-color:#2d3950!important}
+html[data-theme="dark"] .card,html[data-theme="dark"] .ai-type-card,html[data-theme="dark"] .ai-control-card,html[data-theme="dark"] .content-card,html[data-theme="dark"] .payment-method-card,html[data-theme="dark"] .token-package,html[data-theme="dark"] .promo-claim-card,html[data-theme="dark"] .profile-identity-card,html[data-theme="dark"] .whatsapp-channel-card{background:#111a2b!important;border-color:#273247!important;color:#eef2ff!important}
+html[data-theme="dark"] .content h1,html[data-theme="dark"] .content h2,html[data-theme="dark"] .content h3,html[data-theme="dark"] .content strong,html[data-theme="dark"] .content b{color:#f7f9ff!important}
+html[data-theme="dark"] .content .muted,html[data-theme="dark"] .content p,html[data-theme="dark"] .content small,html[data-theme="dark"] .content label{color:#b8c4d8!important}
+html[data-theme="dark"] .content input,html[data-theme="dark"] .content select,html[data-theme="dark"] .content textarea{background:#0d1626!important;color:#f8fafc!important;border-color:#334155!important}
+html[data-theme="dark"] .content input::placeholder,html[data-theme="dark"] .content textarea::placeholder{color:#71819b!important}
+html[data-theme="dark"] .content table thead th{background:#182235!important;color:#dce5f5!important;border-color:#334155!important}
+html[data-theme="dark"] .content table tbody td{background:#111a2b!important;color:#dce5f5!important;border-color:#273247!important}
+html[data-theme="dark"] .content button:not(.primary){background:#152034!important;color:#e5edf9!important;border-color:#334155!important}
+html[data-theme="dark"] .empty-state,html[data-theme="dark"] .owner-inline-note{color:#b8c4d8!important}
+@media(max-width:640px){.topbar{height:58px!important;padding-left:66px!important;padding-right:10px!important}.topbar-title{font-size:12px!important}.topbar-right{gap:6px!important}.content{padding:16px 12px 92px!important}.content h1{font-size:23px!important}.notification-popover{top:64px!important;left:8px!important;right:8px!important;max-height:calc(100dvh - 76px)!important}.notification-list{max-height:calc(100dvh - 190px)!important}}
