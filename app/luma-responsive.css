@@ -10,3 +10,62 @@ html[data-theme="dark"] .topbar,html[data-theme="dark"] .card,html[data-theme="d
 @media(max-width:640px){.topbar-kicker{display:none}.topbar-title{max-width:38vw}.connection-pill{font-size:0;width:31px;height:31px;padding:0;justify-content:center}.connection-pill i{margin:0}.content{padding-top:16px}.content h1{font-size:22px}.card{padding-left:14px!important;padding-right:14px!important}.billing-kpi-grid{gap:10px!important}.payment-methods{display:flex!important;overflow-x:auto;flex-wrap:nowrap!important;padding-bottom:4px}.payment-methods span{white-space:nowrap}.share-grid{grid-template-columns:1fr!important}.ticket-chat-history{height:300px}.lumaway-lockup img{width:43px;height:43px}.lumaway-lockup strong{font-size:25px}.lumaway-loading-screen{padding:24px}.auth-heading h2{font-size:30px}}
 @media(min-width:1025px) and (max-width:1280px){.sidebar{width:238px}.app-shell{margin-left:238px}.content{padding-left:24px;padding-right:24px}}
 .status-pill.s-expired,.status-pill.s-canceled,.status-pill.s-cancelled{background:#f2f4f7;color:#667085}.status-pill.s-failed{background:#fff1f0;color:#b42318}.status-pill.s-paid{background:#ecfdf3;color:#067647}.status-pill.s-processing{background:#eff8ff;color:#175cd3}
+
+
+
+/* 2026-09-18 UX hardening */
+.notification-filters{display:flex;gap:7px;padding:10px 12px;border-bottom:1px solid var(--border,#e4e7ec);overflow-x:auto;background:#fff}
+.notification-filters button{flex:0 0 auto;border:1px solid #d0d5dd!important;background:#fff!important;color:#101828!important;border-radius:999px!important;min-height:30px!important;padding:5px 10px!important;font-size:9px!important;font-weight:750!important;box-shadow:none!important}
+.notification-filters button:hover{background:#f8fafc!important}
+.notification-filters button.active{background:#eaf2ff!important;color:#175cd3!important;border-color:#b2ccff!important}
+.notification-item{background:#fff!important;color:#101828!important}
+.notification-item.unread{background:#f8fbff!important}
+.notification-item strong{color:#101828!important}.notification-item p{color:#475467!important}.notification-item small{color:#7f8da3!important}
+html[data-theme="dark"] .notification-filters{background:#111a2b!important;border-color:#273247!important}
+html[data-theme="dark"] .notification-filters button{background:#fff!important;color:#101828!important;border-color:#cbd5e1!important}
+html[data-theme="dark"] .notification-filters button.active{background:#dbeafe!important;color:#1d4ed8!important;border-color:#93c5fd!important}
+html[data-theme="dark"] .notification-item,html[data-theme="dark"] .notification-item.unread{background:#121a2a!important}
+html[data-theme="dark"] .notification-item strong{color:#f8fafc!important}
+html[data-theme="dark"] .notification-item p{color:#cbd5e1!important}
+html[data-theme="dark"] .notification-item small{color:#93a4bd!important}
+
+.history-action-trigger{width:40px!important;height:40px!important;min-height:40px!important;padding:0!important;border-radius:10px!important;display:grid!important;place-items:center!important}
+.history-action-trigger span{font-size:18px;line-height:1;transform:translateY(2px);color:currentColor}
+.ai-history-menu{position:fixed!important;z-index:999!important;overflow:visible!important;min-width:170px!important;background:var(--surface,#fff)!important;border:1px solid var(--border,#e4e7ec)!important;border-radius:12px!important;padding:6px!important;box-shadow:0 18px 50px rgba(15,23,42,.18)!important}
+.ai-history-scroll{overflow-x:auto!important;overflow-y:visible!important}
+.ai-history-card{overflow:visible!important}
+.ai-history-card .scroll,.ai-history-card table{overflow:visible!important}
+
+.sidebar.is-collapsed{transform:translateX(-105%)!important;width:264px!important}
+.sidebar.is-collapsed~.app-shell{margin-left:0!important}
+.sidebar-hidden-reopen{position:fixed;left:12px;top:14px;z-index:76;width:40px;height:40px;border:1px solid var(--border,#d0d5dd);background:var(--surface,#fff);color:var(--text,#101828);border-radius:11px;display:grid;place-items:center;box-shadow:0 6px 18px rgba(15,23,42,.12)}
+.sidebar-hidden-reopen svg{width:19px;height:19px}
+@media(max-width:1024px){.sidebar-hidden-reopen{display:none}.sidebar.is-collapsed{transform:translateX(-105%)!important}.sidebar.is-collapsed.mobile-open{transform:translateX(0)!important}}
+
+html[data-theme="dark"] .content,
+html[data-theme="dark"] .legacy-page-anchor{color:#eef2ff!important}
+html[data-theme="dark"] .kpi,
+html[data-theme="dark"] .billing-stat-card,
+html[data-theme="dark"] .billing-wallet-card,
+html[data-theme="dark"] .subscription-current,
+html[data-theme="dark"] .subscription-plan,
+html[data-theme="dark"] .affiliate-balance-card,
+html[data-theme="dark"] .referral-link-card,
+html[data-theme="dark"] .internal-sheet-card,
+html[data-theme="dark"] .sheet-toolbar,
+html[data-theme="dark"] .social-post,
+html[data-theme="dark"] .social-composer,
+html[data-theme="dark"] .social-archive{background:#121a2a!important;color:#eef2ff!important;border-color:#273247!important}
+html[data-theme="dark"] .kpi small,
+html[data-theme="dark"] .billing-stat-card span,
+html[data-theme="dark"] .billing-stat-card small,
+html[data-theme="dark"] .billing-wallet-card span,
+html[data-theme="dark"] .billing-wallet-card small,
+html[data-theme="dark"] .subscription-current p,
+html[data-theme="dark"] .social-post-body,
+html[data-theme="dark"] .social-status{color:#b7c2d6!important}
+html[data-theme="dark"] .kpi b,
+html[data-theme="dark"] .billing-stat-card b,
+html[data-theme="dark"] .billing-wallet-card b,
+html[data-theme="dark"] .subscription-current h3{color:#f8fafc!important}
+
