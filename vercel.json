@@ -4,7 +4,9 @@
     "deploymentEnabled": {
       "ux-pwa-proration-fixes": false,
       "lumaway-user-access-social-fixes": false,
-      "fix/lumaway-production-stabilization": false
+      "fix/lumaway-production-stabilization": false,
+      "fix/vercel-monorepo-deployments": false
     }
-  }
+  },
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ':(exclude)apps/marketing/**'"
 }
