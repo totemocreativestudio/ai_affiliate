@@ -116,6 +116,7 @@ export default function LumawayWorkspaceApp() {
   const [authMessage, setAuthMessage] = useState("");
   const [accessLocked, setAccessLocked] = useState(false);
   const [subscriptionEndsAt, setSubscriptionEndsAt] = useState<string | null>(null);
+  const [lockPromptOpen, setLockPromptOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -160,8 +161,13 @@ export default function LumawayWorkspaceApp() {
   useEffect(() => {
     if (!profile) return;
     const refreshProfile = () => void loadLumaData(profile.id);
+    const showLockPrompt = () => setLockPromptOpen(true);
     window.addEventListener("lumaway-profile-updated", refreshProfile);
-    return () => window.removeEventListener("lumaway-profile-updated", refreshProfile);
+    window.addEventListener("lumaway-access-locked", showLockPrompt);
+    return () => {
+      window.removeEventListener("lumaway-profile-updated", refreshProfile);
+      window.removeEventListener("lumaway-access-locked", showLockPrompt);
+    };
   }, [profile?.id]);
 
   useEffect(() => {
@@ -386,5 +392,6 @@ export default function LumawayWorkspaceApp() {
       </main>
     </div>
     {!isAdmin && <><MobileQuickNav /><DashboardReminder workspaceId={workspace.id} userId={profile.id} workspaceStatus={workspace.status} /><LumaHelpdeskAgent workspaceId={workspace.id} userId={profile.id} fullName={profile.full_name} email={profile.email} /></>}
+    {!isAdmin && lockPromptOpen && <div className="access-lock-backdrop" onClick={()=>setLockPromptOpen(false)}><section className="access-lock-modal" role="dialog" aria-modal="true" aria-label="Masa aktif Lumaway berakhir" onClick={e=>e.stopPropagation()}><button className="access-lock-close" type="button" onClick={()=>setLockPromptOpen(false)}>×</button><span className="access-lock-icon" aria-hidden="true">🔒</span><h2>Masa aktif Anda telah berakhir</h2><p>Data workspace Anda tetap aman dan tidak dihapus. Perpanjang langganan untuk membuka kembali fitur Lumaway.</p>{subscriptionEndsAt&&<small>Berakhir: {new Date(subscriptionEndsAt).toLocaleString("id-ID")}</small>}<button className="primary" type="button" onClick={()=>{setLockPromptOpen(false);navigateToSection("billing")}}>Perpanjang di Billing</button></section></div>}
   </div>;
 }
