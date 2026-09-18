@@ -84,7 +84,8 @@ function activateCurrentRoute(isAdmin: boolean, accessLocked = false) {
   const fallback = isAdmin ? "administration" : "dashboard";
   let section = sectionFromPath(window.location.pathname) || fallback;
   if (isAdmin) section = "administration";
-  if (!isAdmin && section === "administration") section = "dashboard";\n  if (!isAdmin && accessLocked && !["dashboard","billing","profile"].includes(section)) section = "dashboard";
+  if (!isAdmin && section === "administration") section = "dashboard";
+  if (!isAdmin && accessLocked && !["dashboard","billing","profile"].includes(section)) section = "dashboard";
 
   const pages = Array.from(document.querySelectorAll<HTMLElement>(".content > .legacy-page-anchor"));
   let found = false;
@@ -112,7 +113,9 @@ export default function LumawayWorkspaceApp() {
   const [authMode, setAuthMode] = useState<AuthMode>("signin");
   const [showPassword, setShowPassword] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [authMessage, setAuthMessage] = useState("");\n  const [accessLocked, setAccessLocked] = useState(false);\n  const [subscriptionEndsAt, setSubscriptionEndsAt] = useState<string | null>(null);
+  const [authMessage, setAuthMessage] = useState("");
+  const [accessLocked, setAccessLocked] = useState(false);
+  const [subscriptionEndsAt, setSubscriptionEndsAt] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
