@@ -32,7 +32,8 @@ type IconName =
   | "support"
   | "menu"
   | "close"
-  | "chevron";
+  | "chevron"
+  | "lock";
 
 type Props = SVGProps<SVGSVGElement> & { name: IconName };
 
@@ -107,6 +108,8 @@ export default function LumaIcon({ name, ...props }: Props) {
         return <><path d="M6 6l12 12M18 6 6 18"/></>;
       case "chevron":
         return <path d="m8 10 4 4 4-4"/>;
+      case "lock":
+        return <><rect x="5" y="10" width="14" height="10" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></>;
       default:
         return <circle cx="12" cy="12" r="8"/>;
     }
