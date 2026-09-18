@@ -11,7 +11,6 @@ type Props = {
   onLogout: () => void;
   accessLocked?: boolean;
 };
-type Theme = "light" | "dark";
 
 const aiNav = [
   ["performance", "Performance Analysis"],
@@ -71,15 +70,10 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
   const [ownerTab, setOwnerTab] = useState("overview");
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
-    const savedTheme = window.localStorage.getItem("lumaway_theme");
-    const nextTheme: Theme = savedTheme === "dark" || savedTheme === "light"
-      ? savedTheme
-      : window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    setTheme(nextTheme);
-    document.documentElement.dataset.theme = nextTheme;
+    document.documentElement.dataset.theme = "light";
+    window.localStorage.removeItem("lumaway_theme");
     setCollapsed(window.localStorage.getItem("lumaway_sidebar_collapsed") === "1");
   }, []);
 
@@ -135,13 +129,6 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
     setMobileOpen(false);
   }
 
-  function toggleTheme() {
-    const next: Theme = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    document.documentElement.dataset.theme = next;
-    window.localStorage.setItem("lumaway_theme", next);
-  }
-
   function toggleCollapsed() {
     const next = !collapsed;
     setCollapsed(next);
@@ -168,10 +155,7 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
         </div>
 
         <div className="sidebar-controls">
-          <button type="button" className="theme-toggle" onClick={toggleTheme} title={theme === "dark" ? "Gunakan light mode" : "Gunakan night mode"}>
-            <LumaIcon name="theme" />
-            <span className="nav-label">{theme === "dark" ? "Light" : "Night"}</span>
-          </button>
+          <span className="sidebar-mode-label">Lumaway Workspace</span>
           <button type="button" className="sidebar-mobile-close" onClick={() => setMobileOpen(false)} aria-label="Tutup menu"><LumaIcon name="close" /></button>
         </div>
 
