@@ -63,15 +63,16 @@ async function sendViaFlowKirim(token: string, cfg: any, phone: string, code: st
     throw new Error(sessionRaw?.message || `Session FlowKirim tidak aktif (${sessionRes.status}).`);
   }
 
-  const jid = `${phone.replace(/\D/g, "")}@s.whatsapp.net`;
+  const destination = phone.replace(/\D/g, "");
   const message = `Kode OTP Lumaway Anda: ${code}. Berlaku 5 menit. Jangan bagikan kode ini kepada siapa pun.`;
   const sendRes = await fetch(`${base}/api/whatsapp/messages/text`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      Accept: "application/json",
     },
-    body: JSON.stringify({ session_id: sessionId, to: jid, message }),
+    body: JSON.stringify({ session_id: sessionId, to: destination, message }),
   });
   const sendRaw = await sendRes.json().catch(() => ({}));
   if (!sendRes.ok || !sendRaw?.success) {
@@ -193,6 +194,8 @@ export async function POST(req: NextRequest) {
           template: sent.provider === "convia" ? cfg.conviaTemplate : cfg.template,
           session_id: sent.sessionId,
           customer_id: "customerId" in sent ? sent.customerId : null,
+          recipient_last4: phone.replace(/\D/g, "").slice(-4),
+          flowkirim_recipient_format: sent.provider === "flowkirim" ? "digits_only" : null,
         },
       });
       return NextResponse.json({ ok: true, expires_in: 300, provider: sent.provider });
