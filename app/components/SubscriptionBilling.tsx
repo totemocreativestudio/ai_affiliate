@@ -52,6 +52,12 @@ export default function SubscriptionBilling({ workspaceId, userId }: { workspace
   const current = subs.find((item) => item.ends_at && new Date(item.ends_at).getTime() > Date.now()) || subs[0];
   const currentPlan = current?.luma_subscription_plans || {};
   const expired = current?.ends_at && new Date(current.ends_at).getTime() <= Date.now();
+  const startsAt = current?.starts_at ? new Date(current.starts_at).getTime() : 0;
+  const endsAt = current?.ends_at ? new Date(current.ends_at).getTime() : 0;
+  const totalMs = Math.max(1, endsAt - startsAt);
+  const elapsedMs = startsAt ? Math.max(0, Math.min(totalMs, Date.now() - startsAt)) : 0;
+  const progress = endsAt ? Math.max(0, Math.min(100, Math.round((elapsedMs / totalMs) * 100))) : 0;
+  const remainingDays = endsAt ? Math.max(0, Math.ceil((endsAt - Date.now()) / 86_400_000)) : 0;
 
   function upgradePreview(target: Row) {
     if (!current || !currentPlan || currentPlan.is_trial || expired) return null;
@@ -156,12 +162,14 @@ export default function SubscriptionBilling({ workspaceId, userId }: { workspace
   return (
     <div className="subscription-zone">
       <div className="subscription-current card">
-        <div>
+        <div className="subscription-current-copy">
           <span className="subscription-kicker">CURRENT SUBSCRIPTION</span>
           <h3>{currentPlan.name || "Lumaway"}</h3>
-          <p>
-            {expired ? "Expired" : current?.status || "-"} · Priority <b>{current?.priority_level || "trial"}</b>
-          </p>
+          <p>{expired ? "Expired" : current?.status || "-"} · Priority <b>{current?.priority_level || "trial"}</b></p>
+          <div className="subscription-timebar" aria-label="Masa aktif langganan">
+            <div><span>{expired ? "Masa aktif berakhir" : `${remainingDays} hari tersisa`}</span><b>{progress}% terpakai</b></div>
+            <span className="subscription-timebar-track"><i style={{width:`${progress}%`}} /></span>
+          </div>
         </div>
         <div className="subscription-expiry">
           <small>Active until</small>
