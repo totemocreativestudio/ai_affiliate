@@ -5,7 +5,8 @@
       "ux-pwa-proration-fixes": false,
       "lumaway-user-access-social-fixes": false,
       "fix/lumaway-production-stabilization": false,
-      "fix/vercel-monorepo-deployments": false
+      "fix/vercel-monorepo-deployments": false,
+      "fix/dashboard-history-otp-admin-pricing": false
     }
   },
   "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ':(exclude)apps/marketing/**'"
