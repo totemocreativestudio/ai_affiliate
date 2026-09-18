@@ -1,0 +1,37 @@
+name: Lumaway development checks
+
+on:
+  push:
+    branches:
+      - ux-pwa-proration-fixes
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: build-verification-key
+      SUPABASE_PUBLISHABLE_KEY: build-verification-key
+      SUPABASE_SECRET_KEY: build-verification-secret
+      NEXT_PUBLIC_APP_URL: https://www.lumaway.online
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node scripts/lumaway-route-check.mjs
+      - run: npx tsc --noEmit
+      - run: npm run build
+      - name: Smoke test production routes
+        shell: bash
+        run: |
+          npm run start -- -p 3100 >/tmp/lumaway-next.log 2>&1 &
+          NEXT_PID=$!
+          trap 'kill $NEXT_PID 2>/dev/null || true' EXIT
+          node scripts/lumaway-http-smoke.mjs

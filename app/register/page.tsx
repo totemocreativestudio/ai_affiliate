@@ -1,2 +1,5 @@
-import { redirect } from 'next/navigation';
-export default function RegisterRoute() { redirect('/?auth=signup'); }
+import { redirect } from "next/navigation";
+
+export default function LegacyRegisterRoute() {
+  redirect("/app.lumaway/register");
+}
