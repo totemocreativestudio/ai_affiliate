@@ -273,12 +273,28 @@ export default function LumawayWorkspaceApp() {
       return;
     }
 
-    setProfile(profileData as Profile);
+    const typedProfile = profileData as Profile;
+    setProfile(typedProfile);
     setWorkspace(workspaceData as Workspace);
     window.localStorage.setItem("luma_active_workspace", workspaceData.id);
 
+    const { data: subscriptionRows } = await supabase
+      .from("luma_user_subscriptions")
+      .select("status,starts_at,ends_at")
+      .eq("user_id", userId)
+      .order("ends_at", { ascending: false })
+      .limit(10);
+    const now = Date.now();
+    const activeSubscription = (subscriptionRows || []).find((item: any) =>
+      ["active", "trialing"].includes(String(item.status || "").toLowerCase()) &&
+      item.ends_at &&
+      new Date(item.ends_at).getTime() > now
+    );
+    setAccessLocked(Boolean((subscriptionRows || []).length && !activeSubscription));
+    setSubscriptionEndsAt(activeSubscription?.ends_at || (subscriptionRows || [])[0]?.ends_at || null);
+
     const currentSection = sectionFromPath(window.location.pathname);
-    const needsProfile = profileData.role !== "admin" && !profileComplete(typedProfile);
+    const needsProfile = typedProfile.role !== "admin" && !profileComplete(typedProfile);
     const target = profileData.role === "admin"
       ? "administration"
       : needsProfile
