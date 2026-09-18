@@ -59,6 +59,7 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
   const [rows, setRows] = useState<NotificationRow[]>([]);
   const [open, setOpen] = useState(false);
   const [toast, setToast] = useState<NotificationRow | null>(null);
+  const [filter, setFilter] = useState("all");
   const firstLoad = useRef(true);
 
   async function load() {
@@ -148,6 +149,14 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
   }, [workspaceId, userId]);
 
   const unread = useMemo(() => rows.filter((item) => !item.read).length, [rows]);
+  const categories = useMemo(() => {
+    const values = Array.from(new Set(rows.map((item) => categoryLabel(item.category))));
+    return ["Semua", ...values.slice(0, 8)];
+  }, [rows]);
+  const visibleRows = useMemo(
+    () => filter === "all" ? rows : rows.filter((item) => categoryLabel(item.category) === filter),
+    [rows, filter],
+  );
 
   async function markRead(row: NotificationRow, clicked = false) {
     if (row.source === "broadcast") {
@@ -198,8 +207,14 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
             <div><strong>Notifications</strong><span>{unread} belum dibaca</span></div>
             <button onClick={() => void markAll()}>Mark all read</button>
           </div>
+          <div className="notification-filters" role="tablist" aria-label="Kategori notifikasi">
+            {categories.map((label) => {
+              const key = label === "Semua" ? "all" : label;
+              return <button key={key} type="button" className={filter === key ? "active" : ""} onClick={() => setFilter(key)}>{label}</button>;
+            })}
+          </div>
           <div className="notification-list">
-            {rows.length ? rows.map((row) => (
+            {visibleRows.length ? visibleRows.map((row) => (
               <button key={row.key} className={`notification-item ${row.read ? "read" : "unread"}`} onClick={() => void markRead(row, true)}>
                 {row.image_url && <img src={row.image_url} alt="" />}
                 <div>
