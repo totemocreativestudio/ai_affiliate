@@ -52,6 +52,14 @@ export default function SubscriptionBilling({ workspaceId, userId }: { workspace
   const current = subs.find((item) => item.ends_at && new Date(item.ends_at).getTime() > Date.now()) || subs[0];
   const currentPlan = current?.luma_subscription_plans || {};
   const expired = current?.ends_at && new Date(current.ends_at).getTime() <= Date.now();
+  const subscriptionProgress = useMemo(() => {
+    if (!current?.ends_at) return { pct: 0, remainingDays: 0, totalDays: Number(currentPlan.duration_days || 0) };
+    const totalDays = Math.max(1, Number(currentPlan.duration_days || 7));
+    const end = new Date(current.ends_at).getTime();
+    const remainingDays = Math.max(0, Math.ceil((end - Date.now()) / 86_400_000));
+    const pct = Math.max(0, Math.min(100, Math.round(((totalDays - remainingDays) / totalDays) * 100)));
+    return { pct, remainingDays, totalDays };
+  }, [current?.ends_at, currentPlan.duration_days]);
 
   function upgradePreview(target: Row) {
     if (!current || !currentPlan || currentPlan.is_trial || expired) return null;
@@ -166,6 +174,10 @@ export default function SubscriptionBilling({ workspaceId, userId }: { workspace
         <div className="subscription-expiry">
           <small>Active until</small>
           <strong>{date(current?.ends_at)}</strong>
+        </div>
+        <div className="subscription-progress-wrap">
+          <div className="subscription-progress-meta"><span>{expired ? "Masa aktif berakhir" : subscriptionProgress.remainingDays + " hari tersisa"}</span><b>{subscriptionProgress.totalDays} hari</b></div>
+          <div className="subscription-progress-bar"><i style={{width: subscriptionProgress.pct + "%"}} /></div>
         </div>
       </div>
 
