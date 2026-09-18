@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "../../lib/supabase-browser";
+import { navigateToSection } from "../../lib/luma-navigation";
 
 type Row=Record<string,any>;
 
@@ -16,6 +17,7 @@ export default function UserProfile({workspaceId,userId}:{workspaceId:string;use
   const [channelUrl,setChannelUrl]=useState("");
   const [busy,setBusy]=useState(false);
   const [status,setStatus]=useState("");
+  const [completionMode,setCompletionMode]=useState(false);
 
   async function load(){
     const [p,s]=await Promise.all([
@@ -25,9 +27,20 @@ export default function UserProfile({workspaceId,userId}:{workspaceId:string;use
     if(p.error)return setStatus(p.error.message);
     const data=p.data as Row;setProfile(data);setForm({full_name:data.full_name||"",position_title:data.position_title||"",bio:data.bio||"",education:data.education||"",birth_date:data.birth_date||""});setChannelUrl(s.data?.setting_value||"");
   }
-  useEffect(()=>{void load()},[userId]);
+  useEffect(()=>{setCompletionMode(new URLSearchParams(window.location.search).get("complete")==="1");void load()},[userId]);
 
-  async function saveProfile(){setBusy(true);const {error}=await supabase.from("profiles").update({full_name:form.full_name||"",position_title:form.position_title||null,bio:form.bio||null,education:form.education||null,birth_date:form.birth_date||null,updated_at:new Date().toISOString()}).eq("id",userId);setBusy(false);if(error)return setStatus(error.message);setStatus("Profil berhasil diperbarui.");await load();}
+  const requiredComplete=Boolean(form.full_name?.trim()&&form.position_title?.trim()&&form.bio?.trim()&&form.education?.trim()&&form.birth_date);
+  const completionScore=[form.full_name,form.position_title,form.bio,form.education,form.birth_date].filter(v=>String(v||"").trim()).length*20;
+  async function saveProfile(){
+    if(!requiredComplete)return setStatus("Lengkapi nama, posisi/profesi, pendidikan, tanggal lahir, dan bio singkat terlebih dahulu.");
+    setBusy(true);
+    const {error}=await supabase.from("profiles").update({full_name:form.full_name||"",position_title:form.position_title||null,bio:form.bio||null,education:form.education||null,birth_date:form.birth_date||null,updated_at:new Date().toISOString()}).eq("id",userId);
+    setBusy(false);
+    if(error)return setStatus(error.message);
+    setStatus("Profil berhasil diperbarui.");
+    await load();
+    if(completionMode){setCompletionMode(false);window.history.replaceState(null,"",window.location.pathname);window.setTimeout(()=>navigateToSection("dashboard"),350)}
+  }
 
   async function uploadAvatar(file:File|null){if(!file)return;if(!file.type.startsWith("image/"))return setStatus("Avatar harus berupa gambar.");if(file.size>5*1024*1024)return setStatus("Avatar maksimal 5 MB.");setBusy(true);const ext=file.name.split(".").pop()?.toLowerCase()||"jpg";const path=`${userId}/avatar-${Date.now()}.${ext}`;const {error}=await supabase.storage.from("luma-avatars").upload(path,file,{upsert:true,contentType:file.type});if(error){setBusy(false);return setStatus(error.message)}const {data}=supabase.storage.from("luma-avatars").getPublicUrl(path);const {error:u}=await supabase.from("profiles").update({avatar_url:data.publicUrl,updated_at:new Date().toISOString()}).eq("id",userId);setBusy(false);if(u)return setStatus(u.message);setStatus("Foto profil diperbarui.");await load();}
 
@@ -47,6 +60,7 @@ export default function UserProfile({workspaceId,userId}:{workspaceId:string;use
 
   return <section id="profile" className="legacy-page-anchor profile-page">
     <div className="eyebrow">ACCOUNT</div><h1>My Profile</h1><p className="muted">Data pribadi Anda terpisah dari identitas komunitas. Social Lumaway hanya menampilkan nama samaran dan mascot yang ditentukan sistem.</p>
+    {completionMode&&<div className="profile-completion-banner"><div><span>LANGKAH WAJIB SETELAH LOGIN</span><strong>Lengkapi profil untuk melanjutkan ke workspace</strong><p>Informasi ini membantu Lumaway menyesuaikan pengalaman akun. Data pribadi tidak ditampilkan di Social Lumaway.</p></div><div className="profile-completion-progress"><b>{completionScore}%</b><span><i style={{width:`${completionScore}%`}}/></span></div></div>}
     <div className="profile-layout">
       <div className="card profile-identity-card">
         <div className="profile-avatar-large">{profile?.avatar_url?<img src={profile.avatar_url} alt="Profile"/>:<span>{String(profile?.full_name||profile?.email||"U").slice(0,1).toUpperCase()}</span>}</div>
@@ -55,7 +69,7 @@ export default function UserProfile({workspaceId,userId}:{workspaceId:string;use
         <div className="profile-contact"><span>Email</span><b>{profile?.email||"-"}</b><span>WhatsApp</span><b>{profile?.phone||"-"} {profile?.phone_verified_at&&<em>Verified</em>}</b><span>Community Alias</span><b>{profile?.social_alias||"-"}</b></div>
       </div>
       <div>
-        <div className="card"><h3>Personal Information</h3><div className="grid"><label>Nama Lengkap<input value={form.full_name||""} onChange={e=>setForm({...form,full_name:e.target.value})}/></label><label>Posisi / Profesi<input value={form.position_title||""} onChange={e=>setForm({...form,position_title:e.target.value})} placeholder="Contoh: Marketing Specialist"/></label><label>Pendidikan<input value={form.education||""} onChange={e=>setForm({...form,education:e.target.value})} placeholder="Contoh: S1 Marketing"/></label><label>Tanggal Lahir<input type="date" value={form.birth_date||""} onChange={e=>setForm({...form,birth_date:e.target.value})}/></label></div><label>Bio Singkat<textarea value={form.bio||""} onChange={e=>setForm({...form,bio:e.target.value})} placeholder="Ceritakan fokus pekerjaan, pengalaman, atau minat profesional Anda."/></label><button className="primary" disabled={busy} onClick={saveProfile}>Save Profile</button></div>
+        <div className="card"><h3>Personal Information</h3><div className="grid"><label>Nama Lengkap<input value={form.full_name||""} onChange={e=>setForm({...form,full_name:e.target.value})}/></label><label>Posisi / Profesi<input value={form.position_title||""} onChange={e=>setForm({...form,position_title:e.target.value})} placeholder="Contoh: Marketing Specialist"/></label><label>Pendidikan<input value={form.education||""} onChange={e=>setForm({...form,education:e.target.value})} placeholder="Contoh: S1 Marketing"/></label><label>Tanggal Lahir<input type="date" value={form.birth_date||""} onChange={e=>setForm({...form,birth_date:e.target.value})}/></label></div><label>Bio Singkat<textarea value={form.bio||""} onChange={e=>setForm({...form,bio:e.target.value})} placeholder="Ceritakan fokus pekerjaan, pengalaman, atau minat profesional Anda."/></label><button className="primary" disabled={busy||!requiredComplete} onClick={saveProfile}>{completionMode?"Simpan & Lanjut ke Dashboard":"Save Profile"}</button></div>
         <div className="grid profile-security-grid">
           <div className="card"><h3>Change Email</h3><p className="muted">Email baru wajib diverifikasi melalui link keamanan sebelum menjadi email login aktif.</p><label>Email baru<input type="email" value={newEmail} onChange={e=>setNewEmail(e.target.value)} placeholder="new@email.com"/></label><button className="secondary" disabled={busy} onClick={changeEmail}>Send Verification</button></div>
           <div className="card"><h3>Verify WhatsApp</h3><p className="muted">OTP dikirim melalui bot WhatsApp Lumaway. Nomor terverifikasi dipakai untuk keamanan akun dan komunikasi yang Anda setujui.</p><label>Nomor WhatsApp<input value={newPhone} onChange={e=>setNewPhone(e.target.value)} placeholder="+62812..."/></label>{phonePending&&<label>OTP<input inputMode="numeric" maxLength={6} value={otp} onChange={e=>setOtp(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder="6 digit OTP"/></label>}<div className="button-row">{!phonePending?<button className="secondary" disabled={busy} onClick={requestPhone}>Send WhatsApp OTP</button>:<><button className="primary" disabled={busy||otp.length!==6} onClick={verifyPhone}>Verify OTP</button><button className="secondary" disabled={busy} onClick={()=>{setPhonePending(false);setOtp("")}}>Cancel</button></>}</div></div>
