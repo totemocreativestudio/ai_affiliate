@@ -14,3 +14,24 @@
 
 @media(max-width:1100px){.content-card-grid{grid-template-columns:repeat(2,1fr)}.social-layout{grid-template-columns:1fr}.social-archive{position:static}.admin-broadcast-grid,.admin-blog-grid{grid-template-columns:1fr}.admin-broadcast-history,.admin-blog-history{grid-column:auto}.public-blog-grid{grid-template-columns:repeat(2,1fr);padding:0 20px}.public-blog-hero{padding-left:20px;padding-right:20px}}
 @media(max-width:700px){.notification-popover{position:fixed;right:12px;left:12px;top:70px;width:auto}.content-card-grid,.public-blog-grid{grid-template-columns:1fr}.social-composer{grid-template-columns:1fr}.social-mascot{width:40px;height:40px}.social-compose-actions{flex-wrap:wrap}.social-compose-actions .primary{margin-left:0}.public-blog-hero h1,.public-article>h1{font-size:34px}.public-blog-header{padding:0 16px}.whatsapp-channel-card{flex-direction:column;align-items:flex-start}.archive-grid{grid-template-columns:repeat(3,1fr)}}
+
+
+
+/* Threads-inspired Lumaway Community */
+.social-page{max-width:1160px;margin:0 auto}
+.social-layout{grid-template-columns:minmax(0,1fr) 300px!important;gap:24px!important}
+.social-composer{border-radius:18px!important;padding:18px!important;box-shadow:0 8px 24px rgba(15,23,42,.045)!important}
+.social-compose-main textarea{border:0!important;background:transparent!important;min-height:110px!important;padding:12px 2px!important;box-shadow:none!important;font-size:14px!important;line-height:1.55}
+.social-compose-actions{border-top:1px solid #edf0f4;padding-top:12px}
+.social-feed{gap:10px!important}
+.social-post{border-radius:18px!important;padding:18px!important;box-shadow:0 4px 18px rgba(15,23,42,.025)!important}
+.social-post-head b{font-size:12.5px!important}.social-post-head small{font-size:9px!important}
+.social-post-body{font-size:13px!important;line-height:1.65!important;margin:14px 0 10px!important}
+.social-post-actions{justify-content:flex-start;gap:6px!important;padding-top:12px!important}
+.social-post-actions button{border-radius:999px!important;padding:6px 10px!important}
+.social-post-actions .no-comments{margin-left:auto}
+.social-archive{border-radius:18px!important}
+.archive-grid{grid-template-columns:repeat(3,1fr)!important}
+@media(max-width:900px){.social-layout{grid-template-columns:1fr!important}.social-archive{position:static!important}.social-page{max-width:720px}}
+@media(max-width:640px){.social-page{padding-inline:0}.social-composer,.social-post,.social-archive{border-radius:14px!important}.social-post{padding:14px!important}.social-post-actions{overflow-x:auto}.social-post-actions .no-comments{display:none}}
+
