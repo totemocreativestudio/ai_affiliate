@@ -27,11 +27,11 @@ export default function UserProfile({workspaceId,userId}:{workspaceId:string;use
   }
   useEffect(()=>{void load()},[userId]);
 
-  async function saveProfile(){setBusy(true);const {error}=await supabase.from("profiles").update({full_name:form.full_name||"",position_title:form.position_title||null,bio:form.bio||null,education:form.education||null,birth_date:form.birth_date||null,updated_at:new Date().toISOString()}).eq("id",userId);setBusy(false);if(error)return setStatus(error.message);setStatus("Profil berhasil diperbarui.");await load();}
+  async function saveProfile(){setBusy(true);const {error}=await supabase.from("profiles").update({full_name:form.full_name||"",position_title:form.position_title||null,bio:form.bio||null,education:form.education||null,birth_date:form.birth_date||null,updated_at:new Date().toISOString()}).eq("id",userId);setBusy(false);if(error)return setStatus(error.message);setStatus("Profil berhasil diperbarui.");window.dispatchEvent(new Event("lumaway-profile-updated"));await load();}
 
   async function uploadAvatar(file:File|null){if(!file)return;if(!file.type.startsWith("image/"))return setStatus("Avatar harus berupa gambar.");if(file.size>5*1024*1024)return setStatus("Avatar maksimal 5 MB.");setBusy(true);const ext=file.name.split(".").pop()?.toLowerCase()||"jpg";const path=`${userId}/avatar-${Date.now()}.${ext}`;const {error}=await supabase.storage.from("luma-avatars").upload(path,file,{upsert:true,contentType:file.type});if(error){setBusy(false);return setStatus(error.message)}const {data}=supabase.storage.from("luma-avatars").getPublicUrl(path);const {error:u}=await supabase.from("profiles").update({avatar_url:data.publicUrl,updated_at:new Date().toISOString()}).eq("id",userId);setBusy(false);if(u)return setStatus(u.message);setStatus("Foto profil diperbarui.");await load();}
 
-  async function changeEmail(){if(!newEmail.includes("@"))return setStatus("Masukkan email baru yang valid.");setBusy(true);const {error}=await supabase.auth.updateUser({email:newEmail},{emailRedirectTo:`${window.location.origin}/#profile`});setBusy(false);if(error)return setStatus(error.message);setStatus("Link verifikasi email sudah dikirim. Email login berubah setelah verifikasi selesai.");setNewEmail("");}
+  async function changeEmail(){if(!newEmail.includes("@"))return setStatus("Masukkan email baru yang valid.");setBusy(true);const {error}=await supabase.auth.updateUser({email:newEmail},{emailRedirectTo:`${window.location.origin}/app.lumaway/profile`});setBusy(false);if(error)return setStatus(error.message);setStatus("Link verifikasi email sudah dikirim. Email login berubah setelah verifikasi selesai.");setNewEmail("");}
 
   async function requestPhone(){
     if(!newPhone.trim())return setStatus("Masukkan nomor WhatsApp dalam format +62812...");setBusy(true);setStatus("Mengirim OTP melalui WhatsApp bot...");
@@ -40,7 +40,7 @@ export default function UserProfile({workspaceId,userId}:{workspaceId:string;use
 
   async function verifyPhone(){
     if(!otp.trim()||!newPhone.trim())return;setBusy(true);setStatus("Memverifikasi OTP...");
-    try{const r=await fetch("/api/profile/whatsapp-otp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({workspace_id:workspaceId,action:"verify",phone:newPhone.trim(),otp:otp.trim()})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||"OTP gagal diverifikasi.");setStatus("Nomor WhatsApp berhasil diverifikasi dan dihubungkan ke akun.");setPhonePending(false);setOtp("");setNewPhone("");await load();}catch(e:any){setStatus(e?.message||"OTP gagal diverifikasi.")}finally{setBusy(false)}
+    try{const r=await fetch("/api/profile/whatsapp-otp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({workspace_id:workspaceId,action:"verify",phone:newPhone.trim(),otp:otp.trim()})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||"OTP gagal diverifikasi.");setStatus("Nomor WhatsApp berhasil diverifikasi dan dihubungkan ke akun.");window.dispatchEvent(new Event("lumaway-profile-updated"));setPhonePending(false);setOtp("");setNewPhone("");await load();}catch(e:any){setStatus(e?.message||"OTP gagal diverifikasi.")}finally{setBusy(false)}
   }
 
   async function confirmChannel(){const now=new Date().toISOString();const {error}=await supabase.from("profiles").update({whatsapp_channel_joined_at:now,updated_at:now}).eq("id",userId);if(error)return setStatus(error.message);setStatus("Status bergabung ke saluran WhatsApp disimpan.");await load();}
