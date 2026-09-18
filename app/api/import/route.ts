@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
         const rawDate=clean(value(row,["data_date","Data Date","Date","Tanggal","Tanggal Kirim","Shipping Date"]));
         return {
           workspace_id:workspaceId,
-          data_date:rawDate?dateValue(rawDate,""):null,
+          data_date:rawDate?(dateValue(rawDate,"")||null):null,
           creator_id:num(value(row,["creator_id","Creator ID"]))||null,
           creator_name:clean(value(row,["creator_name","Creator Name","Nama Creator","Nama Affiliate","Creator"]))||null,
           platform:clean(value(row,["platform","Platform"]))||platform,
