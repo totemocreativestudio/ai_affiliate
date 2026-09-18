@@ -9,6 +9,7 @@ type Props = {
   profile: { email: string | null; full_name: string | null; role: string };
   workspace: { name: string; slug: string; status: string };
   onLogout: () => void;
+  accessLocked?: boolean;
 };
 type Theme = "light" | "dark";
 
@@ -101,12 +102,24 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
 
   function go(event: React.MouseEvent<HTMLAnchorElement>, section: string) {
     event.preventDefault();
+    if (accessLocked && !["dashboard", "billing", "profile"].includes(section)) {
+      navigateToSection("billing");
+      setActiveSection("billing");
+      if (window.innerWidth <= 1024) setMobileOpen(false);
+      return;
+    }
     navigateToSection(section);
     setActiveSection(section);
     if (window.innerWidth <= 1024) setMobileOpen(false);
   }
 
   function openAi(type: string) {
+    if (accessLocked) {
+      navigateToSection("billing");
+      setActiveSection("billing");
+      setMobileOpen(false);
+      return;
+    }
     navigateToSection("ai-analytics");
     setActiveSection("ai-analytics");
     const index = aiNav.findIndex(([key]) => key === type);
