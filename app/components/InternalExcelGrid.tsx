@@ -96,7 +96,7 @@ export default function InternalExcelGrid({workspaceId}:{workspaceId:string}){
       if(created.error){setStatus("error, terjadi kesalahan.");return}
       data=[created.data];
     }
-    const list=(data||[]) as Sheet[];setSheets(list);if(!sheetId&&list[0])setSheetId(list[0].id);
+    const list=(data||[]) as Sheet[];setSheets(list);if(list[0]&&(!sheetId||!list.some(item=>item.id===sheetId)))setSheetId(list[0].id);
   }
   useEffect(()=>{void loadSheets()},[workspaceId]);
   useEffect(()=>{if(sheetId)void loadRows(sheetId)},[sheetId,sheets.length]);
