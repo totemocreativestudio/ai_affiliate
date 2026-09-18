@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../../lib/supabase-browser";
+import AffiliateContentGenerators from "./AffiliateContentGenerators";
 
 type Row=Record<string,any>;
 const money=(v:any)=>new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(Number(v||0));
@@ -83,6 +84,8 @@ export default function LumaAffiliateCenter({workspaceId,userId}:{workspaceId:st
       </div>
       <div className="card"><h3>Riwayat Withdraw</h3>{withdrawals.length?<div className="scroll"><table><thead><tr><th>ID</th><th>Amount</th><th>Channel</th><th>Status</th><th>Requested</th></tr></thead><tbody>{withdrawals.map(x=><tr key={x.id}><td>#{x.id}</td><td>{money(x.amount)}</td><td>{x.channel_code}</td><td><span className={`status-pill s-${String(x.status).toLowerCase()}`}>{x.status}</span></td><td>{x.requested_at?new Date(x.requested_at).toLocaleString("id-ID"):"-"}</td></tr>)}</tbody></table></div>:<div className="empty-state"><strong>Belum ada withdraw.</strong><span>Saldo confirmed akan tersedia untuk diajukan.</span></div>}</div>
     </div>
+
+    <AffiliateContentGenerators workspaceId={workspaceId}/>
 
     <div className="card"><div className="section-head"><div><h3>Riwayat Penjualan Referral</h3><p className="muted">Order, nilai transaksi, komisi 5%, dan status pencairan.</p></div></div>{events.length?<div className="scroll"><table><thead><tr><th>Order</th><th>Sale</th><th>Rate</th><th>Commission</th><th>Status</th><th>Date</th></tr></thead><tbody>{events.map(x=><tr key={x.id}><td>{x.reference||"-"}</td><td>{money(x.base_amount)}</td><td>{Number(x.commission_rate||.05)*100}%</td><td><b>{money(x.commission_amount)}</b></td><td><span className={`status-pill s-${String(x.status).toLowerCase()}`}>{x.status}</span></td><td>{x.created_at?new Date(x.created_at).toLocaleString("id-ID"):"-"}</td></tr>)}</tbody></table></div>:<div className="empty-state"><strong>Belum ada penjualan referral.</strong><span>Riwayat akan muncul setelah user referral melakukan pembayaran berhasil.</span></div>}</div>
   </section>;
