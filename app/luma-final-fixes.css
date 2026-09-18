@@ -215,3 +215,32 @@ html[data-theme="dark"] .lumaway-loading-screen{background:#080e1b!important;col
 .excel-import-config label small{font-size:8.5px;color:#667085;line-height:1.4}
 @media(max-width:900px){.excel-import-config{grid-template-columns:1fr!important}.database-editor-head{align-items:stretch;flex-direction:column}.database-editor-head .button-row{width:100%}.database-editor-head select{flex:1}}
 @media(max-width:560px){.excel-mode-switch{grid-template-columns:repeat(3,minmax(0,1fr))!important}.excel-mode-switch button{padding:7px 5px!important;font-size:9px!important}.sheet-tab-wrap{max-width:100%}.sheet-tab-wrap .sheet-tab-select{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px}}
+
+
+/* 2026-09-18 history menu, OTP verification, and owner pricing controls */
+.history-action-cell{position:relative!important;vertical-align:top!important;min-width:172px}
+.history-hamburger-wrap{display:grid;justify-items:end;gap:6px}
+.history-hamburger-trigger{display:grid!important;place-items:center!important;width:38px!important;height:36px!important;min-width:38px!important;min-height:36px!important;padding:0!important;border:1px solid #d8dee8!important;border-radius:10px!important;background:#fff!important;color:#344054!important;font-size:17px!important;line-height:1!important;cursor:pointer!important}
+.history-hamburger-trigger:hover,.history-hamburger-trigger[aria-expanded="true"]{background:#f5f3ff!important;border-color:#8b83ff!important;color:#4f46e5!important}
+.ai-history-row-menu{display:grid;gap:4px;width:172px;padding:6px;border:1px solid #e1e6ef;border-radius:12px;background:#fff;box-shadow:0 14px 34px rgba(15,23,42,.12)}
+.ai-history-row-menu button{display:block!important;width:100%!important;min-height:34px!important;padding:7px 9px!important;text-align:left!important;border:0!important;border-radius:8px!important;background:transparent!important;color:#344054!important;box-shadow:none!important;font-size:10px!important}
+.ai-history-row-menu button:hover{background:#f5f3ff!important;color:#4338ca!important}
+.ai-history-row-menu button:disabled{opacity:.5!important}
+.ai-history-card{overflow:visible!important}
+.ai-history-scroll{overflow-x:auto!important;overflow-y:visible!important}
+
+.otp-countdown,.otp-expired{display:block;margin-top:5px;font-size:9px;line-height:1.35}
+.otp-countdown{color:#475467}
+.otp-expired{color:#b42318;font-weight:700}
+
+.owner-plan-editor{display:grid;gap:10px;margin:14px 0 20px}
+.owner-plan-editor-row{display:grid;grid-template-columns:1.25fr .8fr .95fr .8fr .8fr .8fr .65fr auto;gap:8px;align-items:end;padding:12px;border:1px solid #e4e7ec;border-radius:14px;background:#fbfcfe}
+.owner-plan-editor-row label,.owner-package-editor .owner-package-row label{display:grid;gap:5px;font-size:9px;color:#667085;font-weight:700}
+.owner-plan-editor-row input,.owner-plan-editor-row select,.owner-package-editor .owner-package-row input,.owner-package-editor .owner-package-row select{min-height:38px!important}
+.owner-plan-editor-row .owner-price-preview{grid-column:1/-1;color:#667085;font-size:9px}
+.owner-active-subscriptions-head{margin-top:16px}
+.owner-package-editor{display:grid!important;gap:10px!important}
+.owner-package-editor .owner-package-row{display:grid!important;grid-template-columns:1.2fr .75fr .9fr .75fr .6fr auto!important;gap:8px!important;align-items:end!important;padding:12px!important;border:1px solid #e4e7ec!important;border-radius:14px!important;background:#fbfcfe!important}
+.owner-package-editor .owner-package-row>small{grid-column:1/-1;color:#667085}
+@media(max-width:1180px){.owner-plan-editor-row{grid-template-columns:repeat(4,minmax(0,1fr))}.owner-plan-editor-row .primary{min-height:38px}.owner-package-editor .owner-package-row{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
+@media(max-width:700px){.history-action-cell{min-width:150px}.ai-history-row-menu{width:150px}.owner-plan-editor-row,.owner-package-editor .owner-package-row{grid-template-columns:1fr!important}.owner-plan-editor-row .owner-price-preview,.owner-package-editor .owner-package-row>small{grid-column:auto}}
