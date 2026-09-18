@@ -53,11 +53,11 @@ function NavIcon({ name }: { name: IconName }) {
   return <span className="nav-ico"><LumaIcon name={name} /></span>;
 }
 
-function Group({ icon, label, children, open = false }: { icon: IconName; label: string; children: any; open?: boolean }) {
+function Group({ icon, label, children, open = false, locked = false }: { icon: IconName; label: string; children: any; open?: boolean; locked?: boolean }) {
   return (
-    <details className="side-group" open={open}>
+    <details className={`side-group ${locked ? "group-locked" : ""}`} open={open}>
       <summary>
-        <span><NavIcon name={icon} /><span className="nav-label">{label}</span></span>
+        <span><NavIcon name={icon} /><span className="nav-label">{label}</span>{locked&&<span className="nav-lock"><LumaIcon name="lock"/></span>}</span>
         <LumaIcon name="chevron" className="chevron" />
       </summary>
       <div className="side-subnav">{children}</div>
@@ -198,13 +198,13 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
                 <NavIcon name="dashboard" /><span className="nav-label">Dashboard</span>
               </a>
 
-              <Group icon="data" label="Data & Sync" open={false}>
+              <Group icon="data" label="Data & Sync" open={false} locked={accessLocked}>
                 <a href={routeForSection("upload")} onClick={(e) => go(e, "upload")}><LumaIcon name="data" />Upload Center</a>
                 <a href={routeForSection("excel-sync")} onClick={(e) => go(e, "excel-sync")}><LumaIcon name="listing" />Excel Sync</a>
                 <a href={routeForSection("database")} onClick={(e) => go(e, "database")}><LumaIcon name="master" />Database</a>
               </Group>
 
-              <Group icon="creator" label={accessLocked ? "Creator Management · Locked" : "Creator Management"}>
+              <Group icon="creator" label="Creator Management" locked={accessLocked}>
                 <a href={routeForSection("agreements")} onClick={(e) => go(e, "agreements")}><LumaIcon name="content" />Agreement</a>
                 <a href={routeForSection("affiliate-support")} onClick={(e) => go(e, "affiliate-support")}><LumaIcon name="support" />Affiliate Support</a>
               </Group>
@@ -221,7 +221,7 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
               <a className={accessLocked?"feature-locked":""} href={routeForSection("promo-studio")} onClick={(e) => go(e, "promo-studio")}><NavIcon name="sparkles" /><span className="nav-label">AI Promo Studio</span>{accessLocked&&<span className="nav-lock"><LumaIcon name="lock"/></span>}</a>
               <a className={accessLocked?"feature-locked":""} href={routeForSection("kanban")} onClick={(e) => go(e, "kanban")}><NavIcon name="kanban" /><span className="nav-label">Kanban</span>{accessLocked&&<span className="nav-lock"><LumaIcon name="lock"/></span>}</a>
 
-              <Group icon="ticket" label={accessLocked ? "Tiket Bantuan · Locked" : "Tiket Bantuan"}>
+              <Group icon="ticket" label="Tiket Bantuan" locked={accessLocked}>
                 <a href={routeForSection("support-tickets")} onClick={(e) => go(e, "support-tickets")}><LumaIcon name="ticket" />Status & Riwayat Tiket</a>
               </Group>
 
@@ -230,12 +230,12 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
                 <a className={accessLocked?"feature-locked":""} href={routeForSection("luma-affiliate")} onClick={(e) => go(e, "luma-affiliate")}><LumaIcon name="referral" />Luma Affiliate{accessLocked&&<span className="nav-lock"><LumaIcon name="lock"/></span>}</a>
               </Group>
 
-              <Group icon="content" label={accessLocked ? "Content & Community · Locked" : "Content & Community"}>
+              <Group icon="content" label="Content & Community" locked={accessLocked}>
                 <a href={routeForSection("content-hub")} onClick={(e) => go(e, "content-hub")}><LumaIcon name="content" />Insight & Blog</a>
                 <a href={routeForSection("social-lumaway")} onClick={(e) => go(e, "social-lumaway")}><LumaIcon name="community" />Social Lumaway</a>
               </Group>
 
-              <Group icon="master" label={accessLocked ? "Master Data · Locked" : "Master Data"}>
+              <Group icon="master" label="Master Data" locked={accessLocked}>
                 {masterNav.map(([section, icon, label]) => <a key={section} href={routeForSection(section)} onClick={(e) => go(e, section)}><LumaIcon name={icon} /><span>{label}</span></a>)}
               </Group>
             </nav>
