@@ -130,8 +130,8 @@ export default function LumawayWorkspaceApp() {
       window.history.replaceState(null, "", routeForSection(legacyHash));
     }
 
-    const saved = window.localStorage.getItem("lumaway_theme");
-    if (saved === "dark" || saved === "light") document.documentElement.dataset.theme = saved;
+    document.documentElement.dataset.theme = "light";
+    window.localStorage.removeItem("lumaway_theme");
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => undefined);
     void loadSession();
   }, []);
@@ -199,7 +199,7 @@ export default function LumawayWorkspaceApp() {
         host.innerHTML = "";
         google.accounts.id.renderButton(host, {
           type: "standard",
-          theme: document.documentElement.dataset.theme === "dark" ? "filled_black" : "outline",
+          theme: "outline",
           size: "large",
           text: "continue_with",
           shape: "rectangular",
