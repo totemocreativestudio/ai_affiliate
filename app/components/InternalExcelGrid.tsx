@@ -180,7 +180,7 @@ export default function InternalExcelGrid({workspaceId}:{workspaceId:string}){
     setDbBusy(true);
     const seed=dbTarget==="creator_samples"?{workspace_id:workspaceId,sample_status:"sent",qty:1}:{workspace_id:workspaceId,status:"Pending",qty:0};
     const fields=["id",...DB_FIELDS[dbTarget]].join(",");
-    const {data,error}=await supabase.from(dbTarget).insert(seed).select(fields).single();
+    const {data,error}=await supabase.from(dbTarget).insert(seed as any).select(fields).single();
     setDbBusy(false);if(error)return setStatus(error.message);setDbRows(v=>[data as Record<string,any>,...v]);setStatus("Record baru dibuat. Isi cell lalu Save.");
   }
   async function readImport(file:File|null){
