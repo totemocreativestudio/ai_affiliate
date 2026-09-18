@@ -97,8 +97,7 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
   function go(event: React.MouseEvent<HTMLAnchorElement>, section: string) {
     event.preventDefault();
     if (accessLocked && !["dashboard", "billing", "profile"].includes(section)) {
-      navigateToSection("billing");
-      setActiveSection("billing");
+      window.dispatchEvent(new CustomEvent("lumaway-access-locked", { detail: { requestedSection: section } }));
       if (window.innerWidth <= 1024) setMobileOpen(false);
       return;
     }
@@ -109,8 +108,7 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
 
   function openAi(type: string) {
     if (accessLocked) {
-      navigateToSection("billing");
-      setActiveSection("billing");
+      window.dispatchEvent(new CustomEvent("lumaway-access-locked", { detail: { requestedSection: "ai-analytics" } }));
       setMobileOpen(false);
       return;
     }
