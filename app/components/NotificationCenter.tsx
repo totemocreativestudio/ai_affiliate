@@ -58,7 +58,8 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
   const supabase = useMemo(() => createClient(), []);
   const [rows, setRows] = useState<NotificationRow[]>([]);
   const [open, setOpen] = useState(false);
-  const [toast, setToast] = useState<NotificationRow | null>(null);\n  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [toast, setToast] = useState<NotificationRow | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const firstLoad = useRef(true);
 
   async function load() {
