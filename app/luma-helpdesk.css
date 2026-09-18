@@ -24,3 +24,15 @@
 .luma-helpdesk-attachment-preview strong{font-size:10px}.luma-helpdesk-attachment-preview span{font-size:8px;color:var(--muted,#667085);margin-top:3px}
 .luma-helpdesk-attachment-preview button{width:28px;height:28px;padding:0!important;min-height:28px!important;border-radius:8px!important}
 html[data-theme="dark"] .luma-helpdesk-attach,html[data-theme="dark"] .luma-helpdesk-attachment-preview{background:#111a2b!important;border-color:#273247!important;color:#eef2ff!important}
+
+
+.luma-helpdesk-input-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:end}
+.luma-helpdesk-attach{width:38px;height:38px;border:1px solid var(--border,#d0d5dd);border-radius:10px;display:grid;place-items:center;cursor:pointer;font-size:20px;background:var(--surface,#fff);color:var(--text,#101828)}
+.luma-helpdesk-attach input{display:none}
+.luma-helpdesk-attachment-preview{display:grid;grid-template-columns:46px 1fr auto;gap:10px;align-items:center;margin-bottom:9px;padding:8px;border:1px solid var(--border,#e4e7ec);border-radius:11px;background:var(--surface-2,#f8fafc)}
+.luma-helpdesk-attachment-preview img{width:46px;height:46px;object-fit:cover;border-radius:8px}
+.luma-helpdesk-attachment-preview strong{display:block;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:210px}
+.luma-helpdesk-attachment-preview span{display:block;margin-top:3px;font-size:8.5px;color:var(--muted,#667085)}
+.luma-helpdesk-attachment-preview button{border:0;background:transparent;font-size:17px}
+html[data-theme="dark"] .luma-helpdesk-attach,html[data-theme="dark"] .luma-helpdesk-attachment-preview{background:#111a2b;color:#eef2ff;border-color:#273247}
+@media(max-width:520px){.luma-helpdesk-panel{width:calc(100vw - 16px)!important;right:8px!important;bottom:76px!important}.luma-helpdesk-attachment-preview strong{max-width:150px}}
