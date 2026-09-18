@@ -47,6 +47,13 @@ export default function SubscriptionBilling({ workspaceId, userId }: { workspace
     void load();
     const saved = localStorage.getItem("lumaway_promo_code");
     if (saved) setPromo(saved);
+    const refreshPricing = () => void load();
+    window.addEventListener("luma-pricing-updated", refreshPricing);
+    const timer = window.setInterval(refreshPricing, 30000);
+    return () => {
+      window.removeEventListener("luma-pricing-updated", refreshPricing);
+      window.clearInterval(timer);
+    };
   }, [workspaceId, userId]);
 
   const current = subs.find((item) => item.ends_at && new Date(item.ends_at).getTime() > Date.now()) || subs[0];

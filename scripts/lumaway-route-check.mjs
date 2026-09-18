@@ -108,21 +108,21 @@ if (!notifications.includes('<LumaIcon name="bell" />')) {
   fail("notification control must render the Lumaway bell icon");
 }
 
-if (!analytics.includes('className="history-action-trigger"')) {
-  fail("analysis history dropdown trigger is missing");
+if (!analytics.includes("history-hamburger-trigger")) {
+  fail("analysis history hamburger trigger is missing");
 }
-if (!finalCss.includes('.history-action-trigger::before{content:"⌄"')) {
-  fail("analysis history action must render as a dropdown arrow, not an overflow menu");
+if (!analytics.includes("ai-history-row-menu") || !finalCss.includes(".history-hamburger-trigger") || !finalCss.includes(".ai-history-row-menu")) {
+  fail("analysis history hamburger menu styles/actions are missing");
 }
 if (!finalCss.includes(".sidebar-edge-collapse{position:absolute")) {
   fail("sidebar expand/minimize control must live on the sidebar edge");
 }
-if (!finalCss.includes('html[data-theme="dark"] .notification-bell')) {
-  fail("night-mode notification contrast override is missing");
+if (!appShell.includes('document.documentElement.dataset.theme = "light"')) {
+  fail("Lumaway must stay in stable light-only mode");
 }
 
-if (!serviceWorker.includes('const CACHE = "lumaway-shell-v3"')) {
-  fail("service worker cache version must be bumped after routing overhaul");
+if (!serviceWorker.includes('const CACHE = "lumaway-shell-v4"')) {
+  fail("service worker cache version must match the light-only production shell");
 }
 if (serviceWorker.includes('caches.match("/")')) {
   fail("service worker must not use the root route as an offline navigation fallback");

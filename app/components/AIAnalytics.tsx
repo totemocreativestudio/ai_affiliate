@@ -14,7 +14,7 @@ const TYPES = [
 ] as const;
 const PAGE_SIZE = 10;
 
-type MenuState = { runId: string; left: number; top: number } | null;
+type MenuState = { runId: string } | null;
 
 export default function AIAnalytics({ workspaceId }: { workspaceId: string }) {
   const supabase = useMemo(() => createClient(), []);
@@ -205,19 +205,13 @@ export default function AIAnalytics({ workspaceId }: { workspaceId: string }) {
 
   function openMenu(event: React.MouseEvent<HTMLButtonElement>, row: Row) {
     event.stopPropagation();
-    const rect = event.currentTarget.getBoundingClientRect();
-    const menuWidth = 168;
-    const menuHeight = (row.report ? 3 : 1) * 42 + 12;
-    const left = Math.min(window.innerWidth - menuWidth - 10, Math.max(10, rect.right - menuWidth));
-    const top = Math.max(10, rect.top - menuHeight - 8);
-    setMenu({ runId: row.run_id, left, top });
+    setMenu((current) => current?.runId === row.run_id ? null : { runId: row.run_id });
   }
 
   const currentHistory = useMemo(() => history.find((x) => x.run_id === runId), [history, runId]);
   const totalPages = Math.max(1, Math.ceil(history.length / PAGE_SIZE));
   const page = Math.min(historyPage, totalPages);
   const pagedHistory = history.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const menuRow = menu ? history.find((x) => x.run_id === menu.runId) : null;
 
   return <section id="ai-analytics" className="legacy-page-anchor ai-page ai-v2">
     <div className="ai-page-head"><div><div className="eyebrow">LUMA AFFILIATE INTELLIGENCE · AI ANALYTICS</div><h1>{active[1]}</h1><p className="muted">{active[2]}. Analisis mengacu pada database workspace dari file yang diupload dan dapat mengaitkan enam mode analisis.</p></div></div>
@@ -233,10 +227,8 @@ export default function AIAnalytics({ workspaceId }: { workspaceId: string }) {
 
     <div className="card ai-history-card">
       <div className="section-head"><div><h3>Analysis & Document History</h3><p className="muted">Hasil analisis dan dokumen tersimpan per user. Maksimal 10 data per halaman.</p></div><button className="secondary" onClick={loadHistory}>Refresh</button></div>
-      {history.length ? <><div className="ai-history-scroll"><table><thead><tr><th>Analysis</th><th>Period</th><th>Document</th><th>Created</th><th aria-label="Actions" /></tr></thead><tbody>{pagedHistory.map((row) => <tr key={row.run_id}><td><b>{TYPES.find((x) => x[0] === row.analysis_type)?.[1] || row.analysis_type}</b><br /><small>{row.run_id}</small></td><td>{row.start_date || "All data"} → {row.end_date || "All data"}</td><td>{row.report ? <><b>{row.report.page_count || 20} pages</b><br /><small>{row.report.download_count ? `${row.report.download_count} download` : "Ready"}</small></> : "-"}</td><td>{new Date(row.created_at).toLocaleString("id-ID")}</td><td className="history-action-cell"><button className="history-action-trigger" onClick={(event) => openMenu(event, row)} aria-label="Buka menu dokumen" aria-haspopup="menu" aria-expanded={menu?.runId===row.run_id}><span aria-hidden="true">⌃</span></button></td></tr>)}</tbody></table></div>{totalPages > 1 && <div className="history-pagination"><button disabled={page <= 1} onClick={() => setHistoryPage((value) => Math.max(1, value - 1))}>‹</button>{Array.from({ length: totalPages }, (_, index) => index + 1).slice(Math.max(0, page - 3), Math.min(totalPages, page + 2)).map((number) => <button key={number} className={number === page ? "active" : ""} onClick={() => setHistoryPage(number)}>{number}</button>)}<button disabled={page >= totalPages} onClick={() => setHistoryPage((value) => Math.min(totalPages, value + 1))}>›</button></div>}</> : <div className="empty-state"><strong>Belum ada history.</strong></div>}
+      {history.length ? <><div className="ai-history-scroll"><table><thead><tr><th>Analysis</th><th>Period</th><th>Document</th><th>Created</th><th aria-label="Actions" /></tr></thead><tbody>{pagedHistory.map((row) => <tr key={row.run_id}><td><b>{TYPES.find((x) => x[0] === row.analysis_type)?.[1] || row.analysis_type}</b><br /><small>{row.run_id}</small></td><td>{row.start_date || "All data"} → {row.end_date || "All data"}</td><td>{row.report ? <><b>{row.report.page_count || 20} pages</b><br /><small>{row.report.download_count ? `${row.report.download_count} download` : "Ready"}</small></> : "-"}</td><td>{new Date(row.created_at).toLocaleString("id-ID")}</td><td className="history-action-cell"><div className="history-hamburger-wrap" onClick={(event)=>event.stopPropagation()}><button type="button" className="history-action-trigger history-hamburger-trigger" onClick={(event) => openMenu(event, row)} aria-label="Buka menu history" aria-haspopup="menu" aria-expanded={menu?.runId===row.run_id}><span aria-hidden="true">☰</span></button>{menu?.runId===row.run_id&&<div className="ai-history-row-menu" role="menu"><button type="button" role="menuitem" onClick={()=>{setDetail(row);setMenu(null)}}>Detail Analysis</button>{row.report&&<button type="button" role="menuitem" onClick={()=>{setMenu(null);void previewReport(row.report.id)}}>Preview Document</button>}{row.report&&<button type="button" role="menuitem" onClick={()=>{setMenu(null);void downloadReport(row.report.id)}}>Download PDF</button>}{!row.report&&<button type="button" role="menuitem" disabled={generatingReport===row.run_id} onClick={()=>{setMenu(null);void generateDocument(row.run_id)}}>{generatingReport===row.run_id?"Generating...":"Generate Document"}</button>}</div>}</div></td></tr>)}</tbody></table></div>{totalPages > 1 && <div className="history-pagination"><button disabled={page <= 1} onClick={() => setHistoryPage((value) => Math.max(1, value - 1))}>‹</button>{Array.from({ length: totalPages }, (_, index) => index + 1).slice(Math.max(0, page - 3), Math.min(totalPages, page + 2)).map((number) => <button key={number} className={number === page ? "active" : ""} onClick={() => setHistoryPage(number)}>{number}</button>)}<button disabled={page >= totalPages} onClick={() => setHistoryPage((value) => Math.min(totalPages, value + 1))}>›</button></div>}</> : <div className="empty-state"><strong>Belum ada history.</strong></div>}
     </div>
-
-    {menu && menuRow && <div className="ai-history-menu ai-history-menu-up" style={{ left: menu.left, top: menu.top }} onClick={(event) => event.stopPropagation()}><button onClick={() => { setDetail(menuRow); setMenu(null); }}>Detail</button>{menuRow.report && <button onClick={() => { setMenu(null); void previewReport(menuRow.report.id); }}>Preview</button>}{menuRow.report && <button onClick={() => { setMenu(null); void downloadReport(menuRow.report.id); }}>Download PDF</button>}</div>}
 
     {detail && <div className="kanban-modal-backdrop" onClick={() => setDetail(null)}><div className="analysis-detail-modal" onClick={(event) => event.stopPropagation()}><div className="report-modal-actions"><div><strong>{TYPES.find((x) => x[0] === detail.analysis_type)?.[1] || detail.analysis_type}</strong><small>{detail.run_id}</small></div><button onClick={() => setDetail(null)}>×</button></div><div className="analysis-detail-body"><div className="eyebrow">EXECUTIVE SUMMARY</div><p>{detail.insight?.executive_summary || "Tidak ada ringkasan."}</p>{[["Key Findings", detail.insight?.key_findings], ["Creator Findings", detail.insight?.creator_findings], ["Product Findings", detail.insight?.product_findings], ["Trend Findings", detail.insight?.trend_findings], ["Anomalies", detail.insight?.anomalies], ["Recommendations", detail.insight?.recommendations]].map(([title, items]: any) => <section key={title}><h3>{title}</h3><ul>{(items || []).map((item: string, index: number) => <li key={index}>{item}</li>)}</ul></section>)}</div></div></div>}
 
