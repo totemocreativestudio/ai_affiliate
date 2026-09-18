@@ -42,17 +42,30 @@ async function getSettings(admin: any) {
   };
 }
 
-async function testFlowKirim(token: string, baseUrl: string, deviceId: string) {
+async function testFlowKirim(token: string, baseUrl: string, deviceId: string, testPhone = "") {
   if (!deviceId) throw new Error("FlowKirim Device ID belum diisi. Ambil ID perangkat dari menu Perangkat/Devices di dashboard FlowKirim lalu simpan sebagai FLOWKIRIM_DEVICE_ID atau WHATSAPP_DEVICE_ID.");
-  const r = await fetch(`${baseUrl.replace(/\/$/, "")}/api/whatsapp/sessions/${encodeURIComponent(deviceId)}`, {
+  const base = baseUrl.replace(/\/$/, "");
+  const r = await fetch(`${base}/api/whatsapp/sessions/${encodeURIComponent(deviceId)}`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   });
   const raw = await r.json().catch(() => ({}));
-  if (!r.ok || !raw?.success || !raw?.data?.session_id) {
+  const sessionId = raw?.data?.session_id;
+  if (!r.ok || !raw?.success || !sessionId) {
     throw new Error(raw?.message || `FlowKirim session tidak aktif (${r.status}).`);
   }
-  return { ok: true };
+  const digits = String(testPhone || "").replace(/\D/g, "").replace(/^0/, "62");
+  if (!digits) return { ok: true, session_id: sessionId, delivery_test: false };
+  if (!/^62[0-9]{8,13}$/.test(digits)) throw new Error("Nomor test FlowKirim tidak valid. Gunakan 08... atau 628...");
+  const send = await fetch(`${base}/api/whatsapp/messages/text`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ session_id: sessionId, to: digits, message: "Test koneksi Lumaway OTP berhasil. Pesan ini dikirim dari Admin Dashboard Lumaway." }),
+    cache: "no-store",
+  });
+  const sendRaw = await send.json().catch(() => ({}));
+  if (!send.ok || !sendRaw?.success) throw new Error(sendRaw?.message || `FlowKirim test message gagal (${send.status}).`);
+  return { ok: true, session_id: sessionId, delivery_test: true, delivery_reference: sendRaw?.data?.message_id || sendRaw?.data?.id || null };
 }
 
 async function testMeta(token: string, graphVersion: string, phoneNumberId: string) {
@@ -169,7 +182,7 @@ export async function POST(req: NextRequest) {
     if (String(body.action || "") === "test") {
       if (provider === "flowkirim") {
         if (!whatsappToken) throw new Error("FlowKirim access token belum dikonfigurasi.");
-        testResult = await testFlowKirim(whatsappToken, values.whatsapp_base_url, values.whatsapp_device_id);
+        testResult = await testFlowKirim(whatsappToken, values.whatsapp_base_url, values.whatsapp_device_id, String(body.test_phone || ""));
       } else if (provider === "meta") {
         if (!whatsappToken) throw new Error("Meta WhatsApp access token belum dikonfigurasi.");
         testResult = await testMeta(whatsappToken, values.whatsapp_graph_version, values.whatsapp_phone_number_id);
