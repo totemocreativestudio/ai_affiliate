@@ -31,7 +31,7 @@ import DashboardReminder from "./components/DashboardReminder";
 import PWAInstallButton from "./components/PWAInstallButton";
 import MobileQuickNav from "./components/MobileQuickNav";
 
-type Profile = { id: string; email: string | null; full_name: string | null; role: string; active: boolean };
+type Profile = { id: string; email: string | null; full_name: string | null; role: string; active: boolean; phone: string | null; phone_verified_at: string | null; education: string | null; birth_date: string | null; bio: string | null; position_title: string | null };
 type Workspace = { id: string; name: string; slug: string; status: string };
 type AuthMode = "signin" | "signup";
 
@@ -76,11 +76,15 @@ function cleanAuthErrorQuery() {
   window.history.replaceState(null, "", `${url.pathname}${url.search}`);
 }
 
-function activateCurrentRoute(isAdmin: boolean) {
+function profileComplete(profile: Profile) {
+  return Boolean(profile.full_name?.trim() && profile.phone_verified_at && profile.education?.trim() && profile.birth_date);
+}
+
+function activateCurrentRoute(isAdmin: boolean, accessLocked = false) {
   const fallback = isAdmin ? "administration" : "dashboard";
   let section = sectionFromPath(window.location.pathname) || fallback;
   if (isAdmin) section = "administration";
-  if (!isAdmin && section === "administration") section = "dashboard";
+  if (!isAdmin && section === "administration") section = "dashboard";\n  if (!isAdmin && accessLocked && !["dashboard","billing","profile"].includes(section)) section = "dashboard";
 
   const pages = Array.from(document.querySelectorAll<HTMLElement>(".content > .legacy-page-anchor"));
   let found = false;
@@ -108,7 +112,7 @@ export default function LumawayWorkspaceApp() {
   const [authMode, setAuthMode] = useState<AuthMode>("signin");
   const [showPassword, setShowPassword] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [authMessage, setAuthMessage] = useState("");
+  const [authMessage, setAuthMessage] = useState("");\n  const [accessLocked, setAccessLocked] = useState(false);\n  const [subscriptionEndsAt, setSubscriptionEndsAt] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -133,7 +137,7 @@ export default function LumawayWorkspaceApp() {
     if (!profile || !workspace) return;
     const isAdmin = profile.role === "admin";
     const restore = () => {
-      window.requestAnimationFrame(() => window.setTimeout(() => activateCurrentRoute(isAdmin), 30));
+      window.requestAnimationFrame(() => window.setTimeout(() => activateCurrentRoute(isAdmin, accessLocked), 30));
     };
     const navigate = () => {
       restore();
@@ -148,7 +152,14 @@ export default function LumawayWorkspaceApp() {
       window.removeEventListener("popstate", navigate);
       window.removeEventListener("lumaway-routechange", navigate as EventListener);
     };
-  }, [profile, workspace]);
+  }, [profile, workspace, accessLocked]);
+
+  useEffect(() => {
+    if (!profile) return;
+    const refreshProfile = () => void loadLumaData(profile.id);
+    window.addEventListener("lumaway-profile-updated", refreshProfile);
+    return () => window.removeEventListener("lumaway-profile-updated", refreshProfile);
+  }, [profile?.id]);
 
   useEffect(() => {
     if (loading || profile || workspace) return;
@@ -229,7 +240,7 @@ export default function LumawayWorkspaceApp() {
     setError("");
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
-      .select("id,email,full_name,role,active")
+      .select("id,email,full_name,role,active,phone,phone_verified_at,education,birth_date,bio,position_title")
       .eq("id", userId)
       .single();
     if (profileError || !profileData) {
@@ -264,11 +275,14 @@ export default function LumawayWorkspaceApp() {
     window.localStorage.setItem("luma_active_workspace", workspaceData.id);
 
     const currentSection = sectionFromPath(window.location.pathname);
+    const needsProfile = profileData.role !== "admin" && !profileComplete(typedProfile);
     const target = profileData.role === "admin"
       ? "administration"
-      : !currentSection || isAuthPath(window.location.pathname) || currentSection === "administration"
-        ? "dashboard"
-        : currentSection;
+      : needsProfile
+        ? "profile"
+        : !currentSection || isAuthPath(window.location.pathname) || currentSection === "administration"
+          ? "dashboard"
+          : currentSection;
     navigateToSection(target, { replace: true });
   }
 
@@ -322,10 +336,10 @@ export default function LumawayWorkspaceApp() {
 
   const isAdmin = profile.role === "admin";
   return <div className="luma-app">
-    <LumaSidebar profile={profile} workspace={workspace} onLogout={logout} />
+    <LumaSidebar profile={profile} workspace={workspace} onLogout={logout} accessLocked={accessLocked} />
     <div className="app-shell">
       <header className="topbar">
-        <div><span className="topbar-kicker">{isAdmin ? "LUMAWAY OWNER" : "LUMAWAY WORKSPACE"}</span><span className="topbar-title">{isAdmin ? "Business Control Center" : "Affiliate Intelligence"}</span></div>
+        <div className="topbar-brand-copy"><span className="topbar-kicker">{isAdmin ? "LUMAWAY OWNER" : "LUMAWAY WORKSPACE"}</span><span className="topbar-title">{isAdmin ? "Business Control Center" : "Affiliate Intelligence"}</span></div>
         <div className="topbar-right"><PWAInstallButton compact /><NotificationCenter workspaceId={workspace.id} userId={profile.id} /><span className="connection-pill"><i />{workspace.name} · Active</span></div>
       </header>
       <main className="content">
@@ -344,6 +358,7 @@ export default function LumawayWorkspaceApp() {
           <section id="creator-samples" className="legacy-page-anchor"><CreatorSamples workspaceId={workspace.id} /></section>
           <section id="ratecard" className="legacy-page-anchor"><RatecardMaster workspaceId={workspace.id} /></section>
         </>}
+        {!isAdmin && accessLocked && <div className="subscription-lock-banner"><strong>Masa akses Lumaway telah berakhir.</strong><span>Data workspace Anda tetap aman dan tidak dihapus. Buka Billing untuk memperpanjang akses.</span>{subscriptionEndsAt&&<small>Berakhir: {new Date(subscriptionEndsAt).toLocaleString("id-ID")}</small>}<button onClick={()=>navigateToSection("billing")}>Buka Billing</button></div>}
         {error && <div className="flash error">{error}</div>}
       </main>
     </div>
