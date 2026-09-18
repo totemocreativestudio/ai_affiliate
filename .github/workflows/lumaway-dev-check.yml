@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - ux-pwa-proration-fixes
+      - lumaway-user-access-social-fixes
   pull_request:
     branches:
       - main
