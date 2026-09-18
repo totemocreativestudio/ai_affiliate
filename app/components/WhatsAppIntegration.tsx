@@ -46,6 +46,7 @@ export default function WhatsAppIntegration({ workspaceId }: { workspaceId: stri
   const [conviaTokenConfigured, setConviaTokenConfigured] = useState(false);
   const [busy, setBusy] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [testPhone, setTestPhone] = useState("");
   const [status, setStatus] = useState("Memeriksa WhatsApp integration...");
 
   async function load() {
@@ -97,7 +98,7 @@ export default function WhatsAppIntegration({ workspaceId }: { workspaceId: stri
       const r = await fetch("/api/integrations/whatsapp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspace_id: workspaceId, action, ...form }),
+        body: JSON.stringify({ workspace_id: workspaceId, action, test_phone: action === "test" ? testPhone.trim() : "", ...form }),
       });
       const d = await r.json();
       if (!r.ok || !d.ok) throw new Error(d.error || "Gagal menyimpan WhatsApp integration.");
@@ -109,6 +110,8 @@ export default function WhatsAppIntegration({ workspaceId }: { workspaceId: stri
         const price = d.test.unit_price != null ? ` · verify ${d.test.currency || "IDR"} ${d.test.unit_price}` : "";
         const balance = d.test.balance != null ? ` · balance ${d.test.balance}` : "";
         setStatus(`Convia berhasil diverifikasi${price}${balance}.`);
+      } else if (action === "test" && form.provider === "flowkirim" && d.test?.delivery_test) {
+        setStatus(`FlowKirim session aktif dan test message berhasil dikirim${d.test.delivery_reference ? ` · ref ${d.test.delivery_reference}` : ""}.`);
       } else {
         setStatus(action === "test" ? `${providerLabel(form.provider)} berhasil diverifikasi.` : "Integration disimpan. Credential tetap server-side dan tidak ditampilkan kembali.");
       }
@@ -172,6 +175,9 @@ export default function WhatsAppIntegration({ workspaceId }: { workspaceId: stri
           </label>
           <label>Device ID
             <input value={form.device_id} onChange={(e) => setForm({ ...form, device_id: e.target.value })} placeholder="ID perangkat dari halaman Perangkat FlowKirim" />
+          </label>
+          <label>Nomor Test Delivery
+            <input value={testPhone} onChange={(e) => setTestPhone(e.target.value)} placeholder="08... · opsional saat Test Connection" />
           </label>
         </> : <>
           <label>Phone Number ID
