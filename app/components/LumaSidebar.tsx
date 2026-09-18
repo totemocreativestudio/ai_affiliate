@@ -64,7 +64,7 @@ function Group({ icon, label, children, open = false }: { icon: IconName; label:
   );
 }
 
-export default function LumaSidebar({ profile, workspace, onLogout }: Props) {
+export default function LumaSidebar({ profile, workspace, onLogout, accessLocked = false }: Props) {
   const isOwner = profile.role === "admin";
   const [activeSection, setActiveSection] = useState(isOwner ? "administration" : "dashboard");
   const [ownerTab, setOwnerTab] = useState("overview");
@@ -145,7 +145,7 @@ export default function LumaSidebar({ profile, workspace, onLogout }: Props) {
       {mobileOpen && <button type="button" className="mobile-sidebar-backdrop" aria-label="Tutup menu" onClick={() => setMobileOpen(false)} />}
 
       {collapsed && <button type="button" className="sidebar-hidden-reopen" onClick={toggleCollapsed} aria-label="Buka sidebar" title="Buka sidebar"><LumaIcon name="menu" /></button>}
-      <aside className={`sidebar ${isOwner ? "owner-sidebar" : ""} ${collapsed ? "is-collapsed" : ""} ${mobileOpen ? "mobile-open" : ""}`} id="sidebar">
+      <aside className={`sidebar ${isOwner ? "owner-sidebar" : ""} ${collapsed ? "is-collapsed" : ""} ${mobileOpen ? "mobile-open" : ""} ${accessLocked && !isOwner ? "subscription-locked" : ""}`} id="sidebar">
         <div className="brand">
           <img src="/luma-mark.png" alt="Lumaway" className="brand-mark" />
           <div className="brand-wordmark">
