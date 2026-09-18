@@ -5,8 +5,15 @@ import { createClient } from "../../lib/supabase-browser";
 
 type Row = { id?: number; row_order: number; row_data: Record<string,string> };
 type Sheet = { id:number; name:string; columns_json:string[] };
-type Mode = "sheet" | "import";
-const DEFAULT_COLUMNS=["Column A","Column B","Column C","Column D"];
+type Mode = "sheet" | "import" | "database";
+type ImportTarget = "sheet_only" | "creator_samples" | "shipping" | "creators" | "products" | "sales" | "performance";
+type DbTarget = "creator_samples" | "shipping";
+const DEFAULT_COLUMNS=["A","B","C","D"];
+const DB_FIELDS:Record<DbTarget,string[]>={
+  creator_samples:["creator_name","platform","sku","product_name","sample_status","sent_date","return_date","qty","product_value","tracking","notes"],
+  shipping:["data_date","creator_name","platform","sku","product_name","qty","product_cost","shipping_cost","courier","tracking","status"],
+};
+const DB_NUMERIC=new Set(["qty","product_value","product_cost","shipping_cost"]);
 
 function parseDelimited(text:string){
   const delimiter=(text.split("\n")[0]?.match(/\t/g)?.length||0)>(text.split("\n")[0]?.match(/,/g)?.length||0)?"\t":",";
@@ -34,6 +41,23 @@ function uniqueHeaders(values:string[]){
     return count? `${base} ${count+1}`:base;
   });
 }
+function normalized(value:string){return String(value||"").toLowerCase().replace(/[^a-z0-9]+/g,"")}
+function detectImportTarget(filename:string,headers:string[]):ImportTarget{
+  const keys=headers.map(normalized);const hay=`${normalized(filename)} ${keys.join(" ")}`;
+  const has=(...terms:string[])=>terms.some(term=>hay.includes(normalized(term)));
+  if(has("sample_status","sent_date","return_date","sample","kirim sample","sample creator"))return "creator_samples";
+  if(has("shipping_cost","ongkir","biaya ongkir","courier","kurir","tracking","resi","shipping"))return "shipping";
+  if(has("gmv","commission","komisi","orders","pesanan teratribusi","omzet penjualan"))return "performance";
+  if(has("order id","id pesanan","transaction id","id transaksi")&&has("sku","product","produk"))return "sales";
+  if(has("hpp","cost price","harga modal")&&has("sku"))return "products";
+  if(has("creator name","nama affiliate","username affiliate","affiliate id")&&!has("gmv","orders","omzet"))return "creators";
+  return "sheet_only";
+}
+function dbValue(field:string,value:any){
+  if(DB_NUMERIC.has(field))return value===""||value===null||value===undefined?0:Number(value)||0;
+  if(["sent_date","return_date","data_date"].includes(field))return value||null;
+  return value===""?null:value;
+}
 
 export default function InternalExcelGrid({workspaceId}:{workspaceId:string}){
   const supabase=useMemo(()=>createClient(),[]);
@@ -54,6 +78,10 @@ export default function InternalExcelGrid({workspaceId}:{workspaceId:string}){
   const [importHeaders,setImportHeaders]=useState<string[]>([]);
   const [importRows,setImportRows]=useState<string[][]>([]);
   const [mappedHeaders,setMappedHeaders]=useState<string[]>([]);
+  const [importTarget,setImportTarget]=useState<ImportTarget>("sheet_only");
+  const [dbTarget,setDbTarget]=useState<DbTarget>("creator_samples");
+  const [dbRows,setDbRows]=useState<Record<string,any>[]>([]);
+  const [dbBusy,setDbBusy]=useState(false);
 
   async function loadSheets(){
     let {data,error}=await supabase.from("workspace_grid_sheets").select("id,name,columns_json").eq("workspace_id",workspaceId).order("id");
