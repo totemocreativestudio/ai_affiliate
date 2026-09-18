@@ -16,6 +16,10 @@ export default function UserProfile({workspaceId,userId}:{workspaceId:string;use
   const [phonePending,setPhonePending]=useState(false);
   const [channelUrl,setChannelUrl]=useState("");
   const [busy,setBusy]=useState(false);
+  const [emailBusy,setEmailBusy]=useState(false);
+  const [phoneBusy,setPhoneBusy]=useState(false);
+  const [otpExpiresAt,setOtpExpiresAt]=useState<number|null>(null);
+  const [otpRemaining,setOtpRemaining]=useState(0);
   const [status,setStatus]=useState("");
 
   async function load(){
@@ -27,6 +31,17 @@ export default function UserProfile({workspaceId,userId}:{workspaceId:string;use
     const data=p.data as Row;setProfile(data);setForm({full_name:data.full_name||"",nickname:data.nickname||"",position_title:data.position_title||"",bio:data.bio||"",education:data.education||"",birth_date:data.birth_date||""});setChannelUrl(s.data?.setting_value||LUMAWAY_COMMUNITY_URL);
   }
   useEffect(()=>{void load()},[userId]);
+  useEffect(()=>{
+    if(!otpExpiresAt){setOtpRemaining(0);return}
+    const tick=()=>{
+      const remaining=Math.max(0,Math.ceil((otpExpiresAt-Date.now())/1000));
+      setOtpRemaining(remaining);
+      if(remaining<=0)setOtp("");
+    };
+    tick();
+    const timer=window.setInterval(tick,1000);
+    return()=>window.clearInterval(timer);
+  },[otpExpiresAt]);
 
   async function saveProfile(){
     if(!String(form.full_name||"").trim()||!String(form.nickname||"").trim()||!String(form.education||"").trim()||!String(form.birth_date||"").trim()||!String(form.bio||"").trim()) return setStatus("Lengkapi nama, nama panggilan, pendidikan, tanggal lahir, dan bio singkat.");
@@ -55,20 +70,49 @@ export default function UserProfile({workspaceId,userId}:{workspaceId:string;use
 
   async function uploadAvatar(file:File|null){if(!file)return;if(!file.type.startsWith("image/"))return setStatus("Avatar harus berupa gambar.");if(file.size>5*1024*1024)return setStatus("Avatar maksimal 5 MB.");setBusy(true);const ext=file.name.split(".").pop()?.toLowerCase()||"jpg";const path=`${userId}/avatar-${Date.now()}.${ext}`;const {error}=await supabase.storage.from("luma-avatars").upload(path,file,{upsert:true,contentType:file.type});if(error){setBusy(false);return setStatus(error.message)}const {data}=supabase.storage.from("luma-avatars").getPublicUrl(path);const {error:u}=await supabase.from("profiles").update({avatar_url:data.publicUrl,updated_at:new Date().toISOString()}).eq("id",userId);setBusy(false);if(u)return setStatus(u.message);setStatus("Foto profil diperbarui.");await load();}
 
-  async function changeEmail(){if(!newEmail.includes("@"))return setStatus("Masukkan email baru yang valid.");setBusy(true);const {error}=await supabase.auth.updateUser({email:newEmail},{emailRedirectTo:`${window.location.origin}/app.lumaway/profile`});setBusy(false);if(error)return setStatus(error.message);setStatus("Link verifikasi email sudah dikirim. Email login berubah setelah verifikasi selesai.");setNewEmail("");}
+  async function changeEmail(){
+    if(emailBusy)return;
+    if(!newEmail.includes("@"))return setStatus("Masukkan email baru yang valid.");
+    setEmailBusy(true);
+    const {error}=await supabase.auth.updateUser({email:newEmail},{emailRedirectTo:window.location.origin+"/app.lumaway/profile"});
+    setEmailBusy(false);
+    if(error)return setStatus(error.message);
+    setStatus("Link verifikasi email sudah dikirim. Email login berubah setelah verifikasi selesai.");
+    setNewEmail("");
+  }
 
   async function requestPhone(){
-    if(!newPhone.trim())return setStatus("Masukkan nomor WhatsApp dalam format +62812...");setBusy(true);setStatus("Mengirim OTP melalui WhatsApp bot...");
-    try{const r=await fetch("/api/profile/whatsapp-otp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({workspace_id:workspaceId,action:"request",phone:newPhone.trim()})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||"Gagal mengirim OTP.");setPhonePending(true);const provider=String(d.provider||"WhatsApp");setStatus(`OTP 6 digit dikirim ke chat WhatsApp nomor tersebut melalui ${provider}. Kode berlaku 5 menit.`);}catch(e:any){setStatus(e?.message||"Gagal mengirim OTP WhatsApp.")}finally{setBusy(false)}
+    if(phoneBusy)return;
+    if(!newPhone.trim())return setStatus("Masukkan nomor WhatsApp dalam format 08... atau +62812...");
+    setPhoneBusy(true);setStatus("Mengirim OTP melalui WhatsApp bot...");setOtp("");
+    try{
+      const r=await fetch("/api/profile/whatsapp-otp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({workspace_id:workspaceId,action:"request",phone:newPhone.trim()})});
+      const d=await r.json();
+      if(!r.ok||!d.ok)throw new Error(d.error||"Gagal mengirim OTP.");
+      const expiresIn=Math.max(30,Number(d.expires_in||300));
+      setPhonePending(true);setOtpExpiresAt(Date.now()+expiresIn*1000);setOtpRemaining(expiresIn);
+      const provider=String(d.provider||"WhatsApp");
+      setStatus("OTP 6 digit dikirim melalui "+provider+". Kode berlaku "+Math.ceil(expiresIn/60)+" menit.");
+    }catch(e:any){setStatus(e?.message||"Gagal mengirim OTP WhatsApp.")}finally{setPhoneBusy(false)}
   }
 
   async function verifyPhone(){
-    if(!otp.trim()||!newPhone.trim())return;setBusy(true);setStatus("Memverifikasi OTP...");
-    try{const r=await fetch("/api/profile/whatsapp-otp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({workspace_id:workspaceId,action:"verify",phone:newPhone.trim(),otp:otp.trim()})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||"OTP gagal diverifikasi.");const {data:{user}}=await supabase.auth.getUser();
-    const emailVerifiedAt=(user as any)?.email_confirmed_at||profile?.email_verified_at||null;
-    const completed=Boolean(emailVerifiedAt&&String(form.full_name||"").trim()&&String(form.nickname||"").trim()&&String(form.education||"").trim()&&String(form.birth_date||"").trim()&&String(form.bio||"").trim());
-    await supabase.from("profiles").update({email_verified_at:emailVerifiedAt,profile_completed:completed,updated_at:new Date().toISOString()}).eq("id",userId);
-    setStatus(completed?"Nomor WhatsApp terverifikasi. Profil Anda sudah lengkap.":"Nomor WhatsApp berhasil diverifikasi. Lengkapi data profil untuk melanjutkan.");window.dispatchEvent(new Event("lumaway-profile-updated"));setPhonePending(false);setOtp("");setNewPhone("");await load();}catch(e:any){setStatus(e?.message||"OTP gagal diverifikasi.")}finally{setBusy(false)}
+    if(phoneBusy)return;
+    if(otpRemaining<=0)return void requestPhone();
+    if(!otp.trim()||!newPhone.trim())return;
+    setPhoneBusy(true);setStatus("Memverifikasi OTP...");
+    try{
+      const r=await fetch("/api/profile/whatsapp-otp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({workspace_id:workspaceId,action:"verify",phone:newPhone.trim(),otp:otp.trim()})});
+      const d=await r.json();
+      if(!r.ok||!d.ok)throw new Error(d.error||"OTP gagal diverifikasi.");
+      const {data:{user}}=await supabase.auth.getUser();
+      const emailVerifiedAt=(user as any)?.email_confirmed_at||profile?.email_verified_at||null;
+      const completed=Boolean(emailVerifiedAt&&String(form.full_name||"").trim()&&String(form.nickname||"").trim()&&String(form.education||"").trim()&&String(form.birth_date||"").trim()&&String(form.bio||"").trim());
+      await supabase.from("profiles").update({email_verified_at:emailVerifiedAt,profile_completed:completed,updated_at:new Date().toISOString()}).eq("id",userId);
+      setStatus(completed?"Nomor WhatsApp terverifikasi. Profil Anda sudah lengkap.":"Nomor WhatsApp berhasil diverifikasi. Lengkapi data profil untuk melanjutkan.");
+      window.dispatchEvent(new Event("lumaway-profile-updated"));
+      setPhonePending(false);setOtp("");setOtpExpiresAt(null);setNewPhone("");await load();
+    }catch(e:any){setStatus(e?.message||"OTP gagal diverifikasi.")}finally{setPhoneBusy(false)}
   }
 
   async function confirmChannel(){const now=new Date().toISOString();const {error}=await supabase.from("profiles").update({whatsapp_channel_joined_at:now,updated_at:now}).eq("id",userId);if(error)return setStatus(error.message);setStatus("Status bergabung ke saluran WhatsApp disimpan.");await load();}
@@ -85,8 +129,8 @@ export default function UserProfile({workspaceId,userId}:{workspaceId:string;use
       <div>
         <div className="card"><h3>Personal Information</h3><div className="grid"><label>Nama Lengkap<input value={form.full_name||""} onChange={e=>setForm({...form,full_name:e.target.value})}/></label><label>Nama Panggilan<input value={form.nickname||""} onChange={e=>setForm({...form,nickname:e.target.value})} placeholder="Nama yang dipakai Luma"/></label><label>Posisi / Profesi<input value={form.position_title||""} onChange={e=>setForm({...form,position_title:e.target.value})} placeholder="Contoh: Marketing Specialist"/></label><label>Pendidikan<input value={form.education||""} onChange={e=>setForm({...form,education:e.target.value})} placeholder="Contoh: S1 Marketing"/></label><label>Tanggal Lahir<input type="date" value={form.birth_date||""} onChange={e=>setForm({...form,birth_date:e.target.value})}/></label></div><label>Bio Singkat<textarea value={form.bio||""} onChange={e=>setForm({...form,bio:e.target.value})} placeholder="Ceritakan fokus pekerjaan, pengalaman, atau minat profesional Anda."/></label><button className="primary" disabled={busy} onClick={saveProfile}>Save Profile</button></div>
         <div className="grid profile-security-grid">
-          <div className="card"><h3>Change Email</h3><p className="muted">Email baru wajib diverifikasi melalui link keamanan sebelum menjadi email login aktif.</p><label>Email baru<input type="email" value={newEmail} onChange={e=>setNewEmail(e.target.value)} placeholder="new@email.com"/></label><button className="secondary" disabled={busy} onClick={changeEmail}>Send Verification</button></div>
-          <div className="card"><h3>Verify WhatsApp</h3><p className="muted">OTP dikirim melalui bot WhatsApp Lumaway. Nomor terverifikasi dipakai untuk keamanan akun dan komunikasi yang Anda setujui.</p><label>Nomor WhatsApp<input value={newPhone} onChange={e=>setNewPhone(e.target.value)} placeholder="+62812..."/></label>{phonePending&&<label>OTP<input inputMode="numeric" maxLength={6} value={otp} onChange={e=>setOtp(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder="6 digit OTP"/></label>}<div className="button-row">{!phonePending?<button className="secondary" disabled={busy} onClick={requestPhone}>Send WhatsApp OTP</button>:<><button className="primary" disabled={busy||otp.length!==6} onClick={verifyPhone}>Verify OTP</button><button className="secondary" disabled={busy} onClick={()=>{setPhonePending(false);setOtp("")}}>Cancel</button></>}</div></div>
+          <div className="card"><h3>Change Email</h3><p className="muted">Email baru wajib diverifikasi melalui link keamanan sebelum menjadi email login aktif.</p><label>Email baru<input type="email" value={newEmail} onChange={e=>setNewEmail(e.target.value)} placeholder="new@email.com"/></label><button type="button" className="secondary" disabled={emailBusy} onClick={()=>void changeEmail()}>{emailBusy?"Sending...":"Send Verification"}</button></div>
+          <div className="card"><h3>Verify WhatsApp</h3><p className="muted">OTP dikirim melalui bot WhatsApp Lumaway. Nomor terverifikasi dipakai untuk keamanan akun dan komunikasi yang Anda setujui.</p><label>Nomor WhatsApp<input value={newPhone} onChange={e=>setNewPhone(e.target.value)} placeholder="08... atau +62812..." disabled={phoneBusy}/></label>{phonePending&&<label>OTP<input inputMode="numeric" maxLength={6} value={otp} disabled={phoneBusy||otpRemaining<=0} onChange={e=>setOtp(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder={otpRemaining>0?"6 digit OTP":"OTP kedaluwarsa"}/>{otpRemaining>0?<small className="otp-countdown">Berlaku {Math.floor(otpRemaining/60)}:{String(otpRemaining%60).padStart(2,"0")}</small>:<small className="otp-expired">OTP kedaluwarsa. Klik Verifikasi Ulang untuk meminta kode baru.</small>}</label>}<div className="button-row">{!phonePending?<button type="button" className="secondary" disabled={phoneBusy} onClick={()=>void requestPhone()}>{phoneBusy?"Sending...":"Send WhatsApp OTP"}</button>:otpRemaining<=0?<><button type="button" className="primary" disabled={phoneBusy} onClick={()=>void requestPhone()}>{phoneBusy?"Sending...":"Verifikasi Ulang"}</button><button type="button" className="secondary" disabled={phoneBusy} onClick={()=>{setPhonePending(false);setOtp("");setOtpExpiresAt(null)}}>Cancel</button></>:<><button type="button" className="primary" disabled={phoneBusy||otp.length!==6} onClick={()=>void verifyPhone()}>{phoneBusy?"Verifying...":"Verify OTP"}</button><button type="button" className="secondary" disabled={phoneBusy} onClick={()=>{setPhonePending(false);setOtp("");setOtpExpiresAt(null)}}>Cancel</button></>}</div></div>
         </div>
         <div className="card whatsapp-channel-card whatsapp-community-card"><div><span className="eyebrow">LUMAWAY COMMUNITY</span><h3>Grup WhatsApp Lumaway</h3><p className="muted">{profile?.phone_verified_at?"Nomor WhatsApp Anda sudah terverifikasi. Scan QR atau buka grup untuk bergabung ke komunitas Lumaway.":"Verifikasi nomor WhatsApp terlebih dahulu. Setelah berhasil, QR untuk bergabung ke komunitas akan muncul di sini."}</p></div>{profile?.phone_verified_at?<div className="whatsapp-community-join"><img src={`https://quickchart.io/qr?size=220&margin=1&text=${encodeURIComponent(channelUrl||LUMAWAY_COMMUNITY_URL)}`} alt="QR LUMAWAY Community"/><div className="button-row"><a className="button primary" href={channelUrl||LUMAWAY_COMMUNITY_URL} target="_blank" rel="noreferrer">Bergabung ke LUMAWAY Community</a>{!profile?.whatsapp_channel_joined_at&&<button className="secondary" onClick={confirmChannel}>Saya sudah bergabung</button>}{profile?.whatsapp_channel_joined_at&&<span className="status-pill s-paid">Joined ✓</span>}</div></div>:<span className="status-pill">Menunggu verifikasi WhatsApp</span>}</div>
       </div>
