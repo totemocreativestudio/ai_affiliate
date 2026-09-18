@@ -28,3 +28,10 @@ jobs:
       - run: node scripts/lumaway-route-check.mjs
       - run: npx tsc --noEmit
       - run: npm run build
+      - name: Smoke test production routes
+        shell: bash
+        run: |
+          npm run start -- -p 3100 >/tmp/lumaway-next.log 2>&1 &
+          NEXT_PID=$!
+          trap 'kill $NEXT_PID 2>/dev/null || true' EXIT
+          node scripts/lumaway-http-smoke.mjs
