@@ -114,6 +114,7 @@ export default function LumawayWorkspaceApp() {
   const [showPassword, setShowPassword] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [authMessage, setAuthMessage] = useState("");
+  const [needsEmailVerification, setNeedsEmailVerification] = useState(false);
   const [accessLocked, setAccessLocked] = useState(false);
   const [subscriptionEndsAt, setSubscriptionEndsAt] = useState<string | null>(null);
   const [lockPromptOpen, setLockPromptOpen] = useState(false);
@@ -317,26 +318,63 @@ export default function LumawayWorkspaceApp() {
 
   async function login() {
     if (!email || !password) return setError("Email dan password wajib diisi.");
-    setError(""); setAuthMessage(""); setLoading(true);
+    setError(""); setAuthMessage(""); setNeedsEmailVerification(false); setLoading(true);
     const { data, error: loginError } = await supabase.auth.signInWithPassword({ email, password });
-    if (loginError) { setError("Email atau password tidak sesuai."); setLoading(false); return; }
+    if (loginError) {
+      const message = String(loginError.message || "").toLowerCase();
+      const unverified = message.includes("email not confirmed") || message.includes("email_not_confirmed") || message.includes("not confirmed");
+      setNeedsEmailVerification(unverified);
+      setError(unverified
+        ? "Email akun ini belum diverifikasi. Buka email verifikasi Lumaway atau kirim ulang link verifikasi."
+        : "Email atau password tidak sesuai.");
+      setLoading(false);
+      return;
+    }
+    setNeedsEmailVerification(false);
     if (data.user) await loadLumaData(data.user.id);
     setLoading(false);
+  }
+
+  async function resendVerification() {
+    if (!email.trim()) return setError("Masukkan email akun terlebih dahulu.");
+    setError(""); setAuthMessage(""); setLoading(true);
+    const { error: resendError } = await supabase.auth.resend({
+      type: "signup",
+      email: email.trim(),
+      options: { emailRedirectTo: `${window.location.origin}${routeForSection("dashboard")}` },
+    });
+    setLoading(false);
+    if (resendError) {
+      const message = String(resendError.message || "").toLowerCase();
+      setError(message.includes("rate") ? "Terlalu banyak permintaan verifikasi. Tunggu sebentar lalu coba lagi." : "Email verifikasi belum dapat dikirim. Coba lagi beberapa saat.");
+      return;
+    }
+    setNeedsEmailVerification(true);
+    setAuthMessage("Email verifikasi dikirim ulang. Cek Inbox, Spam, Promotions, atau Junk lalu buka link verifikasi sebelum login.");
   }
 
   async function signup() {
     if (!email || !password) return setError("Email dan password wajib diisi.");
     if (password.length < 8) return setError("Gunakan password minimal 8 karakter.");
     if (!termsAccepted) return setError("Konfirmasi persetujuan akses workspace terlebih dahulu.");
-    setError(""); setAuthMessage(""); setLoading(true);
+    setError(""); setAuthMessage(""); setNeedsEmailVerification(false); setLoading(true);
     const { data, error: signupError } = await supabase.auth.signUp({
       email,
       password,
       options: { emailRedirectTo: `${window.location.origin}${routeForSection("dashboard")}` },
     });
-    if (signupError) { setError("error, terjadi kesalahan."); setLoading(false); return; }
+    if (signupError) {
+      const message = String(signupError.message || "").toLowerCase();
+      setError(message.includes("already") || message.includes("registered")
+        ? "Email ini sudah terdaftar. Silakan Sign in atau kirim ulang email verifikasi."
+        : "Akun belum dapat dibuat. Silakan coba lagi.");
+      setNeedsEmailVerification(message.includes("already") || message.includes("registered"));
+      setLoading(false);
+      return;
+    }
     if (data.session) await supabase.auth.signOut();
-    setAuthMessage("Akun berhasil dibuat. Verifikasi email, lalu login ke workspace Lumaway Anda.");
+    setNeedsEmailVerification(true);
+    setAuthMessage("Akun berhasil dibuat. Link verifikasi sudah diminta. Cek Inbox, Spam, Promotions, atau Junk, lalu verifikasi email sebelum login.");
     setAuthMode("signin"); setPassword(""); setTermsAccepted(false); setLoading(false);
     window.history.replaceState(null, "", `${APP_BASE}/login`);
   }
@@ -348,7 +386,7 @@ export default function LumawayWorkspaceApp() {
   }
 
   function switchAuthMode(mode: AuthMode) {
-    setAuthMode(mode); setError(""); setAuthMessage("");
+    setAuthMode(mode); setError(""); setAuthMessage(""); setNeedsEmailVerification(false);
     window.history.replaceState(null, "", mode === "signup" ? `${APP_BASE}/register` : `${APP_BASE}/login`);
   }
 
@@ -359,7 +397,7 @@ export default function LumawayWorkspaceApp() {
   if (!profile || !workspace) {
     return <main className="standalone-auth"><section className="auth-shell">
       <aside className="auth-showcase"><BrandLockup light /><div className="auth-story"><span className="auth-kicker">AFFILIATE INTELLIGENCE WORKSPACE</span><h1>Turn affiliate data into clear decisions.</h1><p>Monitor creator performance, campaign support, product movement, and AI insights from one focused workspace.</p><div className="auth-insight-card"><div className="auth-insight-head"><span>Workspace intelligence</span><i>Live</i></div><div className="auth-spark-bars" aria-hidden="true"><span style={{ height: "34%" }} /><span style={{ height: "48%" }} /><span style={{ height: "42%" }} /><span style={{ height: "68%" }} /><span style={{ height: "58%" }} /><span style={{ height: "82%" }} /><span style={{ height: "72%" }} /><span style={{ height: "94%" }} /></div><div className="auth-insight-footer"><span>Creator performance</span><b>+24.8%</b></div></div></div></aside>
-      <section className="auth-form-pane"><div className="auth-form-wrap"><div className="auth-mode-switch"><button type="button" className={authMode === "signin" ? "active" : ""} onClick={() => switchAuthMode("signin")}>Sign in</button><button type="button" className={authMode === "signup" ? "active" : ""} onClick={() => switchAuthMode("signup")}>Create account</button></div><div className="auth-heading"><span className="auth-kicker dark">LUMAWAY WORKSPACE</span><h2>{authMode === "signin" ? "Welcome back" : "Create your Lumaway account"}</h2><p>{authMode === "signin" ? "Sign in to continue to Affiliate Intelligence." : "Your workspace is provisioned automatically after sign-up."}</p></div><div id="lumaway-google-button" className="google-gsi-host"><span>Memuat Google Sign-In...</span></div><div className="auth-divider"><span>or continue with email</span></div><div className="auth-fields"><label><span>Email address</span><input type="email" value={email} autoComplete="email" placeholder="name@company.com" onChange={(e) => setEmail(e.target.value)} /></label><label><span>Password</span><div className="password-field"><input type={showPassword ? "text" : "password"} value={password} autoComplete={authMode === "signin" ? "current-password" : "new-password"} placeholder="Minimum 8 characters" onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && authMode === "signin") void login(); }} /><button type="button" onClick={() => setShowPassword((value) => !value)}>{showPassword ? "Hide" : "Show"}</button></div></label></div>{authMode === "signup" && <label className="auth-consent"><input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} /><span>I agree to the Lumaway workspace terms and privacy flow.</span></label>}{error && <div className="auth-alert error"><span>!</span><p>{error}</p></div>}{authMessage && <div className="auth-alert success"><span>✓</span><p>{authMessage}</p></div>}<button type="button" className="auth-primary-button" onClick={() => authMode === "signin" ? void login() : void signup()}>{authMode === "signin" ? "Sign in to Lumaway" : "Create account"}<span>→</span></button></div></section>
+      <section className="auth-form-pane"><div className="auth-form-wrap"><div className="auth-mode-switch"><button type="button" className={authMode === "signin" ? "active" : ""} onClick={() => switchAuthMode("signin")}>Sign in</button><button type="button" className={authMode === "signup" ? "active" : ""} onClick={() => switchAuthMode("signup")}>Create account</button></div><div className="auth-heading"><span className="auth-kicker dark">LUMAWAY WORKSPACE</span><h2>{authMode === "signin" ? "Welcome back" : "Create your Lumaway account"}</h2><p>{authMode === "signin" ? "Sign in to continue to Affiliate Intelligence." : "Your workspace is provisioned automatically after sign-up."}</p></div><div id="lumaway-google-button" className="google-gsi-host"><span>Memuat Google Sign-In...</span></div><div className="auth-divider"><span>or continue with email</span></div><div className="auth-fields"><label><span>Email address</span><input type="email" value={email} autoComplete="email" placeholder="name@company.com" onChange={(e) => setEmail(e.target.value)} /></label><label><span>Password</span><div className="password-field"><input type={showPassword ? "text" : "password"} value={password} autoComplete={authMode === "signin" ? "current-password" : "new-password"} placeholder="Minimum 8 characters" onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && authMode === "signin") void login(); }} /><button type="button" onClick={() => setShowPassword((value) => !value)}>{showPassword ? "Hide" : "Show"}</button></div></label></div>{authMode === "signup" && <label className="auth-consent"><input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} /><span>I agree to the Lumaway workspace terms and privacy flow.</span></label>}{error && <div className="auth-alert error"><span>!</span><p>{error}</p></div>}{authMessage && <div className="auth-alert success"><span>✓</span><p>{authMessage}</p></div>}{authMode === "signin" && needsEmailVerification && <button type="button" className="auth-resend-button" disabled={loading} onClick={() => void resendVerification()}>Kirim ulang email verifikasi</button>}<button type="button" className="auth-primary-button" onClick={() => authMode === "signin" ? void login() : void signup()}>{authMode === "signin" ? "Sign in to Lumaway" : "Create account"}<span>→</span></button></div></section>
     </section></main>;
   }
 
