@@ -144,6 +144,7 @@ export default function LumaSidebar({ profile, workspace, onLogout }: Props) {
       </button>
       {mobileOpen && <button type="button" className="mobile-sidebar-backdrop" aria-label="Tutup menu" onClick={() => setMobileOpen(false)} />}
 
+      {collapsed && <button type="button" className="sidebar-hidden-reopen" onClick={toggleCollapsed} aria-label="Buka sidebar" title="Buka sidebar"><LumaIcon name="menu" /></button>}
       <aside className={`sidebar ${isOwner ? "owner-sidebar" : ""} ${collapsed ? "is-collapsed" : ""} ${mobileOpen ? "mobile-open" : ""}`} id="sidebar">
         <div className="brand">
           <img src="/luma-mark.png" alt="Lumaway" className="brand-mark" />
