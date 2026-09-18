@@ -31,9 +31,29 @@ import DashboardReminder from "./components/DashboardReminder";
 import PWAInstallButton from "./components/PWAInstallButton";
 import MobileQuickNav from "./components/MobileQuickNav";
 
-type Profile = { id: string; email: string | null; full_name: string | null; role: string; active: boolean };
+type Profile = {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  role: string;
+  active: boolean;
+  position_title?: string | null;
+  bio?: string | null;
+  education?: string | null;
+  birth_date?: string | null;
+  phone_verified_at?: string | null;
+};
 type Workspace = { id: string; name: string; slug: string; status: string };
 type AuthMode = "signin" | "signup";
+
+function profileIncomplete(profile: Profile) {
+  if (profile.role === "admin") return false;
+  return !profile.full_name?.trim()
+    || !profile.position_title?.trim()
+    || !profile.bio?.trim()
+    || !profile.education?.trim()
+    || !profile.birth_date;
+}
 
 function BrandLockup({ light = false }: { light?: boolean }) {
   return (
@@ -76,11 +96,12 @@ function cleanAuthErrorQuery() {
   window.history.replaceState(null, "", `${url.pathname}${url.search}`);
 }
 
-function activateCurrentRoute(isAdmin: boolean) {
+function activateCurrentRoute(isAdmin: boolean, accessLocked = false) {
   const fallback = isAdmin ? "administration" : "dashboard";
   let section = sectionFromPath(window.location.pathname) || fallback;
   if (isAdmin) section = "administration";
   if (!isAdmin && section === "administration") section = "dashboard";
+  if (!isAdmin && accessLocked && !["dashboard", "billing", "profile"].includes(section)) section = "dashboard";
 
   const pages = Array.from(document.querySelectorAll<HTMLElement>(".content > .legacy-page-anchor"));
   let found = false;
@@ -109,6 +130,7 @@ export default function LumawayWorkspaceApp() {
   const [showPassword, setShowPassword] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [authMessage, setAuthMessage] = useState("");
+  const [accessLocked, setAccessLocked] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -133,7 +155,7 @@ export default function LumawayWorkspaceApp() {
     if (!profile || !workspace) return;
     const isAdmin = profile.role === "admin";
     const restore = () => {
-      window.requestAnimationFrame(() => window.setTimeout(() => activateCurrentRoute(isAdmin), 30));
+      window.requestAnimationFrame(() => window.setTimeout(() => activateCurrentRoute(isAdmin, accessLocked), 30));
     };
     const navigate = () => {
       restore();
@@ -148,7 +170,7 @@ export default function LumawayWorkspaceApp() {
       window.removeEventListener("popstate", navigate);
       window.removeEventListener("lumaway-routechange", navigate as EventListener);
     };
-  }, [profile, workspace]);
+  }, [profile, workspace, accessLocked]);
 
   useEffect(() => {
     if (loading || profile || workspace) return;
@@ -162,16 +184,23 @@ export default function LumawayWorkspaceApp() {
         await loadGoogleIdentity();
         if (cancelled) return;
         const google = (window as any).google;
+        const rawNonce = crypto.randomUUID().replaceAll("-", "");
+        const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rawNonce));
+        const hashedNonce = btoa(String.fromCharCode(...new Uint8Array(digest))).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+        sessionStorage.setItem("lumaway_google_nonce", rawNonce);
         google.accounts.id.initialize({
           client_id: cfg.client_id,
+          nonce: hashedNonce,
           callback: async (response: any) => {
             setError("");
             setAuthMessage("");
             setLoading(true);
             try {
+              const pendingNonce = sessionStorage.getItem("lumaway_google_nonce") || "";
               const { data, error: idError } = await supabase.auth.signInWithIdToken({
                 provider: "google",
                 token: String(response?.credential || ""),
+                ...(pendingNonce ? { nonce: pendingNonce } : {}),
               });
               if (idError || !data.user) throw idError || new Error();
               await loadLumaData(data.user.id);
@@ -229,7 +258,7 @@ export default function LumawayWorkspaceApp() {
     setError("");
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
-      .select("id,email,full_name,role,active")
+      .select("id,email,full_name,role,active,position_title,bio,education,birth_date,phone_verified_at")
       .eq("id", userId)
       .single();
     if (profileError || !profileData) {
@@ -259,17 +288,42 @@ export default function LumawayWorkspaceApp() {
       return;
     }
 
-    setProfile(profileData as Profile);
+    const normalizedProfile = profileData as Profile;
+    setProfile(normalizedProfile);
     setWorkspace(workspaceData as Workspace);
+
+    if (normalizedProfile.role !== "admin") {
+      const { data: subscriptionRows } = await supabase
+        .from("luma_user_subscriptions")
+        .select("status,starts_at,ends_at")
+        .eq("user_id", userId)
+        .order("ends_at", { ascending: false })
+        .limit(10);
+      const hasActive = (subscriptionRows || []).some((item: any) =>
+        String(item.status || "").toLowerCase() === "active"
+        && item.ends_at
+        && new Date(item.ends_at).getTime() > Date.now()
+      );
+      const hasHistory = Boolean(subscriptionRows?.length);
+      setAccessLocked(hasHistory && !hasActive);
+    } else {
+      setAccessLocked(false);
+    }
     window.localStorage.setItem("luma_active_workspace", workspaceData.id);
 
     const currentSection = sectionFromPath(window.location.pathname);
+    const mustCompleteProfile = profileIncomplete(normalizedProfile);
     const target = profileData.role === "admin"
       ? "administration"
-      : !currentSection || isAuthPath(window.location.pathname) || currentSection === "administration"
-        ? "dashboard"
-        : currentSection;
+      : mustCompleteProfile
+        ? "profile"
+        : !currentSection || isAuthPath(window.location.pathname) || currentSection === "administration"
+          ? "dashboard"
+          : currentSection;
     navigateToSection(target, { replace: true });
+    if (mustCompleteProfile) {
+      window.history.replaceState(null, "", routeForSection("profile") + "?complete=1");
+    }
   }
 
   async function login() {
@@ -322,10 +376,10 @@ export default function LumawayWorkspaceApp() {
 
   const isAdmin = profile.role === "admin";
   return <div className="luma-app">
-    <LumaSidebar profile={profile} workspace={workspace} onLogout={logout} />
+    <LumaSidebar profile={profile} workspace={workspace} onLogout={logout} accessLocked={accessLocked} />
     <div className="app-shell">
       <header className="topbar">
-        <div><span className="topbar-kicker">{isAdmin ? "LUMAWAY OWNER" : "LUMAWAY WORKSPACE"}</span><span className="topbar-title">{isAdmin ? "Business Control Center" : "Affiliate Intelligence"}</span></div>
+        <div className="topbar-brand-copy"><span className="topbar-kicker">{isAdmin ? "LUMAWAY OWNER" : "LUMAWAY WORKSPACE"}</span><span className="topbar-title">{isAdmin ? "Business Control Center" : "Affiliate Intelligence"}</span></div>
         <div className="topbar-right"><PWAInstallButton compact /><NotificationCenter workspaceId={workspace.id} userId={profile.id} /><span className="connection-pill"><i />{workspace.name} · Active</span></div>
       </header>
       <main className="content">
