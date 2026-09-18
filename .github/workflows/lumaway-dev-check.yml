@@ -11,7 +11,7 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
       NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: build-verification-key
@@ -35,3 +35,15 @@ jobs:
           NEXT_PID=$!
           trap 'kill $NEXT_PID 2>/dev/null || true' EXIT
           node scripts/lumaway-http-smoke.mjs
+      - name: Install marketing dependencies
+        working-directory: apps/marketing
+        run: npm ci
+      - name: Typecheck marketing website
+        working-directory: apps/marketing
+        run: npm run typecheck
+      - name: Test marketing website
+        working-directory: apps/marketing
+        run: npm test
+      - name: Build marketing website
+        working-directory: apps/marketing
+        run: npm run build
