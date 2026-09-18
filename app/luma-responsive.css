@@ -142,3 +142,12 @@ html[data-theme="dark"] .content table tbody td{background:#111a2b!important;col
 html[data-theme="dark"] .content button:not(.primary){background:#152034!important;color:#e5edf9!important;border-color:#334155!important}
 html[data-theme="dark"] .empty-state,html[data-theme="dark"] .owner-inline-note{color:#b8c4d8!important}
 @media(max-width:640px){.topbar{height:58px!important;padding-left:66px!important;padding-right:10px!important}.topbar-title{font-size:12px!important}.topbar-right{gap:6px!important}.content{padding:16px 12px 92px!important}.content h1{font-size:23px!important}.notification-popover{top:64px!important;left:8px!important;right:8px!important;max-height:calc(100dvh - 76px)!important}.notification-list{max-height:calc(100dvh - 190px)!important}}
+
+
+.profile-completion-notice{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:12px 0 18px;padding:12px 14px;border:1px solid #b2ccff;background:#eff8ff;border-radius:13px;color:#1849a9}
+.profile-completion-notice strong{font-size:12px}.profile-completion-notice span{font-size:10px;color:#175cd3}
+.topbar-brand-copy{display:grid;gap:2px;line-height:1.05}
+.topbar-brand-copy .topbar-kicker{margin:0;font-size:8px;letter-spacing:.16em}
+.topbar-brand-copy .topbar-title{margin:0;font-size:14px;line-height:1.25}
+html[data-theme="dark"] .profile-completion-notice{background:#102a43;border-color:#194d76;color:#dbeafe}
+html[data-theme="dark"] .profile-completion-notice span{color:#bfdbfe}
