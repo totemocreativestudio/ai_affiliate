@@ -31,7 +31,7 @@ import DashboardReminder from "./components/DashboardReminder";
 import PWAInstallButton from "./components/PWAInstallButton";
 import MobileQuickNav from "./components/MobileQuickNav";
 
-type Profile = { id: string; email: string | null; full_name: string | null; role: string; active: boolean };
+type Profile = { id: string; email: string | null; full_name: string | null; nickname: string | null; role: string; active: boolean; phone: string | null; phone_verified_at: string | null; email_verified_at: string | null; education: string | null; birth_date: string | null; bio: string | null; position_title: string | null; profile_completed: boolean };
 type Workspace = { id: string; name: string; slug: string; status: string };
 type AuthMode = "signin" | "signup";
 
@@ -76,11 +76,16 @@ function cleanAuthErrorQuery() {
   window.history.replaceState(null, "", `${url.pathname}${url.search}`);
 }
 
-function activateCurrentRoute(isAdmin: boolean) {
+function profileComplete(profile: Profile) {
+  return Boolean(profile.profile_completed && profile.full_name?.trim() && profile.nickname?.trim() && profile.phone_verified_at && profile.email_verified_at && profile.education?.trim() && profile.birth_date && profile.bio?.trim());
+}
+
+function activateCurrentRoute(isAdmin: boolean, accessLocked = false) {
   const fallback = isAdmin ? "administration" : "dashboard";
   let section = sectionFromPath(window.location.pathname) || fallback;
   if (isAdmin) section = "administration";
   if (!isAdmin && section === "administration") section = "dashboard";
+  if (!isAdmin && accessLocked && !["dashboard","billing","profile"].includes(section)) section = "dashboard";
 
   const pages = Array.from(document.querySelectorAll<HTMLElement>(".content > .legacy-page-anchor"));
   let found = false;
@@ -109,6 +114,9 @@ export default function LumawayWorkspaceApp() {
   const [showPassword, setShowPassword] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [authMessage, setAuthMessage] = useState("");
+  const [accessLocked, setAccessLocked] = useState(false);
+  const [subscriptionEndsAt, setSubscriptionEndsAt] = useState<string | null>(null);
+  const [lockPromptOpen, setLockPromptOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -123,8 +131,8 @@ export default function LumawayWorkspaceApp() {
       window.history.replaceState(null, "", routeForSection(legacyHash));
     }
 
-    const saved = window.localStorage.getItem("lumaway_theme");
-    if (saved === "dark" || saved === "light") document.documentElement.dataset.theme = saved;
+    document.documentElement.dataset.theme = "light";
+    window.localStorage.removeItem("lumaway_theme");
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => undefined);
     void loadSession();
   }, []);
@@ -133,7 +141,7 @@ export default function LumawayWorkspaceApp() {
     if (!profile || !workspace) return;
     const isAdmin = profile.role === "admin";
     const restore = () => {
-      window.requestAnimationFrame(() => window.setTimeout(() => activateCurrentRoute(isAdmin), 30));
+      window.requestAnimationFrame(() => window.setTimeout(() => activateCurrentRoute(isAdmin, accessLocked), 30));
     };
     const navigate = () => {
       restore();
@@ -148,7 +156,19 @@ export default function LumawayWorkspaceApp() {
       window.removeEventListener("popstate", navigate);
       window.removeEventListener("lumaway-routechange", navigate as EventListener);
     };
-  }, [profile, workspace]);
+  }, [profile, workspace, accessLocked]);
+
+  useEffect(() => {
+    if (!profile) return;
+    const refreshProfile = () => void loadLumaData(profile.id);
+    const showLockPrompt = () => setLockPromptOpen(true);
+    window.addEventListener("lumaway-profile-updated", refreshProfile);
+    window.addEventListener("lumaway-access-locked", showLockPrompt);
+    return () => {
+      window.removeEventListener("lumaway-profile-updated", refreshProfile);
+      window.removeEventListener("lumaway-access-locked", showLockPrompt);
+    };
+  }, [profile?.id]);
 
   useEffect(() => {
     if (loading || profile || workspace) return;
@@ -185,7 +205,7 @@ export default function LumawayWorkspaceApp() {
         host.innerHTML = "";
         google.accounts.id.renderButton(host, {
           type: "standard",
-          theme: document.documentElement.dataset.theme === "dark" ? "filled_black" : "outline",
+          theme: "outline",
           size: "large",
           text: "continue_with",
           shape: "rectangular",
@@ -229,7 +249,7 @@ export default function LumawayWorkspaceApp() {
     setError("");
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
-      .select("id,email,full_name,role,active")
+      .select("id,email,full_name,nickname,role,active,phone,phone_verified_at,email_verified_at,education,birth_date,bio,position_title,profile_completed")
       .eq("id", userId)
       .single();
     if (profileError || !profileData) {
@@ -259,17 +279,40 @@ export default function LumawayWorkspaceApp() {
       return;
     }
 
-    setProfile(profileData as Profile);
+    const typedProfile = profileData as Profile;
+    setProfile(typedProfile);
     setWorkspace(workspaceData as Workspace);
     window.localStorage.setItem("luma_active_workspace", workspaceData.id);
 
+    const { data: subscriptionRows } = await supabase
+      .from("luma_user_subscriptions")
+      .select("status,starts_at,ends_at")
+      .eq("user_id", userId)
+      .order("ends_at", { ascending: false })
+      .limit(10);
+    const now = Date.now();
+    const activeSubscription = (subscriptionRows || []).find((item: any) =>
+      ["active", "trialing"].includes(String(item.status || "").toLowerCase()) &&
+      item.ends_at &&
+      new Date(item.ends_at).getTime() > now
+    );
+    setAccessLocked(Boolean((subscriptionRows || []).length && !activeSubscription));
+    setSubscriptionEndsAt(activeSubscription?.ends_at || (subscriptionRows || [])[0]?.ends_at || null);
+
     const currentSection = sectionFromPath(window.location.pathname);
+    const needsProfile = typedProfile.role !== "admin" && !profileComplete(typedProfile);
     const target = profileData.role === "admin"
       ? "administration"
-      : !currentSection || isAuthPath(window.location.pathname) || currentSection === "administration"
-        ? "dashboard"
-        : currentSection;
+      : needsProfile
+        ? "profile"
+        : !currentSection || isAuthPath(window.location.pathname) || currentSection === "administration"
+          ? "dashboard"
+          : currentSection;
     navigateToSection(target, { replace: true });
+    if (needsProfile) {
+      window.history.replaceState(null, "", `${APP_BASE}/profile?complete=true`);
+      window.dispatchEvent(new Event("lumaway-routechange"));
+    }
   }
 
   async function login() {
@@ -322,10 +365,10 @@ export default function LumawayWorkspaceApp() {
 
   const isAdmin = profile.role === "admin";
   return <div className="luma-app">
-    <LumaSidebar profile={profile} workspace={workspace} onLogout={logout} />
+    <LumaSidebar profile={profile} workspace={workspace} onLogout={logout} accessLocked={accessLocked} />
     <div className="app-shell">
       <header className="topbar">
-        <div><span className="topbar-kicker">{isAdmin ? "LUMAWAY OWNER" : "LUMAWAY WORKSPACE"}</span><span className="topbar-title">{isAdmin ? "Business Control Center" : "Affiliate Intelligence"}</span></div>
+        <div className="topbar-brand-copy"><span className="topbar-kicker">{isAdmin ? "LUMAWAY OWNER" : "LUMAWAY WORKSPACE"}</span><span className="topbar-title">{isAdmin ? "Business Control Center" : "Affiliate Intelligence"}</span></div>
         <div className="topbar-right"><PWAInstallButton compact /><NotificationCenter workspaceId={workspace.id} userId={profile.id} /><span className="connection-pill"><i />{workspace.name} · Active</span></div>
       </header>
       <main className="content">
@@ -344,9 +387,11 @@ export default function LumawayWorkspaceApp() {
           <section id="creator-samples" className="legacy-page-anchor"><CreatorSamples workspaceId={workspace.id} /></section>
           <section id="ratecard" className="legacy-page-anchor"><RatecardMaster workspaceId={workspace.id} /></section>
         </>}
+        {!isAdmin && accessLocked && <div className="subscription-lock-banner"><strong>Masa akses Lumaway telah berakhir.</strong><span>Data workspace Anda tetap aman dan tidak dihapus. Buka Billing untuk memperpanjang akses.</span>{subscriptionEndsAt&&<small>Berakhir: {new Date(subscriptionEndsAt).toLocaleString("id-ID")}</small>}<button onClick={()=>navigateToSection("billing")}>Buka Billing</button></div>}
         {error && <div className="flash error">{error}</div>}
       </main>
     </div>
     {!isAdmin && <><MobileQuickNav /><DashboardReminder workspaceId={workspace.id} userId={profile.id} workspaceStatus={workspace.status} /><LumaHelpdeskAgent workspaceId={workspace.id} userId={profile.id} fullName={profile.full_name} email={profile.email} /></>}
+    {!isAdmin && lockPromptOpen && <div className="access-lock-backdrop" onClick={()=>setLockPromptOpen(false)}><section className="access-lock-modal" role="dialog" aria-modal="true" aria-label="Masa aktif Lumaway berakhir" onClick={e=>e.stopPropagation()}><button className="access-lock-close" type="button" onClick={()=>setLockPromptOpen(false)}>×</button><span className="access-lock-icon" aria-hidden="true">🔒</span><h2>Masa aktif Anda telah berakhir</h2><p>Data workspace Anda tetap aman dan tidak dihapus. Perpanjang langganan untuk membuka kembali fitur Lumaway.</p>{subscriptionEndsAt&&<small>Berakhir: {new Date(subscriptionEndsAt).toLocaleString("id-ID")}</small>}<button className="primary" type="button" onClick={()=>{setLockPromptOpen(false);navigateToSection("billing")}}>Perpanjang di Billing</button></section></div>}
   </div>;
 }

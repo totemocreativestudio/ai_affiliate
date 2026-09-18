@@ -10,3 +10,172 @@ html[data-theme="dark"] .topbar,html[data-theme="dark"] .card,html[data-theme="d
 @media(max-width:640px){.topbar-kicker{display:none}.topbar-title{max-width:38vw}.connection-pill{font-size:0;width:31px;height:31px;padding:0;justify-content:center}.connection-pill i{margin:0}.content{padding-top:16px}.content h1{font-size:22px}.card{padding-left:14px!important;padding-right:14px!important}.billing-kpi-grid{gap:10px!important}.payment-methods{display:flex!important;overflow-x:auto;flex-wrap:nowrap!important;padding-bottom:4px}.payment-methods span{white-space:nowrap}.share-grid{grid-template-columns:1fr!important}.ticket-chat-history{height:300px}.lumaway-lockup img{width:43px;height:43px}.lumaway-lockup strong{font-size:25px}.lumaway-loading-screen{padding:24px}.auth-heading h2{font-size:30px}}
 @media(min-width:1025px) and (max-width:1280px){.sidebar{width:238px}.app-shell{margin-left:238px}.content{padding-left:24px;padding-right:24px}}
 .status-pill.s-expired,.status-pill.s-canceled,.status-pill.s-cancelled{background:#f2f4f7;color:#667085}.status-pill.s-failed{background:#fff1f0;color:#b42318}.status-pill.s-paid{background:#ecfdf3;color:#067647}.status-pill.s-processing{background:#eff8ff;color:#175cd3}
+
+
+
+/* 2026-09-18 UX hardening */
+.notification-filters{display:flex;gap:7px;padding:10px 12px;border-bottom:1px solid var(--border,#e4e7ec);overflow-x:auto;background:#fff}
+.notification-filters button{flex:0 0 auto;border:1px solid #d0d5dd!important;background:#fff!important;color:#101828!important;border-radius:999px!important;min-height:30px!important;padding:5px 10px!important;font-size:9px!important;font-weight:750!important;box-shadow:none!important}
+.notification-filters button:hover{background:#f8fafc!important}
+.notification-filters button.active{background:#eaf2ff!important;color:#175cd3!important;border-color:#b2ccff!important}
+.notification-item{background:#fff!important;color:#101828!important}
+.notification-item.unread{background:#f8fbff!important}
+.notification-item strong{color:#101828!important}.notification-item p{color:#475467!important}.notification-item small{color:#7f8da3!important}
+html[data-theme="dark"] .notification-filters{background:#111a2b!important;border-color:#273247!important}
+html[data-theme="dark"] .notification-filters button{background:#fff!important;color:#101828!important;border-color:#cbd5e1!important}
+html[data-theme="dark"] .notification-filters button.active{background:#dbeafe!important;color:#1d4ed8!important;border-color:#93c5fd!important}
+html[data-theme="dark"] .notification-item,html[data-theme="dark"] .notification-item.unread{background:#121a2a!important}
+html[data-theme="dark"] .notification-item strong{color:#f8fafc!important}
+html[data-theme="dark"] .notification-item p{color:#cbd5e1!important}
+html[data-theme="dark"] .notification-item small{color:#93a4bd!important}
+
+.history-action-trigger{width:40px!important;height:40px!important;min-height:40px!important;padding:0!important;border-radius:10px!important;display:grid!important;place-items:center!important}
+.history-action-trigger span{font-size:18px;line-height:1;transform:translateY(2px);color:currentColor}
+.ai-history-menu{position:fixed!important;z-index:999!important;overflow:visible!important;min-width:170px!important;background:var(--surface,#fff)!important;border:1px solid var(--border,#e4e7ec)!important;border-radius:12px!important;padding:6px!important;box-shadow:0 18px 50px rgba(15,23,42,.18)!important}
+.ai-history-scroll{overflow-x:auto!important;overflow-y:visible!important}
+.ai-history-card{overflow:visible!important}
+.ai-history-card .scroll,.ai-history-card table{overflow:visible!important}
+
+.sidebar.is-collapsed{transform:translateX(-105%)!important;width:264px!important}
+.sidebar.is-collapsed~.app-shell{margin-left:0!important}
+.sidebar-hidden-reopen{position:fixed;left:12px;top:14px;z-index:76;width:40px;height:40px;border:1px solid var(--border,#d0d5dd);background:var(--surface,#fff);color:var(--text,#101828);border-radius:11px;display:grid;place-items:center;box-shadow:0 6px 18px rgba(15,23,42,.12)}
+.sidebar-hidden-reopen svg{width:19px;height:19px}
+@media(max-width:1024px){.sidebar-hidden-reopen{display:none}.sidebar.is-collapsed{transform:translateX(-105%)!important}.sidebar.is-collapsed.mobile-open{transform:translateX(0)!important}}
+
+html[data-theme="dark"] .content,
+html[data-theme="dark"] .legacy-page-anchor{color:#eef2ff!important}
+html[data-theme="dark"] .kpi,
+html[data-theme="dark"] .billing-stat-card,
+html[data-theme="dark"] .billing-wallet-card,
+html[data-theme="dark"] .subscription-current,
+html[data-theme="dark"] .subscription-plan,
+html[data-theme="dark"] .affiliate-balance-card,
+html[data-theme="dark"] .referral-link-card,
+html[data-theme="dark"] .internal-sheet-card,
+html[data-theme="dark"] .sheet-toolbar,
+html[data-theme="dark"] .social-post,
+html[data-theme="dark"] .social-composer,
+html[data-theme="dark"] .social-archive{background:#121a2a!important;color:#eef2ff!important;border-color:#273247!important}
+html[data-theme="dark"] .kpi small,
+html[data-theme="dark"] .billing-stat-card span,
+html[data-theme="dark"] .billing-stat-card small,
+html[data-theme="dark"] .billing-wallet-card span,
+html[data-theme="dark"] .billing-wallet-card small,
+html[data-theme="dark"] .subscription-current p,
+html[data-theme="dark"] .social-post-body,
+html[data-theme="dark"] .social-status{color:#b7c2d6!important}
+html[data-theme="dark"] .kpi b,
+html[data-theme="dark"] .billing-stat-card b,
+html[data-theme="dark"] .billing-wallet-card b,
+html[data-theme="dark"] .subscription-current h3{color:#f8fafc!important}
+
+
+
+/* Excel Sync beginner spreadsheet UI */
+.sheet-quick-start{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 0 18px}
+.sheet-quick-start>div{display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid var(--border,#e4e7ec);background:var(--surface,#fff);border-radius:12px}
+.sheet-quick-start b{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;background:#eef2ff;color:#4f46e5;font-size:10px}
+.sheet-quick-start span{font-size:10px;font-weight:650;color:var(--text,#344054)}
+.internal-sheet-scroll{max-height:62vh;overflow:auto;border:1px solid var(--border,#e4e7ec);border-radius:12px;background:var(--surface,#fff)}
+.internal-sheet-table{border-collapse:separate;border-spacing:0;min-width:max(900px,100%);width:100%}
+.internal-sheet-table thead th{position:sticky;top:0;z-index:4;background:#f8fafc!important;border-bottom:1px solid #d0d5dd!important}
+.internal-sheet-table .row-number{position:sticky;left:0;z-index:3;background:#f8fafc!important;color:#667085!important;text-align:center;min-width:48px;width:48px}
+.internal-sheet-table thead .row-number{z-index:5}
+.internal-sheet-table td{padding:0!important;border-right:1px solid #eaecf0!important;border-bottom:1px solid #eaecf0!important;background:#fff!important}
+.internal-sheet-table td input{width:100%;min-width:130px;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;padding:9px 10px!important;min-height:38px!important;color:#101828!important}
+.internal-sheet-table td.selected-cell{outline:2px solid #635bff!important;outline-offset:-2px;position:relative;z-index:2}
+.sheet-toolbar,.sheet-column-tools{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.sheet-tabs{display:flex;gap:5px;overflow-x:auto}
+.sheet-tabs button{min-height:34px!important;padding:6px 11px!important;border-radius:8px 8px 0 0!important}
+.sheet-tabs button.active{background:#eef2ff!important;color:#4338ca!important;border-color:#c7d2fe!important}
+.sheet-actions,.sheet-column-tools{display:flex;gap:7px;align-items:center}
+.sheet-actions input,.sheet-column-tools input{min-width:160px}
+html[data-theme="dark"] .sheet-quick-start>div,html[data-theme="dark"] .internal-sheet-scroll{background:#111a2b!important;border-color:#273247!important}
+html[data-theme="dark"] .sheet-quick-start span{color:#eef2ff!important}
+html[data-theme="dark"] .internal-sheet-table thead th,html[data-theme="dark"] .internal-sheet-table .row-number{background:#182235!important;color:#dbe5f5!important;border-color:#32405a!important}
+html[data-theme="dark"] .internal-sheet-table td{background:#111a2b!important;border-color:#273247!important}
+html[data-theme="dark"] .internal-sheet-table td input{color:#f8fafc!important}
+@media(max-width:760px){.sheet-quick-start{grid-template-columns:1fr 1fr}.sheet-toolbar,.sheet-column-tools{align-items:stretch}.sheet-actions{width:100%;overflow-x:auto}.sheet-actions input{min-width:180px}.internal-sheet-scroll{max-height:58dvh}}
+@media(max-width:480px){.sheet-quick-start{grid-template-columns:1fr}.sheet-column-tools input{width:100%}}
+
+
+/* Luma Affiliate free creative mockup tools */
+.affiliate-generator{overflow:hidden}
+.free-tool-badge{display:inline-flex;align-items:center;padding:6px 9px;border-radius:999px;background:#ecfdf3;color:#067647;border:1px solid #abefc6;font-size:9px;font-weight:850;white-space:nowrap}
+.generator-safety-note{display:flex;gap:9px;align-items:flex-start;padding:10px 12px;border-radius:11px;background:#fff8eb;border:1px solid #fedf89;color:#7a2e0e;margin:10px 0 14px}
+.generator-safety-note b{font-size:10px;white-space:nowrap}.generator-safety-note span{font-size:9.5px;line-height:1.45}
+.generator-result-title{margin-top:24px!important}
+.generator-scroll{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(300px,360px);gap:12px;overflow-x:auto;padding:4px 2px 12px;scroll-snap-type:x proximity}
+.generator-scroll>article{scroll-snap-align:start}
+.wa-mockup{background:#e9f1ec;border:1px solid #d9e4dd;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;min-height:520px}
+.wa-mockup-head{display:flex;justify-content:space-between;align-items:center;background:#075e54;color:#fff;padding:12px 14px}
+.wa-mockup-head b,.wa-mockup-head small{display:block}.wa-mockup-head b{font-size:11px}.wa-mockup-head small{font-size:8px;color:#d7efe8;margin-top:2px}.wa-mockup-head>span{font-size:9px;color:#d7efe8}
+.wa-messages{padding:14px;display:flex;flex-direction:column;gap:7px;max-height:390px;overflow:auto;flex:1}
+.wa-messages p{margin:0;display:flex}.wa-messages p.outgoing{justify-content:flex-end}.wa-messages p span{max-width:84%;padding:8px 10px;border-radius:10px;background:#fff;color:#1f2937;font-size:9.5px;line-height:1.45;box-shadow:0 1px 2px rgba(15,23,42,.06)}.wa-messages p.outgoing span{background:#d9fdd3}
+.mockup-watermark{padding:0 14px 9px;color:#64748b;font-size:8px;font-weight:800;letter-spacing:.08em}
+.wa-mockup .button-row{padding:10px 12px;border-top:1px solid rgba(15,23,42,.08);background:rgba(255,255,255,.65)}
+.review-mockup{background:#fff;border:1px solid var(--border,#e4e7ec);border-radius:16px;padding:16px;display:flex;flex-direction:column;min-height:300px;box-shadow:0 8px 24px rgba(15,23,42,.04)}
+.mockup-label{align-self:flex-start;padding:4px 7px;border-radius:999px;background:#f2f4f7;color:#667085;font-size:7.5px;font-weight:850;letter-spacing:.08em}
+.review-user{display:flex;align-items:center;gap:10px;margin:16px 0}.review-user i{width:44px;height:44px;border-radius:50%;background:#ede9fe;color:#4f46e5;display:grid;place-items:center;font-style:normal;font-weight:850}.review-user b,.review-user span{display:block}.review-user b{font-size:11px}.review-user span{color:#f59e0b;font-size:13px;margin-top:3px}.review-mockup p{font-size:11.5px;line-height:1.6;color:#475467;flex:1}.review-mockup>small{font-size:8px;font-weight:900;color:#635bff;letter-spacing:.08em;margin-bottom:10px}
+html[data-theme="dark"] .generator-safety-note{background:#2b2110;border-color:#5c461f;color:#fde68a}
+html[data-theme="dark"] .review-mockup{background:#121a2a!important;border-color:#273247!important}
+html[data-theme="dark"] .review-mockup p{color:#cbd5e1!important}
+@media(max-width:640px){.generator-scroll{grid-auto-columns:85vw}.generator-form.grid{grid-template-columns:1fr!important}.affiliate-generator .section-head{align-items:flex-start}.free-tool-badge{margin-top:3px}}
+
+
+/* Header hierarchy + complete dark/mobile surface pass */
+.topbar-brand-copy{display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:0}
+.topbar-kicker{line-height:1;font-size:8px!important;letter-spacing:.16em!important}
+.topbar-title{line-height:1.2;font-size:13px!important;margin:0!important}
+html[data-theme="dark"] body,html[data-theme="dark"] .luma-app,html[data-theme="dark"] .app-shell{background:#081120!important;color:#edf2ff!important}
+html[data-theme="dark"] .topbar{background:rgba(11,19,34,.96)!important;border-color:#273247!important}
+html[data-theme="dark"] .topbar-title{color:#f8fafc!important}
+html[data-theme="dark"] .topbar-kicker{color:#8898b4!important}
+html[data-theme="dark"] .connection-pill,html[data-theme="dark"] .notification-bell,html[data-theme="dark"] .pwa-install-button{background:#121a2a!important;color:#e8eef8!important;border-color:#2d3950!important}
+html[data-theme="dark"] .card,html[data-theme="dark"] .ai-type-card,html[data-theme="dark"] .ai-control-card,html[data-theme="dark"] .content-card,html[data-theme="dark"] .payment-method-card,html[data-theme="dark"] .token-package,html[data-theme="dark"] .promo-claim-card,html[data-theme="dark"] .profile-identity-card,html[data-theme="dark"] .whatsapp-channel-card{background:#111a2b!important;border-color:#273247!important;color:#eef2ff!important}
+html[data-theme="dark"] .content h1,html[data-theme="dark"] .content h2,html[data-theme="dark"] .content h3,html[data-theme="dark"] .content strong,html[data-theme="dark"] .content b{color:#f7f9ff!important}
+html[data-theme="dark"] .content .muted,html[data-theme="dark"] .content p,html[data-theme="dark"] .content small,html[data-theme="dark"] .content label{color:#b8c4d8!important}
+html[data-theme="dark"] .content input,html[data-theme="dark"] .content select,html[data-theme="dark"] .content textarea{background:#0d1626!important;color:#f8fafc!important;border-color:#334155!important}
+html[data-theme="dark"] .content input::placeholder,html[data-theme="dark"] .content textarea::placeholder{color:#71819b!important}
+html[data-theme="dark"] .content table thead th{background:#182235!important;color:#dce5f5!important;border-color:#334155!important}
+html[data-theme="dark"] .content table tbody td{background:#111a2b!important;color:#dce5f5!important;border-color:#273247!important}
+html[data-theme="dark"] .content button:not(.primary){background:#152034!important;color:#e5edf9!important;border-color:#334155!important}
+html[data-theme="dark"] .empty-state,html[data-theme="dark"] .owner-inline-note{color:#b8c4d8!important}
+@media(max-width:640px){.topbar{height:58px!important;padding-left:66px!important;padding-right:10px!important}.topbar-title{font-size:12px!important}.topbar-right{gap:6px!important}.content{padding:16px 12px 92px!important}.content h1{font-size:23px!important}.notification-popover{top:64px!important;left:8px!important;right:8px!important;max-height:calc(100dvh - 76px)!important}.notification-list{max-height:calc(100dvh - 190px)!important}}
+
+
+.profile-completion-notice{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:12px 0 18px;padding:12px 14px;border:1px solid #b2ccff;background:#eff8ff;border-radius:13px;color:#1849a9}
+.profile-completion-notice strong{font-size:12px}.profile-completion-notice span{font-size:10px;color:#175cd3}
+.topbar-brand-copy{display:grid;gap:2px;line-height:1.05}
+.topbar-brand-copy .topbar-kicker{margin:0;font-size:8px;letter-spacing:.16em}
+.topbar-brand-copy .topbar-title{margin:0;font-size:14px;line-height:1.25}
+html[data-theme="dark"] .profile-completion-notice{background:#102a43;border-color:#194d76;color:#dbeafe}
+html[data-theme="dark"] .profile-completion-notice span{color:#bfdbfe}
+
+
+/* Excel Sync beginner-first workspace */
+.excel-mode-switch{display:inline-flex;gap:4px;margin:14px 0 16px;padding:4px;border:1px solid var(--border,#e4e7ec);background:var(--surface-2,#f8fafc);border-radius:12px}
+.excel-mode-switch button{border:0!important;background:transparent!important;min-height:36px!important;border-radius:9px!important;padding:7px 13px!important;box-shadow:none!important}
+.excel-mode-switch button.active{background:var(--surface,#fff)!important;color:var(--text,#101828)!important;box-shadow:0 3px 10px rgba(15,23,42,.07)!important}
+.sheet-quick-start{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0 14px}
+.sheet-quick-start>div{display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid var(--border,#e4e7ec);background:var(--surface,#fff);border-radius:12px}
+.sheet-quick-start b{width:24px;height:24px;border-radius:8px;background:#eef2ff;color:#4f46e5;display:grid;place-items:center;font-size:10px}.sheet-quick-start span{font-size:10px;color:var(--muted,#667085)}
+.excel-import-card{display:grid;gap:16px}.excel-import-drop{border:1px dashed #98a2b3;border-radius:14px;background:var(--surface-2,#f8fafc);padding:18px}
+.excel-import-drop label{display:grid;gap:6px;cursor:pointer}.excel-import-drop strong{font-size:13px}.excel-import-drop span{font-size:10px;color:var(--muted,#667085)}.excel-import-drop input{margin-top:7px}
+.excel-import-config{display:grid;grid-template-columns:minmax(220px,.35fr) 1fr;gap:18px;align-items:end}.excel-import-config>div{display:grid;gap:4px}.excel-import-config b{font-size:12px}.excel-import-config span{font-size:10px;color:var(--muted,#667085)}
+.import-mapping-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.import-mapping-grid label{display:grid;gap:5px}.import-mapping-grid span{font-size:9px;color:var(--muted,#667085)}
+.import-preview{max-height:380px;border:1px solid var(--border,#e4e7ec);border-radius:12px}.excel-import-footer{display:flex;justify-content:space-between;align-items:center;gap:12px}.excel-import-footer span{font-size:10px;color:var(--muted,#667085)}
+.internal-sheet-scroll{border:1px solid var(--border,#e4e7ec);border-radius:12px;overflow:auto;max-height:64vh;background:var(--surface,#fff)}
+.internal-sheet-table{border-collapse:separate!important;border-spacing:0!important;min-width:max(920px,100%)}
+.internal-sheet-table thead th{position:sticky;top:0;z-index:4;background:var(--surface-2,#f8fafc)!important;box-shadow:inset 0 -1px 0 var(--border,#e4e7ec)}
+.internal-sheet-table .row-number{position:sticky;left:0;z-index:3;background:var(--surface-2,#f8fafc)!important;min-width:48px;text-align:center}
+.internal-sheet-table thead .row-number{z-index:6}
+.internal-sheet-table td{padding:0!important;min-width:150px}.internal-sheet-table td input{border:0!important;border-radius:0!important;min-height:38px!important;background:transparent!important;box-shadow:none!important;width:100%;padding:7px 9px!important}
+.internal-sheet-table td.selected-cell{outline:2px solid #635bff;outline-offset:-2px;background:#f5f3ff}
+.sheet-sort{border:0!important;background:transparent!important;padding:0!important;min-height:0!important;color:inherit!important;font-size:10px!important;font-weight:750!important;box-shadow:none!important}.sheet-sort small{font-size:9px;color:#635bff}
+html[data-theme="dark"] .excel-mode-switch,html[data-theme="dark"] .excel-import-drop,html[data-theme="dark"] .internal-sheet-scroll{background:#111a2b!important;border-color:#273247!important}
+html[data-theme="dark"] .sheet-quick-start>div,html[data-theme="dark"] .excel-mode-switch button.active{background:#121a2a!important;border-color:#273247!important;color:#f8fafc!important}
+html[data-theme="dark"] .internal-sheet-table thead th,html[data-theme="dark"] .internal-sheet-table .row-number{background:#162033!important;color:#eef2ff!important}
+html[data-theme="dark"] .internal-sheet-table td.selected-cell{background:#1d2540!important;outline-color:#8b83ff!important}
+@media(max-width:900px){.sheet-quick-start{grid-template-columns:1fr 1fr}.import-mapping-grid{grid-template-columns:1fr 1fr}.excel-import-config{grid-template-columns:1fr}}
+@media(max-width:560px){.sheet-quick-start{grid-template-columns:1fr}.import-mapping-grid{grid-template-columns:1fr}.excel-mode-switch{display:grid;grid-template-columns:1fr 1fr;width:100%}.excel-import-footer{align-items:stretch;flex-direction:column}.excel-import-footer button{width:100%}}

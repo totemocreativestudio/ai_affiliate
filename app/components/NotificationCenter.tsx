@@ -59,6 +59,7 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
   const [rows, setRows] = useState<NotificationRow[]>([]);
   const [open, setOpen] = useState(false);
   const [toast, setToast] = useState<NotificationRow | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const firstLoad = useRef(true);
 
   async function load() {
@@ -148,6 +149,15 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
   }, [workspaceId, userId]);
 
   const unread = useMemo(() => rows.filter((item) => !item.read).length, [rows]);
+  const categoryOptions = useMemo(() => {
+    const labels = new Map<string,string>();
+    for (const row of rows) labels.set(categoryLabel(row.category), categoryLabel(row.category));
+    return ["all", ...Array.from(labels.keys()).sort((a,b)=>a.localeCompare(b,"id"))];
+  }, [rows]);
+  const visibleRows = useMemo(
+    () => categoryFilter === "all" ? rows : rows.filter((row) => categoryLabel(row.category) === categoryFilter),
+    [rows, categoryFilter],
+  );
 
   async function markRead(row: NotificationRow, clicked = false) {
     if (row.source === "broadcast") {

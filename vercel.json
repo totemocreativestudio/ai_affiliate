@@ -2,7 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "git": {
     "deploymentEnabled": {
-      "ux-pwa-proration-fixes": false
+      "ux-pwa-proration-fixes": false,
+      "lumaway-user-access-social-fixes": false
     }
   }
 }

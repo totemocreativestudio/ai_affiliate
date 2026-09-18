@@ -9,8 +9,8 @@ type Props = {
   profile: { email: string | null; full_name: string | null; role: string };
   workspace: { name: string; slug: string; status: string };
   onLogout: () => void;
+  accessLocked?: boolean;
 };
-type Theme = "light" | "dark";
 
 const aiNav = [
   ["performance", "Performance Analysis"],
@@ -64,21 +64,16 @@ function Group({ icon, label, children, open = false }: { icon: IconName; label:
   );
 }
 
-export default function LumaSidebar({ profile, workspace, onLogout }: Props) {
+export default function LumaSidebar({ profile, workspace, onLogout, accessLocked = false }: Props) {
   const isOwner = profile.role === "admin";
   const [activeSection, setActiveSection] = useState(isOwner ? "administration" : "dashboard");
   const [ownerTab, setOwnerTab] = useState("overview");
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
-    const savedTheme = window.localStorage.getItem("lumaway_theme");
-    const nextTheme: Theme = savedTheme === "dark" || savedTheme === "light"
-      ? savedTheme
-      : window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    setTheme(nextTheme);
-    document.documentElement.dataset.theme = nextTheme;
+    document.documentElement.dataset.theme = "light";
+    window.localStorage.removeItem("lumaway_theme");
     setCollapsed(window.localStorage.getItem("lumaway_sidebar_collapsed") === "1");
   }, []);
 
@@ -101,12 +96,22 @@ export default function LumaSidebar({ profile, workspace, onLogout }: Props) {
 
   function go(event: React.MouseEvent<HTMLAnchorElement>, section: string) {
     event.preventDefault();
+    if (accessLocked && !["dashboard", "billing", "profile"].includes(section)) {
+      window.dispatchEvent(new CustomEvent("lumaway-access-locked", { detail: { requestedSection: section } }));
+      if (window.innerWidth <= 1024) setMobileOpen(false);
+      return;
+    }
     navigateToSection(section);
     setActiveSection(section);
     if (window.innerWidth <= 1024) setMobileOpen(false);
   }
 
   function openAi(type: string) {
+    if (accessLocked) {
+      window.dispatchEvent(new CustomEvent("lumaway-access-locked", { detail: { requestedSection: "ai-analytics" } }));
+      setMobileOpen(false);
+      return;
+    }
     navigateToSection("ai-analytics");
     setActiveSection("ai-analytics");
     const index = aiNav.findIndex(([key]) => key === type);
@@ -120,13 +125,6 @@ export default function LumaSidebar({ profile, workspace, onLogout }: Props) {
     navigateToSection("administration");
     window.setTimeout(() => window.dispatchEvent(new CustomEvent("luma-owner-nav", { detail: { tab: actualTab, section } })), 50);
     setMobileOpen(false);
-  }
-
-  function toggleTheme() {
-    const next: Theme = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    document.documentElement.dataset.theme = next;
-    window.localStorage.setItem("lumaway_theme", next);
   }
 
   function toggleCollapsed() {
@@ -144,7 +142,8 @@ export default function LumaSidebar({ profile, workspace, onLogout }: Props) {
       </button>
       {mobileOpen && <button type="button" className="mobile-sidebar-backdrop" aria-label="Tutup menu" onClick={() => setMobileOpen(false)} />}
 
-      <aside className={`sidebar ${isOwner ? "owner-sidebar" : ""} ${collapsed ? "is-collapsed" : ""} ${mobileOpen ? "mobile-open" : ""}`} id="sidebar">
+      {collapsed && <button type="button" className="sidebar-hidden-reopen" onClick={toggleCollapsed} aria-label="Buka sidebar" title="Buka sidebar"><LumaIcon name="menu" /></button>}
+      <aside className={`sidebar ${isOwner ? "owner-sidebar" : ""} ${collapsed ? "is-collapsed" : ""} ${mobileOpen ? "mobile-open" : ""} ${accessLocked && !isOwner ? "subscription-locked" : ""}`} id="sidebar">
         <div className="brand">
           <img src="/luma-mark.png" alt="Lumaway" className="brand-mark" />
           <div className="brand-wordmark">
@@ -154,10 +153,7 @@ export default function LumaSidebar({ profile, workspace, onLogout }: Props) {
         </div>
 
         <div className="sidebar-controls">
-          <button type="button" className="theme-toggle" onClick={toggleTheme} title={theme === "dark" ? "Gunakan light mode" : "Gunakan night mode"}>
-            <LumaIcon name="theme" />
-            <span className="nav-label">{theme === "dark" ? "Light" : "Night"}</span>
-          </button>
+          <span className="sidebar-mode-label">Lumaway Workspace</span>
           <button type="button" className="sidebar-mobile-close" onClick={() => setMobileOpen(false)} aria-label="Tutup menu"><LumaIcon name="close" /></button>
         </div>
 
