@@ -58,6 +58,11 @@ function dbValue(field:string,value:any){
   if(["sent_date","return_date","data_date"].includes(field))return value||null;
   return value===""?null:value;
 }
+function columnLabel(index:number){
+  let n=index+1;let out="";
+  while(n>0){n--;out=String.fromCharCode(65+(n%26))+out;n=Math.floor(n/26)}
+  return out;
+}
 
 export default function InternalExcelGrid({workspaceId}:{workspaceId:string}){
   const supabase=useMemo(()=>createClient(),[]);
@@ -103,6 +108,15 @@ export default function InternalExcelGrid({workspaceId}:{workspaceId:string}){
     setRows(((data||[]) as any[]).map(x=>({id:x.id,row_order:Number(x.row_order||0),row_data:x.row_data||{}})));
     setStatus("");
   }
+  async function loadDbRows(target:DbTarget=dbTarget){
+    setDbBusy(true);
+    const fields=["id",...DB_FIELDS[target]].join(",");
+    const {data,error}=await supabase.from(target).select(fields).eq("workspace_id",workspaceId).order("id",{ascending:false}).limit(500);
+    setDbBusy(false);
+    if(error){setStatus(error.message);return}
+    setDbRows((data||[]) as Record<string,any>[]);setStatus("");
+  }
+  useEffect(()=>{if(mode==="database")void loadDbRows(dbTarget)},[mode,dbTarget,workspaceId]);
 
   async function createSheet(){
     const name=newSheet.trim();if(!name)return;
@@ -114,8 +128,19 @@ export default function InternalExcelGrid({workspaceId}:{workspaceId:string}){
     const {error}=await supabase.from("workspace_grid_sheets").update({name,updated_at:new Date().toISOString()}).eq("id",sheetId).eq("workspace_id",workspaceId);
     if(error)return setStatus("error, terjadi kesalahan.");await loadSheets();
   }
+  async function deleteSheet(id:number){
+    const current=sheets.find(x=>x.id===id);if(!current||!confirm(`Hapus sheet "${current.name}" beserta seluruh row di dalamnya?`))return;
+    setBusy(true);
+    const rowsDelete=await supabase.from("workspace_grid_rows").delete().eq("workspace_id",workspaceId).eq("sheet_id",id);
+    if(rowsDelete.error){setBusy(false);return setStatus(rowsDelete.error.message)}
+    const sheetDelete=await supabase.from("workspace_grid_sheets").delete().eq("workspace_id",workspaceId).eq("id",id);
+    setBusy(false);if(sheetDelete.error)return setStatus(sheetDelete.error.message);
+    const remaining=sheets.filter(x=>x.id!==id);setSheets(remaining);
+    if(sheetId===id){if(remaining[0])setSheetId(remaining[0].id);else{setSheetId(null);await loadSheets()}}
+    setStatus("Sheet berhasil dihapus.");
+  }
   async function addColumn(){
-    const name=newColumn.trim();if(!name||columns.includes(name)||!sheetId)return;
+    const name=newColumn.trim()||columnLabel(columns.length);if(columns.includes(name)||!sheetId)return;
     const next=[...columns,name];const {error}=await supabase.from("workspace_grid_sheets").update({columns_json:next,updated_at:new Date().toISOString()}).eq("id",sheetId).eq("workspace_id",workspaceId);
     if(error)return setStatus("error, terjadi kesalahan.");setColumns(next);setNewColumn("");
   }
