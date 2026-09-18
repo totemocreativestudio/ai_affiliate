@@ -9,6 +9,7 @@ type Props = {
   profile: { email: string | null; full_name: string | null; role: string };
   workspace: { name: string; slug: string; status: string };
   onLogout: () => void;
+  accessLocked?: boolean;
 };
 type Theme = "light" | "dark";
 
@@ -64,13 +65,14 @@ function Group({ icon, label, children, open = false }: { icon: IconName; label:
   );
 }
 
-export default function LumaSidebar({ profile, workspace, onLogout }: Props) {
+export default function LumaSidebar({ profile, workspace, onLogout, accessLocked = false }: Props) {
   const isOwner = profile.role === "admin";
   const [activeSection, setActiveSection] = useState(isOwner ? "administration" : "dashboard");
   const [ownerTab, setOwnerTab] = useState("overview");
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>("light");
+  const [lockNotice, setLockNotice] = useState(false);
 
   useEffect(() => {
     const savedTheme = window.localStorage.getItem("lumaway_theme");
@@ -101,12 +103,17 @@ export default function LumaSidebar({ profile, workspace, onLogout }: Props) {
 
   function go(event: React.MouseEvent<HTMLAnchorElement>, section: string) {
     event.preventDefault();
+    if (accessLocked && !["dashboard", "billing", "profile"].includes(section)) {
+      setLockNotice(true);
+      return;
+    }
     navigateToSection(section);
     setActiveSection(section);
     if (window.innerWidth <= 1024) setMobileOpen(false);
   }
 
   function openAi(type: string) {
+    if (accessLocked) { setLockNotice(true); return; }
     navigateToSection("ai-analytics");
     setActiveSection("ai-analytics");
     const index = aiNav.findIndex(([key]) => key === type);
@@ -144,7 +151,8 @@ export default function LumaSidebar({ profile, workspace, onLogout }: Props) {
       </button>
       {mobileOpen && <button type="button" className="mobile-sidebar-backdrop" aria-label="Tutup menu" onClick={() => setMobileOpen(false)} />}
 
-      <aside className={`sidebar ${isOwner ? "owner-sidebar" : ""} ${collapsed ? "is-collapsed" : ""} ${mobileOpen ? "mobile-open" : ""}`} id="sidebar">
+      {collapsed && !mobileOpen && <button type="button" className="sidebar-reopen-trigger" aria-label="Buka sidebar" onClick={toggleCollapsed}><LumaIcon name="menu" /></button>}
+      <aside className={`sidebar ${isOwner ? "owner-sidebar" : ""} ${collapsed ? "is-collapsed" : ""} ${mobileOpen ? "mobile-open" : ""} ${accessLocked && !isOwner ? "subscription-locked" : ""}`} id="sidebar">
         <div className="brand">
           <img src="/luma-mark.png" alt="Lumaway" className="brand-mark" />
           <div className="brand-wordmark">
@@ -190,50 +198,51 @@ export default function LumaSidebar({ profile, workspace, onLogout }: Props) {
                 <NavIcon name="dashboard" /><span className="nav-label">Dashboard</span>
               </a>
 
-              <Group icon="data" label="Data & Sync" open>
+              <Group icon="data" label="Data & Sync" open={false}>
                 <a href={routeForSection("upload")} onClick={(e) => go(e, "upload")}><LumaIcon name="data" />Upload Center</a>
                 <a href={routeForSection("excel-sync")} onClick={(e) => go(e, "excel-sync")}><LumaIcon name="listing" />Excel Sync</a>
                 <a href={routeForSection("database")} onClick={(e) => go(e, "database")}><LumaIcon name="master" />Database</a>
               </Group>
 
-              <Group icon="creator" label="Creator Management">
+              <Group icon="creator" label={accessLocked ? "Creator Management · Locked" : "Creator Management"}>
                 <a href={routeForSection("agreements")} onClick={(e) => go(e, "agreements")}><LumaIcon name="content" />Agreement</a>
                 <a href={routeForSection("affiliate-support")} onClick={(e) => go(e, "affiliate-support")}><LumaIcon name="support" />Affiliate Support</a>
               </Group>
 
-              <details className="side-group" open>
-                <summary className={activeSection === "ai-analytics" ? "active" : ""}>
-                  <span><NavIcon name="ai" /><span className="nav-label">AI Analytics</span></span><LumaIcon name="chevron" className="chevron" />
+              <details className="side-group" open={!accessLocked}>
+                <summary className={`${activeSection === "ai-analytics" ? "active" : ""} ${accessLocked ? "locked-summary" : ""}`}>
+                  <span><NavIcon name="ai" /><span className="nav-label">AI Analytics</span>{accessLocked&&<span className="nav-lock"><LumaIcon name="lock"/></span>}</span><LumaIcon name="chevron" className="chevron" />
                 </summary>
                 <div className="side-subnav">
                   {aiNav.map(([key, label]) => <button type="button" key={key} onClick={() => openAi(key)}><LumaIcon name="ai" /><span>{label}</span></button>)}
                 </div>
               </details>
 
-              <a href={routeForSection("promo-studio")} onClick={(e) => go(e, "promo-studio")}><NavIcon name="sparkles" /><span className="nav-label">AI Promo Studio</span></a>
-              <a href={routeForSection("kanban")} onClick={(e) => go(e, "kanban")}><NavIcon name="kanban" /><span className="nav-label">Kanban</span></a>
+              <a className={accessLocked?"feature-locked":""} href={routeForSection("promo-studio")} onClick={(e) => go(e, "promo-studio")}><NavIcon name="sparkles" /><span className="nav-label">AI Promo Studio</span>{accessLocked&&<span className="nav-lock"><LumaIcon name="lock"/></span>}</a>
+              <a className={accessLocked?"feature-locked":""} href={routeForSection("kanban")} onClick={(e) => go(e, "kanban")}><NavIcon name="kanban" /><span className="nav-label">Kanban</span>{accessLocked&&<span className="nav-lock"><LumaIcon name="lock"/></span>}</a>
 
-              <Group icon="ticket" label="Tiket Bantuan">
+              <Group icon="ticket" label={accessLocked ? "Tiket Bantuan · Locked" : "Tiket Bantuan"}>
                 <a href={routeForSection("support-tickets")} onClick={(e) => go(e, "support-tickets")}><LumaIcon name="ticket" />Status & Riwayat Tiket</a>
               </Group>
 
               <Group icon="billing" label="Billing & Affiliate">
                 <a href={routeForSection("billing")} onClick={(e) => go(e, "billing")}><LumaIcon name="billing" />Billing & Token</a>
-                <a href={routeForSection("luma-affiliate")} onClick={(e) => go(e, "luma-affiliate")}><LumaIcon name="referral" />Luma Affiliate</a>
+                <a className={accessLocked?"feature-locked":""} href={routeForSection("luma-affiliate")} onClick={(e) => go(e, "luma-affiliate")}><LumaIcon name="referral" />Luma Affiliate{accessLocked&&<span className="nav-lock"><LumaIcon name="lock"/></span>}</a>
               </Group>
 
-              <Group icon="content" label="Content & Community">
+              <Group icon="content" label={accessLocked ? "Content & Community · Locked" : "Content & Community"}>
                 <a href={routeForSection("content-hub")} onClick={(e) => go(e, "content-hub")}><LumaIcon name="content" />Insight & Blog</a>
                 <a href={routeForSection("social-lumaway")} onClick={(e) => go(e, "social-lumaway")}><LumaIcon name="community" />Social Lumaway</a>
               </Group>
 
-              <Group icon="master" label="Master Data">
+              <Group icon="master" label={accessLocked ? "Master Data · Locked" : "Master Data"}>
                 {masterNav.map(([section, icon, label]) => <a key={section} href={routeForSection(section)} onClick={(e) => go(e, section)}><LumaIcon name={icon} /><span>{label}</span></a>)}
               </Group>
             </nav>
           </>
         )}
 
+        {lockNotice&&<div className="subscription-lock-popover"><button type="button" onClick={()=>setLockNotice(false)} aria-label="Tutup">×</button><LumaIcon name="lock"/><strong>Masa akses berakhir</strong><span>Data Anda tetap aman dan tersimpan. Perpanjang langganan untuk membuka kembali fitur Lumaway.</span><a href={routeForSection("billing")} onClick={(e)=>{e.preventDefault();setLockNotice(false);navigateToSection("billing");setMobileOpen(false)}}>Buka Billing</a></div>}
         <div className="sidebar-bottom">
           {!isOwner && <PWAInstallButton />}
           <a href={routeForSection(isOwner ? "administration" : "profile")} className="user-chip sidebar-profile-link" onClick={(event) => go(event, isOwner ? "administration" : "profile")}>
