@@ -169,3 +169,21 @@ html[data-theme="dark"] .lumaway-loading-screen{background:#080e1b!important;col
   .side-group summary{min-height:36px!important}
   .side-subnav a,.side-subnav button{min-height:31px!important;font-size:12.5px!important}
 }
+
+
+/* 2026-09-18 production stabilization */
+.auth-resend-button{width:100%;min-height:40px;margin:0 0 10px;border:1px solid #cfd5e1!important;background:#fff!important;color:#344054!important;border-radius:10px!important;font-weight:750!important}
+.auth-resend-button:hover{background:#f8fafc!important;border-color:#b8c0cf!important}
+.auth-resend-button:disabled{opacity:.55;cursor:not-allowed}
+
+.luma-helpdesk-compose{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:8px!important}
+.luma-helpdesk-input-row{display:grid!important;grid-template-columns:38px minmax(0,1fr) 42px!important;width:100%!important;min-width:0!important;align-items:end!important;gap:8px!important}
+.luma-helpdesk-input-row textarea{width:100%!important;min-width:0!important;min-height:42px!important;max-height:110px!important;box-sizing:border-box!important}
+.luma-helpdesk-input-row>button{width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;padding:0!important;border:0!important;border-radius:12px!important;background:#172a55!important;color:#fff!important;display:grid!important;place-items:center!important}
+.luma-helpdesk-input-row>button:disabled{opacity:.45!important}
+.luma-helpdesk-attachment-preview{grid-column:1/-1!important;width:100%!important;box-sizing:border-box!important}
+.luma-helpdesk-compose>p{grid-column:1/-1!important}
+@media(max-width:520px){.luma-helpdesk-input-row{grid-template-columns:36px minmax(0,1fr) 40px!important;gap:6px!important}.luma-helpdesk-attach{width:36px!important;height:40px!important}.luma-helpdesk-input-row>button{width:40px!important;min-width:40px!important}}
+
+.dashboard-reminder-close{display:grid!important;place-items:center!important;z-index:3!important;color:#344054!important;background:#eef2f6!important;border:1px solid #dfe4ec!important;opacity:1!important;font-weight:850!important;line-height:1!important;box-shadow:none!important}
+.dashboard-reminder-close:hover{background:#e4e9f1!important;color:#101828!important}
