@@ -31,7 +31,7 @@ import DashboardReminder from "./components/DashboardReminder";
 import PWAInstallButton from "./components/PWAInstallButton";
 import MobileQuickNav from "./components/MobileQuickNav";
 
-type Profile = { id: string; email: string | null; full_name: string | null; role: string; active: boolean; phone: string | null; phone_verified_at: string | null; education: string | null; birth_date: string | null; bio: string | null; position_title: string | null };
+type Profile = { id: string; email: string | null; full_name: string | null; nickname: string | null; role: string; active: boolean; phone: string | null; phone_verified_at: string | null; email_verified_at: string | null; education: string | null; birth_date: string | null; bio: string | null; position_title: string | null; profile_completed: boolean };
 type Workspace = { id: string; name: string; slug: string; status: string };
 type AuthMode = "signin" | "signup";
 
@@ -77,7 +77,7 @@ function cleanAuthErrorQuery() {
 }
 
 function profileComplete(profile: Profile) {
-  return Boolean(profile.full_name?.trim() && profile.phone_verified_at && profile.education?.trim() && profile.birth_date);
+  return Boolean(profile.profile_completed && profile.full_name?.trim() && profile.nickname?.trim() && profile.phone_verified_at && profile.email_verified_at && profile.education?.trim() && profile.birth_date && profile.bio?.trim());
 }
 
 function activateCurrentRoute(isAdmin: boolean, accessLocked = false) {
@@ -243,7 +243,7 @@ export default function LumawayWorkspaceApp() {
     setError("");
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
-      .select("id,email,full_name,role,active,phone,phone_verified_at,education,birth_date,bio,position_title")
+      .select("id,email,full_name,nickname,role,active,phone,phone_verified_at,email_verified_at,education,birth_date,bio,position_title,profile_completed")
       .eq("id", userId)
       .single();
     if (profileError || !profileData) {
@@ -287,6 +287,10 @@ export default function LumawayWorkspaceApp() {
           ? "dashboard"
           : currentSection;
     navigateToSection(target, { replace: true });
+    if (needsProfile) {
+      window.history.replaceState(null, "", `${APP_BASE}/profile?complete=true`);
+      window.dispatchEvent(new Event("lumaway-routechange"));
+    }
   }
 
   async function login() {
