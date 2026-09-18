@@ -5,8 +5,15 @@ import { createClient } from "../../lib/supabase-browser";
 
 type Row = { id?: number; row_order: number; row_data: Record<string,string> };
 type Sheet = { id:number; name:string; columns_json:string[] };
-type Mode = "sheet" | "import";
-const DEFAULT_COLUMNS=["Column A","Column B","Column C","Column D"];
+type Mode = "sheet" | "import" | "database";
+type ImportTarget = "sheet_only" | "creator_samples" | "shipping" | "creators" | "products" | "sales" | "performance";
+type DbTarget = "creator_samples" | "shipping";
+const DEFAULT_COLUMNS=["A","B","C","D"];
+const DB_FIELDS:Record<DbTarget,string[]>={
+  creator_samples:["creator_name","platform","sku","product_name","sample_status","sent_date","return_date","qty","product_value","tracking","notes"],
+  shipping:["data_date","creator_name","platform","sku","product_name","qty","product_cost","shipping_cost","courier","tracking","status"],
+};
+const DB_NUMERIC=new Set(["qty","product_value","product_cost","shipping_cost"]);
 
 function parseDelimited(text:string){
   const delimiter=(text.split("\n")[0]?.match(/\t/g)?.length||0)>(text.split("\n")[0]?.match(/,/g)?.length||0)?"\t":",";
@@ -29,10 +36,32 @@ function parseDelimited(text:string){
 function uniqueHeaders(values:string[]){
   const used=new Map<string,number>();
   return values.map((value,index)=>{
-    const base=String(value||`Column ${index+1}`).trim()||`Column ${index+1}`;
+    const base=String(value||columnLabel(index)).trim()||columnLabel(index);
     const count=used.get(base)||0;used.set(base,count+1);
     return count? `${base} ${count+1}`:base;
   });
+}
+function normalized(value:string){return String(value||"").toLowerCase().replace(/[^a-z0-9]+/g,"")}
+function detectImportTarget(filename:string,headers:string[]):ImportTarget{
+  const keys=headers.map(normalized);const hay=`${normalized(filename)} ${keys.join(" ")}`;
+  const has=(...terms:string[])=>terms.some(term=>hay.includes(normalized(term)));
+  if(has("sample_status","sent_date","return_date","sample","kirim sample","sample creator"))return "creator_samples";
+  if(has("shipping_cost","ongkir","biaya ongkir","courier","kurir","tracking","resi","shipping"))return "shipping";
+  if(has("gmv","commission","komisi","orders","pesanan teratribusi","omzet penjualan"))return "performance";
+  if(has("order id","id pesanan","transaction id","id transaksi")&&has("sku","product","produk"))return "sales";
+  if(has("hpp","cost price","harga modal")&&has("sku"))return "products";
+  if(has("creator name","nama affiliate","username affiliate","affiliate id")&&!has("gmv","orders","omzet"))return "creators";
+  return "sheet_only";
+}
+function dbValue(field:string,value:any){
+  if(DB_NUMERIC.has(field))return value===""||value===null||value===undefined?0:Number(value)||0;
+  if(["sent_date","return_date","data_date"].includes(field))return value||null;
+  return value===""?null:value;
+}
+function columnLabel(index:number){
+  let n=index+1;let out="";
+  while(n>0){n--;out=String.fromCharCode(65+(n%26))+out;n=Math.floor(n/26)}
+  return out;
 }
 
 export default function InternalExcelGrid({workspaceId}:{workspaceId:string}){
@@ -54,6 +83,10 @@ export default function InternalExcelGrid({workspaceId}:{workspaceId:string}){
   const [importHeaders,setImportHeaders]=useState<string[]>([]);
   const [importRows,setImportRows]=useState<string[][]>([]);
   const [mappedHeaders,setMappedHeaders]=useState<string[]>([]);
+  const [importTarget,setImportTarget]=useState<ImportTarget>("sheet_only");
+  const [dbTarget,setDbTarget]=useState<DbTarget>("creator_samples");
+  const [dbRows,setDbRows]=useState<Record<string,any>[]>([]);
+  const [dbBusy,setDbBusy]=useState(false);
 
   async function loadSheets(){
     let {data,error}=await supabase.from("workspace_grid_sheets").select("id,name,columns_json").eq("workspace_id",workspaceId).order("id");
@@ -63,7 +96,7 @@ export default function InternalExcelGrid({workspaceId}:{workspaceId:string}){
       if(created.error){setStatus("error, terjadi kesalahan.");return}
       data=[created.data];
     }
-    const list=(data||[]) as Sheet[];setSheets(list);if(!sheetId&&list[0])setSheetId(list[0].id);
+    const list=(data||[]) as Sheet[];setSheets(list);if(list[0]&&(!sheetId||!list.some(item=>item.id===sheetId)))setSheetId(list[0].id);
   }
   useEffect(()=>{void loadSheets()},[workspaceId]);
   useEffect(()=>{if(sheetId)void loadRows(sheetId)},[sheetId,sheets.length]);
@@ -75,6 +108,15 @@ export default function InternalExcelGrid({workspaceId}:{workspaceId:string}){
     setRows(((data||[]) as any[]).map(x=>({id:x.id,row_order:Number(x.row_order||0),row_data:x.row_data||{}})));
     setStatus("");
   }
+  async function loadDbRows(target:DbTarget=dbTarget){
+    setDbBusy(true);
+    const fields=["id",...DB_FIELDS[target]].join(",");
+    const {data,error}=await supabase.from(target).select(fields).eq("workspace_id",workspaceId).order("id",{ascending:false}).limit(500);
+    setDbBusy(false);
+    if(error){setStatus(error.message);return}
+    setDbRows((data||[]) as Record<string,any>[]);setStatus("");
+  }
+  useEffect(()=>{if(mode==="database")void loadDbRows(dbTarget)},[mode,dbTarget,workspaceId]);
 
   async function createSheet(){
     const name=newSheet.trim();if(!name)return;
@@ -86,8 +128,19 @@ export default function InternalExcelGrid({workspaceId}:{workspaceId:string}){
     const {error}=await supabase.from("workspace_grid_sheets").update({name,updated_at:new Date().toISOString()}).eq("id",sheetId).eq("workspace_id",workspaceId);
     if(error)return setStatus("error, terjadi kesalahan.");await loadSheets();
   }
+  async function deleteSheet(id:number){
+    const current=sheets.find(x=>x.id===id);if(!current||!confirm(`Hapus sheet "${current.name}" beserta seluruh row di dalamnya?`))return;
+    setBusy(true);
+    const rowsDelete=await supabase.from("workspace_grid_rows").delete().eq("workspace_id",workspaceId).eq("sheet_id",id);
+    if(rowsDelete.error){setBusy(false);return setStatus(rowsDelete.error.message)}
+    const sheetDelete=await supabase.from("workspace_grid_sheets").delete().eq("workspace_id",workspaceId).eq("id",id);
+    setBusy(false);if(sheetDelete.error)return setStatus(sheetDelete.error.message);
+    const remaining=sheets.filter(x=>x.id!==id);setSheets(remaining);
+    if(sheetId===id){if(remaining[0])setSheetId(remaining[0].id);else{setSheetId(null);await loadSheets()}}
+    setStatus("Sheet berhasil dihapus.");
+  }
   async function addColumn(){
-    const name=newColumn.trim();if(!name||columns.includes(name)||!sheetId)return;
+    const name=newColumn.trim()||columnLabel(columns.length);if(columns.includes(name)||!sheetId)return;
     const next=[...columns,name];const {error}=await supabase.from("workspace_grid_sheets").update({columns_json:next,updated_at:new Date().toISOString()}).eq("id",sheetId).eq("workspace_id",workspaceId);
     if(error)return setStatus("error, terjadi kesalahan.");setColumns(next);setNewColumn("");
   }
@@ -111,38 +164,79 @@ export default function InternalExcelGrid({workspaceId}:{workspaceId:string}){
   function exportCsv(){
     const esc=(x:any)=>`"${String(x??"").replaceAll('"','""')}"`;const csv=[columns.map(esc).join(","),...rows.map(r=>columns.map(c=>esc(r.row_data[c])).join(","))].join("\n");const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`lumaway-${sheets.find(x=>x.id===sheetId)?.name||"sheet"}.csv`;a.click();URL.revokeObjectURL(a.href);
   }
+  function updateDbCell(id:number,field:string,value:string){setDbRows(v=>v.map(row=>Number(row.id)===id?{...row,[field]:value}:row))}
+  async function saveDbRow(row:Record<string,any>){
+    if(!row?.id)return;setDbBusy(true);
+    const payload=Object.fromEntries(DB_FIELDS[dbTarget].map(field=>[field,dbValue(field,row[field])]));
+    const {error}=await supabase.from(dbTarget).update({...payload,updated_at:new Date().toISOString()}).eq("workspace_id",workspaceId).eq("id",row.id);
+    setDbBusy(false);setStatus(error?error.message:"Database tersimpan ✓");
+  }
+  async function deleteDbRow(id:number){
+    if(!confirm("Hapus record database ini?"))return;
+    const {error}=await supabase.from(dbTarget).delete().eq("workspace_id",workspaceId).eq("id",id);
+    if(error)return setStatus(error.message);setDbRows(v=>v.filter(row=>Number(row.id)!==id));setStatus("Record database dihapus.");
+  }
+  async function addDbRow(){
+    setDbBusy(true);
+    const seed=dbTarget==="creator_samples"?{workspace_id:workspaceId,sample_status:"sent",qty:1}:{workspace_id:workspaceId,status:"Pending",qty:0};
+    const fields=["id",...DB_FIELDS[dbTarget]].join(",");
+    const {data,error}=await supabase.from(dbTarget).insert(seed as any).select(fields).single();
+    setDbBusy(false);if(error)return setStatus(error.message);setDbRows(v=>[data as Record<string,any>,...v]);setStatus("Record baru dibuat. Isi cell lalu Save.");
+  }
   async function readImport(file:File|null){
     if(!file)return;
     if(file.size>10*1024*1024){setStatus("File import maksimal 10 MB.");return}
     const text=await file.text();const parsed=parseDelimited(text);
     if(parsed.length<1){setStatus("File tidak memiliki data.");return}
     const headers=uniqueHeaders(parsed[0]||[]);const data=parsed.slice(1).filter(r=>r.some(Boolean)).slice(0,5000);
-    setImportName(file.name.replace(/\.[^.]+$/,"")||"Imported Sheet");setImportHeaders(headers);setMappedHeaders(headers);setImportRows(data);setStatus(data.length>=5000?"Preview dibatasi 5.000 row per import.":"File siap direview sebelum import.");
+    setImportName(file.name.replace(/\.[^.]+$/,"")||"Imported Sheet");setImportHeaders(headers);setMappedHeaders(headers);setImportRows(data);setImportTarget(detectImportTarget(file.name,headers));setStatus(data.length>=5000?"Preview dibatasi 5.000 row per import.":"File siap direview. Lumaway akan mendeteksi database tujuan secara otomatis.");
   }
   async function commitImport(){
     if(!importRows.length||!mappedHeaders.length)return;setBusy(true);setStatus("Mengimpor data...");
     try{
-      const safeHeaders=uniqueHeaders(mappedHeaders.map((x,i)=>String(x||importHeaders[i]||`Column ${i+1}`).trim()));
+      const safeHeaders=uniqueHeaders(mappedHeaders.map((x,i)=>String(x||importHeaders[i]||columnLabel(i)).trim()));
       const created=await supabase.from("workspace_grid_sheets").insert({workspace_id:workspaceId,name:importName.trim()||"Imported Sheet",columns_json:safeHeaders}).select("id,name,columns_json").single();
       if(created.error)throw created.error;
-      const payload=importRows.map((values,index)=>({workspace_id:workspaceId,sheet_id:created.data.id,row_order:index+1,row_data:Object.fromEntries(safeHeaders.map((header,i)=>[header,String(values[i]??"")]))}));
+      const objects=importRows.map(values=>Object.fromEntries(safeHeaders.map((header,i)=>[header,String(values[i]??"")])));
+      const payload=objects.map((row,index)=>({workspace_id:workspaceId,sheet_id:created.data.id,row_order:index+1,row_data:row}));
       for(let i=0;i<payload.length;i+=500){const part=payload.slice(i,i+500);const {error}=await supabase.from("workspace_grid_rows").insert(part);if(error)throw error}
-      await loadSheets();setSheetId(created.data.id);setMode("sheet");setImportRows([]);setImportHeaders([]);setMappedHeaders([]);setStatus(`${payload.length.toLocaleString("id-ID")} row berhasil diimpor.`);
-    }catch{setStatus("error, terjadi kesalahan.")}finally{setBusy(false)}
+      let syncMessage="";
+      if(importTarget!=="sheet_only"){
+        const platformHeader=safeHeaders.find(h=>normalized(h)==="platform");
+        const platform=platformHeader?String(objects[0]?.[platformHeader]||"Other"):"Other";
+        const importId=`GRID-${crypto.randomUUID().replace(/-/g,"").slice(0,10).toUpperCase()}`;
+        const batchSize=300;const total=Math.ceil(objects.length/batchSize);
+        for(let i=0;i<total;i++){
+          const response=await fetch("/api/import",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+            workspace_id:workspaceId,data_type:importTarget,platform,start_date:"",end_date:"",
+            filename:`${importName||"excel-sync"}.csv`,import_id:importId,batch_index:i,total_batches:total,
+            rows:objects.slice(i*batchSize,(i+1)*batchSize)
+          })});
+          const result=await response.json();
+          if(!response.ok||!result.ok)throw new Error(result.error||"Sinkron database gagal.");
+        }
+        syncMessage=` · otomatis masuk ke database ${importTarget.replaceAll("_"," ")}`;
+      }
+      await loadSheets();setSheetId(created.data.id);setMode("sheet");setImportRows([]);setImportHeaders([]);setMappedHeaders([]);setStatus(`${payload.length.toLocaleString("id-ID")} row berhasil diimpor${syncMessage}.`);
+    }catch(error:any){setStatus(error?.message||"error, terjadi kesalahan.")}finally{setBusy(false)}
   }
 
   return <section id="excel-sync" className="legacy-page-anchor internal-sheet-page">
-    <div className="eyebrow">DATA & SYNC</div><h1>Excel Sync</h1><p className="muted">Pilih cara kerja yang paling mudah: edit langsung seperti spreadsheet, atau import CSV/TSV lalu review sebelum masuk ke workspace.</p>
-    <div className="excel-mode-switch"><button className={mode==="sheet"?"active":""} onClick={()=>setMode("sheet")}>Spreadsheet Editor</button><button className={mode==="import"?"active":""} onClick={()=>setMode("import")}>Import Data</button></div>
+    <div className="eyebrow">DATA & SYNC</div><h1>Excel Sync</h1><p className="muted">Edit spreadsheet, import data, dan koreksi database operasional dari satu tempat. Import Sample atau Ongkir akan diarahkan otomatis ke database terkait.</p>
+    <div className="excel-mode-switch"><button className={mode==="sheet"?"active":""} onClick={()=>setMode("sheet")}>Spreadsheet Editor</button><button className={mode==="import"?"active":""} onClick={()=>setMode("import")}>Import Data</button><button className={mode==="database"?"active":""} onClick={()=>setMode("database")}>Database Editor</button></div>
 
     {mode==="import"?<div className="card excel-import-card">
       <div className="sheet-quick-start"><div><b>1</b><span>Pilih CSV/TSV</span></div><div><b>2</b><span>Periksa nama kolom</span></div><div><b>3</b><span>Review contoh data</span></div><div><b>4</b><span>Import ke sheet baru</span></div></div>
       <div className="excel-import-drop"><label><strong>Pilih file data</strong><span>CSV atau TSV, maksimal 10 MB. File XLSX tetap dapat diunggah melalui Upload Center.</span><input type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values" onChange={e=>void readImport(e.target.files?.[0]||null)}/></label></div>
-      {importRows.length>0&&<><div className="excel-import-config"><label>Nama Sheet<input value={importName} onChange={e=>setImportName(e.target.value)}/></label><div><b>Mapping Kolom</b><span>Ubah nama kolom bila perlu sebelum data disimpan.</span></div></div><div className="import-mapping-grid">{mappedHeaders.map((header,index)=><label key={index}><span>Kolom {index+1}: {importHeaders[index]}</span><input value={header} onChange={e=>setMappedHeaders(v=>v.map((x,i)=>i===index?e.target.value:x))}/></label>)}</div><div className="internal-sheet-scroll import-preview"><table className="internal-sheet-table"><thead><tr><th>#</th>{mappedHeaders.map((h,i)=><th key={i}>{h||`Column ${i+1}`}</th>)}</tr></thead><tbody>{importRows.slice(0,20).map((r,i)=><tr key={i}><td>{i+1}</td>{mappedHeaders.map((_,j)=><td key={j}>{r[j]||""}</td>)}</tr>)}</tbody></table></div><div className="excel-import-footer"><span>Preview 20 dari {importRows.length.toLocaleString("id-ID")} row.</span><button className="primary" disabled={busy} onClick={()=>void commitImport()}>{busy?"Mengimpor...":"Import ke Lumaway"}</button></div></>}
+      {importRows.length>0&&<><div className="excel-import-config"><label>Nama Sheet<input value={importName} onChange={e=>setImportName(e.target.value)}/></label><label>Database tujuan<select value={importTarget} onChange={e=>setImportTarget(e.target.value as ImportTarget)}><option value="sheet_only">Hanya Spreadsheet</option><option value="creator_samples">Creator Samples</option><option value="shipping">Shipping / Ongkir</option><option value="creators">Master Creator</option><option value="products">Master Product / SKU</option><option value="sales">Sales / Transaction</option><option value="performance">Affiliate Performance</option></select><small>Dipilih otomatis dari nama file dan header. Anda tetap bisa mengoreksi sebelum import.</small></label><div><b>Mapping Kolom</b><span>Ubah nama kolom bila perlu sebelum data disimpan.</span></div></div><div className="import-mapping-grid">{mappedHeaders.map((header,index)=><label key={index}><span>Kolom {index+1}: {importHeaders[index]}</span><input value={header} onChange={e=>setMappedHeaders(v=>v.map((x,i)=>i===index?e.target.value:x))}/></label>)}</div><div className="internal-sheet-scroll import-preview"><table className="internal-sheet-table"><thead><tr><th>#</th>{mappedHeaders.map((h,i)=><th key={i}>{h||columnLabel(i)}</th>)}</tr></thead><tbody>{importRows.slice(0,20).map((r,i)=><tr key={i}><td>{i+1}</td>{mappedHeaders.map((_,j)=><td key={j}>{r[j]||""}</td>)}</tr>)}</tbody></table></div><div className="excel-import-footer"><span>Preview 20 dari {importRows.length.toLocaleString("id-ID")} row.</span><button className="primary" disabled={busy} onClick={()=>void commitImport()}>{busy?"Mengimpor...":"Import ke Lumaway"}</button></div></>}
       {status&&<div className="owner-inline-note">{status}</div>}
+    </div>:mode==="database"?<div className="card database-editor-card">
+      <div className="database-editor-head"><div><div className="eyebrow">LIVE DATABASE</div><h2>Database Editor</h2><p className="muted">Edit langsung record operasional. Perubahan disimpan ke database Lumaway, bukan hanya ke sheet.</p></div><div className="button-row"><select value={dbTarget} onChange={e=>setDbTarget(e.target.value as DbTarget)}><option value="creator_samples">Creator Samples</option><option value="shipping">Shipping / Ongkir</option></select><button className="primary" disabled={dbBusy} onClick={()=>void addDbRow()}>+ Record</button><button disabled={dbBusy} onClick={()=>void loadDbRows(dbTarget)}>Reload</button></div></div>
+      <div className="internal-sheet-scroll database-editor-scroll"><table className="internal-sheet-table"><thead><tr><th className="row-number">ID</th>{DB_FIELDS[dbTarget].map(field=><th key={field}>{field.replaceAll("_"," ")}</th>)}<th>Action</th></tr></thead><tbody>{dbRows.map(row=><tr key={row.id}><td className="row-number">{row.id}</td>{DB_FIELDS[dbTarget].map(field=><td key={field}><input type={DB_NUMERIC.has(field)?"number":["sent_date","return_date","data_date"].includes(field)?"date":"text"} value={row[field]??""} onChange={e=>updateDbCell(Number(row.id),field,e.target.value)} onBlur={()=>void saveDbRow(row)}/></td>)}<td><div className="button-row"><button disabled={dbBusy} onClick={()=>void saveDbRow(row)}>Save</button><button disabled={dbBusy} onClick={()=>void deleteDbRow(Number(row.id))}>Delete</button></div></td></tr>)}{!dbRows.length&&!dbBusy&&<tr><td colSpan={DB_FIELDS[dbTarget].length+2}><div className="empty-state"><strong>Database masih kosong.</strong><span>Tambahkan record atau import file yang sesuai.</span></div></td></tr>}</tbody></table></div>
+      {dbBusy&&<div className="owner-inline-note">Memuat / menyimpan database...</div>}{status&&<div className="owner-inline-note">{status}</div>}
     </div>:<>
       <div className="sheet-quick-start"><div><b>1</b><span>Pilih atau buat Sheet</span></div><div><b>2</b><span>Tambah kolom & row</span></div><div><b>3</b><span>Klik sel lalu edit</span></div><div><b>4</b><span>Tersimpan otomatis</span></div></div>
-      <div className="sheet-toolbar card"><div className="sheet-tabs">{sheets.map(s=><button key={s.id} className={sheetId===s.id?"active":""} onClick={()=>setSheetId(s.id)}>{s.name}</button>)}</div><div className="sheet-actions"><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Cari isi sheet..."/><input value={newSheet} onChange={e=>setNewSheet(e.target.value)} placeholder="Nama sheet baru"/><button onClick={createSheet}>+ Sheet</button><button onClick={renameSheet}>Rename</button><button onClick={()=>sheetId&&void loadRows(sheetId)}>Reload</button><button onClick={exportCsv}>Export CSV</button></div></div>
+      <div className="sheet-toolbar card"><div className="sheet-tabs">{sheets.map(s=><span className={`sheet-tab-wrap ${sheetId===s.id?"active":""}`} key={s.id}><button className="sheet-tab-select" onClick={()=>setSheetId(s.id)}>{s.name}</button><button className="sheet-tab-delete" aria-label={`Hapus sheet ${s.name}`} title="Hapus sheet" onClick={()=>void deleteSheet(s.id)}>×</button></span>)}</div><div className="sheet-actions"><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Cari isi sheet..."/><input value={newSheet} onChange={e=>setNewSheet(e.target.value)} placeholder="Nama sheet baru"/><button onClick={createSheet}>+ Sheet</button><button onClick={renameSheet}>Rename</button><button onClick={()=>sheetId&&void loadRows(sheetId)}>Reload</button><button onClick={exportCsv}>Export CSV</button></div></div>
       <div className="card internal-sheet-card"><div className="sheet-column-tools"><input value={newColumn} onChange={e=>setNewColumn(e.target.value)} placeholder="Nama kolom baru"/><button onClick={addColumn}>+ Column</button><button className="primary" onClick={addRow}>+ Row</button><span>{visibleRows.length.toLocaleString("id-ID")} dari {rows.length.toLocaleString("id-ID")} rows · {columns.length} columns {busy?"· menyimpan...":status==="Tersimpan otomatis ✓"?"· tersimpan ✓":""}</span></div>
         <div className="internal-sheet-scroll"><table className="internal-sheet-table"><thead><tr><th className="row-number">#</th>{columns.map(c=><th key={c}><button className="sheet-sort" onClick={()=>sortBy(c)}>{c}{sortColumn===c?<small>{sortAsc?" ↑":" ↓"}</small>:null}</button></th>)}<th>Action</th></tr></thead><tbody>{visibleRows.map((row,i)=>{const realIndex=rows.findIndex(x=>x.id===row.id);return <tr key={row.id||i}><td className="row-number">{realIndex+1}</td>{columns.map(col=><td key={col} className={selectedCell?.row===realIndex&&selectedCell.column===col?"selected-cell":""}><input value={row.row_data[col]??""} onFocus={()=>setSelectedCell({row:realIndex,column:col})} onChange={e=>updateCell(realIndex,col,e.target.value)} onBlur={()=>void saveRow(rows[realIndex])}/></td>)}<td><div className="button-row"><button disabled={busy} onClick={()=>saveRow(row)}>Save</button><button onClick={()=>deleteRow(row)}>Delete</button></div></td></tr>})}{!visibleRows.length&&<tr><td colSpan={columns.length+2}><div className="empty-state"><strong>{search?"Tidak ada data yang cocok.":"Sheet masih kosong."}</strong><span>{search?"Coba kata pencarian lain.":"Tambahkan row dan kolom untuk mulai bekerja seperti spreadsheet."}</span></div></td></tr>}</tbody></table></div>{status&&<div className="owner-inline-note">{status}</div>}
       </div>

@@ -31,14 +31,11 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 5,
   viewportFit: "cover",
-  colorScheme: "light dark",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f6f7fb" },
-    { media: "(prefers-color-scheme: dark)", color: "#0b1020" },
-  ],
+  colorScheme: "light",
+  themeColor: "#f6f7fb",
 };
 
-const themeBoot = `(()=>{try{const s=localStorage.getItem('lumaway_theme');const t=s==='dark'||s==='light'?s:(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.theme=t}catch{}})();`;
+const themeBoot = `(()=>{try{document.documentElement.dataset.theme='light';localStorage.removeItem('lumaway_theme')}catch{}})();`;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (

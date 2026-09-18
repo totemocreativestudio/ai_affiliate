@@ -169,3 +169,49 @@ html[data-theme="dark"] .lumaway-loading-screen{background:#080e1b!important;col
   .side-group summary{min-height:36px!important}
   .side-subnav a,.side-subnav button{min-height:31px!important;font-size:12.5px!important}
 }
+
+
+/* 2026-09-18 production stabilization */
+.auth-resend-button{width:100%;min-height:40px;margin:0 0 10px;border:1px solid #cfd5e1!important;background:#fff!important;color:#344054!important;border-radius:10px!important;font-weight:750!important}
+.auth-resend-button:hover{background:#f8fafc!important;border-color:#b8c0cf!important}
+.auth-resend-button:disabled{opacity:.55;cursor:not-allowed}
+
+.luma-helpdesk-compose{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:8px!important}
+.luma-helpdesk-input-row{display:grid!important;grid-template-columns:38px minmax(0,1fr) 42px!important;width:100%!important;min-width:0!important;align-items:end!important;gap:8px!important}
+.luma-helpdesk-input-row textarea{width:100%!important;min-width:0!important;min-height:42px!important;max-height:110px!important;box-sizing:border-box!important}
+.luma-helpdesk-input-row>button{width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;padding:0!important;border:0!important;border-radius:12px!important;background:#172a55!important;color:#fff!important;display:grid!important;place-items:center!important}
+.luma-helpdesk-input-row>button:disabled{opacity:.45!important}
+.luma-helpdesk-attachment-preview{grid-column:1/-1!important;width:100%!important;box-sizing:border-box!important}
+.luma-helpdesk-compose>p{grid-column:1/-1!important}
+@media(max-width:520px){.luma-helpdesk-input-row{grid-template-columns:36px minmax(0,1fr) 40px!important;gap:6px!important}.luma-helpdesk-attach{width:36px!important;height:40px!important}.luma-helpdesk-input-row>button{width:40px!important;min-width:40px!important}}
+
+.dashboard-reminder-close{display:grid!important;place-items:center!important;z-index:3!important;color:#344054!important;background:#eef2f6!important;border:1px solid #dfe4ec!important;opacity:1!important;font-weight:850!important;line-height:1!important;box-shadow:none!important}
+.dashboard-reminder-close:hover{background:#e4e9f1!important;color:#101828!important}
+
+
+/* Verified WhatsApp community onboarding */
+.whatsapp-community-card{align-items:flex-start!important}
+.whatsapp-community-join{display:grid;justify-items:center;gap:12px;min-width:220px}
+.whatsapp-community-join img{width:190px;height:190px;object-fit:contain;background:#fff;border:1px solid #e4e7ec;border-radius:16px;padding:10px}
+.whatsapp-community-join .button-row{justify-content:center;max-width:330px}
+@media(max-width:760px){.whatsapp-community-card{display:grid!important}.whatsapp-community-join{width:100%}.whatsapp-community-join img{width:180px;height:180px}}
+
+/* Excel Sync deleteable sheets and operational database editor */
+.sheet-tabs{display:flex!important;gap:7px!important;align-items:center!important;flex-wrap:wrap!important}
+.sheet-tab-wrap{display:inline-flex;align-items:center;border:1px solid #e1e6ef;border-radius:10px;background:#f8fafc;overflow:hidden}
+.sheet-tab-wrap.active{border-color:#8b83ff;background:#f2f0ff;box-shadow:0 0 0 2px rgba(99,91,255,.08)}
+.sheet-tab-wrap .sheet-tab-select,.sheet-tab-wrap .sheet-tab-delete{border:0!important;background:transparent!important;box-shadow:none!important;min-height:34px!important;border-radius:0!important}
+.sheet-tab-wrap .sheet-tab-select{padding:6px 9px!important;font-weight:700!important}
+.sheet-tab-wrap .sheet-tab-delete{width:30px!important;min-width:30px!important;padding:0!important;color:#667085!important;border-left:1px solid #e1e6ef!important;font-size:16px!important}
+.sheet-tab-wrap .sheet-tab-delete:hover{background:#fff1f0!important;color:#b42318!important}
+.database-editor-card{display:grid;gap:14px}
+.database-editor-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
+.database-editor-head h2{margin:4px 0 3px}
+.database-editor-head .button-row{align-items:center;flex-wrap:wrap}
+.database-editor-head select{min-width:190px}
+.database-editor-scroll{max-height:62vh}
+.database-editor-scroll .internal-sheet-table td input{min-width:130px}
+.excel-import-config{grid-template-columns:minmax(180px,.32fr) minmax(240px,.38fr) minmax(240px,.55fr)!important}
+.excel-import-config label small{font-size:8.5px;color:#667085;line-height:1.4}
+@media(max-width:900px){.excel-import-config{grid-template-columns:1fr!important}.database-editor-head{align-items:stretch;flex-direction:column}.database-editor-head .button-row{width:100%}.database-editor-head select{flex:1}}
+@media(max-width:560px){.excel-mode-switch{grid-template-columns:repeat(3,minmax(0,1fr))!important}.excel-mode-switch button{padding:7px 5px!important;font-size:9px!important}.sheet-tab-wrap{max-width:100%}.sheet-tab-wrap .sheet-tab-select{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px}}

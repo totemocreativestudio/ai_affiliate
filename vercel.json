@@ -3,7 +3,8 @@
   "git": {
     "deploymentEnabled": {
       "ux-pwa-proration-fixes": false,
-      "lumaway-user-access-social-fixes": false
+      "lumaway-user-access-social-fixes": false,
+      "fix/lumaway-production-stabilization": false
     }
   }
 }

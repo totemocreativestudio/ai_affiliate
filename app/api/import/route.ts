@@ -50,6 +50,29 @@ export async function POST(req: NextRequest) {
       for(const row of rows){const sku=clean(value(row,["SKU","Kode SKU"],false));if(!sku){skipped++;continue}const skuNorm=sku.toLowerCase();const payload={workspace_id:workspaceId,sku,sku_normalized:skuNorm,product_name:clean(value(row,["Product Name","Nama Produk"]))||sku,category:clean(value(row,["Category","Kategori"]))||null,selling_price:num(value(row,["Selling Price","Harga Jual"])),cost_price:num(value(row,["Cost Price","HPP"])),point_per_unit:num(value(row,["Point per Unit","Point"])),status:clean(value(row,["Status"]))||"Active",source_import_id:importId,updated_at:new Date().toISOString()};const {data:ex}=await admin.from("product_master").select("id").eq("workspace_id",workspaceId).eq("sku_normalized",skuNorm).maybeSingle();if(ex?.id){const {error}=await admin.from("product_master").update(payload).eq("id",ex.id);if(error)throw error;updated++}else{const {error}=await admin.from("product_master").insert(payload);if(error)throw error;inserted++}}
     }else if(dataType==="creator_samples"){
       const payloads=rows.map(row=>({workspace_id:workspaceId,creator_id:num(value(row,["creator_id","Creator ID"]))||null,creator_name:clean(value(row,["creator_name","Creator Name"]))||null,platform:clean(value(row,["platform","Platform"]))||platform,sku:clean(value(row,["sku","SKU"]))||null,product_name:clean(value(row,["product_name","Product Name"]))||null,sample_status:clean(value(row,["sample_status","Sample Status"]))||"sent",sent_date:clean(value(row,["sent_date","Sent Date"]))||null,return_date:clean(value(row,["return_date","Return Date"]))||null,qty:num(value(row,["qty","Qty"]))||1,product_value:num(value(row,["product_value","Product Value"])),tracking:clean(value(row,["tracking","Tracking"]))||null,notes:clean(value(row,["notes","Notes"]))||null,source:"upload",source_import_id:importId,updated_at:new Date().toISOString()})).filter(x=>x.creator_id||x.creator_name);if(payloads.length){const {error}=await admin.from("creator_samples").insert(payloads);if(error)throw error;inserted+=payloads.length}skipped+=rows.length-payloads.length;
+    }else if(dataType==="shipping"){
+      const payloads=rows.map(row=>{
+        const rawDate=clean(value(row,["data_date","Data Date","Date","Tanggal","Tanggal Kirim","Shipping Date"]));
+        return {
+          workspace_id:workspaceId,
+          data_date:rawDate?(dateValue(rawDate,"")||null):null,
+          creator_id:num(value(row,["creator_id","Creator ID"]))||null,
+          creator_name:clean(value(row,["creator_name","Creator Name","Nama Creator","Nama Affiliate","Creator"]))||null,
+          platform:clean(value(row,["platform","Platform"]))||platform,
+          product_master_id:num(value(row,["product_master_id","Product Master ID"]))||null,
+          sku:clean(value(row,["sku","SKU","Kode SKU"]))||null,
+          product_name:clean(value(row,["product_name","Product Name","Nama Produk","Produk"]))||null,
+          qty:num(value(row,["qty","Qty","Quantity","Jumlah"]))||0,
+          product_cost:num(value(row,["product_cost","Product Cost","HPP","Harga Modal"])),
+          shipping_cost:num(value(row,["shipping_cost","Shipping Cost","Ongkir","Biaya Ongkir"])),
+          courier:clean(value(row,["courier","Courier","Kurir","Ekspedisi"]))||null,
+          tracking:clean(value(row,["tracking","Tracking","Resi","Nomor Resi","No Resi"]))||null,
+          status:clean(value(row,["status","Status","Shipping Status"]))||"Pending",
+          updated_at:new Date().toISOString(),
+        };
+      }).filter(x=>x.creator_id||x.creator_name||x.tracking||x.sku||x.product_name);
+      if(payloads.length){const {error}=await admin.from("shipping").insert(payloads);if(error)throw error;inserted+=payloads.length}
+      skipped+=rows.length-payloads.length;
     }else if(dataType==="product_hpp"){
       for(const row of rows){const sku=clean(value(row,["sku","SKU"]));const period=clean(value(row,["period","Period"]));if(!sku||!period){skipped++;continue}const payload={workspace_id:workspaceId,sku,period,product_id:num(value(row,["product_id","Product ID"]))||null,product_name:clean(value(row,["product_name","Product Name"]))||null,hpp:num(value(row,["hpp","HPP"])),selling_price:num(value(row,["selling_price","Selling Price"])),notes:clean(value(row,["notes","Notes"]))||null,source_import_id:importId,updated_at:new Date().toISOString()};const {data:ex}=await admin.from("product_hpp_history").select("id").eq("workspace_id",workspaceId).eq("sku",sku).eq("period",period).maybeSingle();if(ex?.id){const {error}=await admin.from("product_hpp_history").update(payload).eq("id",ex.id);if(error)throw error;updated++}else{const {error}=await admin.from("product_hpp_history").insert(payload);if(error)throw error;inserted++}}
     }else if(dataType==="performance"||dataType==="sales"){
