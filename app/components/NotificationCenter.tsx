@@ -48,6 +48,9 @@ const CATEGORY_LABELS: Record<string, string> = {
   promotion: "Promotion",
   education: "Education",
   info: "Information",
+  creator_on_fire_daily: "Creator On Fire · Harian",
+  creator_on_fire_weekly: "Creator On Fire · Mingguan",
+  creator_on_fire_monthly: "Creator On Fire · Bulanan",
 };
 
 function categoryLabel(category: string) {
@@ -128,7 +131,7 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
       const fresh = list.find((item) => !item.read && !rows.some((old) => old.key === item.key));
       if (fresh) {
         setToast(fresh);
-        window.setTimeout(() => setToast(null), 7000);
+        window.setTimeout(() => setToast(null), fresh.source==="broadcast"?3000:7000);
       }
     }
 
