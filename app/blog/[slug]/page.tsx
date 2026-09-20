@@ -1,12 +1,5 @@
-import type { Metadata } from "next";
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { createPublicClient } from "../../../lib/public-supabase";
-
-export const revalidate=300;
-
-async function getPost(slug:string){const supabase=createPublicClient();const {data}=await supabase.from("luma_blog_posts").select("*").eq("slug",slug).eq("status","published").maybeSingle();return data as any;}
-
-export async function generateMetadata({params}:{params:Promise<{slug:string}>}):Promise<Metadata>{const {slug}=await params;const post=await getPost(slug);if(!post)return {title:"Lumaway Blog"};return {title:post.seo_title||post.title,description:post.seo_description||post.excerpt||undefined,keywords:post.seo_keywords||undefined,openGraph:{title:post.seo_title||post.title,description:post.seo_description||post.excerpt||undefined,images:post.cover_image_url?[post.cover_image_url]:undefined,type:"article"}};}
-
-export default async function BlogPost({params}:{params:Promise<{slug:string}>}){const {slug}=await params;const post=await getPost(slug);if(!post)notFound();return <main className="public-blog-shell"><header className="public-blog-header"><Link href="/blog" className="public-blog-brand"><img src="/luma-mark.png" alt="Lumaway"/><div><strong>LUMAWAY</strong><span>Insight & Blog</span></div></Link><Link href="/" className="public-blog-login">Open LUMA →</Link></header><article className="public-article"><div className="public-article-meta"><span>{post.category}</span><span>{post.published_at?new Date(post.published_at).toLocaleDateString("id-ID",{day:"numeric",month:"long",year:"numeric"}):""}</span></div><h1>{post.title}</h1><p className="public-article-excerpt">{post.excerpt}</p>{post.cover_image_url&&<img className="public-article-cover" src={post.cover_image_url} alt=""/>}<div className="public-article-content" dangerouslySetInnerHTML={{__html:post.content_html||""}}/>{post.external_dofollow_url&&<p className="public-article-source">Referensi terkait: <a href={post.external_dofollow_url} target="_blank" rel="noopener">Baca sumber eksternal →</a></p>}<div className="public-article-cta"><img src="/luma-mark.png" alt="LUMA"/><div><b>Turn data into clearer decisions with LUMA.</b><p>Affiliate Intelligence by Lumaway.</p></div><Link href="/">Open LUMA →</Link></div></article><footer className="public-blog-footer">© {new Date().getFullYear()} Lumaway · Light Up Your Potential.</footer></main>}
+import {redirect} from "next/navigation";
+export default async function LegacyBlogRedirect({params}:{params:Promise<{slug:string}>}){
+  const {slug}=await params;
+  redirect(`/web/insights/${encodeURIComponent(slug)}`);
+}
