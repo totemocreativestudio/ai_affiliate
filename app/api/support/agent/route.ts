@@ -1,18 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerContext } from "../../../../lib/server-auth";
 import { getServerSecret } from "../../../../lib/server-secrets";
-import { DEFAULT_CONVIA_BASE_URL } from "../../../../lib/convia";
 import { sendWhatsAppTextWithFailover } from "../../../../lib/whatsapp-router";
 import { openAIResponsesWithFailover } from "../../../../lib/openai-router";
 import { extractOpenAIText, firstName, LUMA_SUPPORT_KNOWLEDGE, LUMA_SUPPORT_SCHEMA, supportTicketCode } from "../../../../lib/luma-support";
 
 export const runtime = "nodejs";
-
-async function getConviaSettings(admin:any){
-  const {data}=await admin.from("luma_platform_settings").select("setting_key,setting_value").in("setting_key",["convia_base_url","convia_phone_number_id"]);
-  const s=Object.fromEntries((data||[]).map((x:any)=>[x.setting_key,x.setting_value||""]));
-  return {baseUrl:process.env.CONVIA_BASE_URL||s.convia_base_url||DEFAULT_CONVIA_BASE_URL,phoneNumberId:process.env.CONVIA_WHATSAPP_PHONE_NUMBER_ID||s.convia_phone_number_id||""};
-}
 
 async function ensureTicket(ctx:any,workspaceId:string,ticketId:string|undefined,userName:string){
   if(ticketId){
@@ -33,15 +26,11 @@ async function escalate(ctx:any,workspaceId:string,ticket:any,userName:string,pr
   let whatsappSent=false;
   if(phone){
     try{
-      const apiKey=await getServerSecret(ctx.admin,"luma_convia_api_key");
-      if(apiKey){
-        const cfg=await getConviaSettings(ctx.admin);
-        const text=`Halo ${userName}, tiket bantuan Lumaway ${ticket.ticket_code} sudah dibuat. Luma sudah meneruskan konteks kendala Anda ke tim support. Balas percakapan WhatsApp support yang aktif jika ada informasi tambahan. Tim Lumaway/owner dapat ikut membantu sampai kendala selesai.`;
-        const sent=await sendWhatsAppTextWithFailover(ctx.admin,phone,text);
-        whatsappSent=true;
-        await ctx.admin.from("luma_support_messages").insert({ticket_id:ticket.id,workspace_id:workspaceId,user_id:ctx.user.id,sender_type:"system",body:`Notifikasi handoff WhatsApp terkirim melalui ${sent.provider}.`,provider:sent.provider,provider_message_id:sent.reference||null,metadata:{event:"whatsapp_handoff",failover_used:sent.failover_used,attempted:sent.attempted}});
-        await ctx.admin.from("luma_api_usage_events").insert({workspace_id:workspaceId,user_id:ctx.user.id,provider:sent.provider,service:"support_handoff",request_type:"ticket_escalation",status:"success",reference:ticket.ticket_code,metadata:{recipient_last4:phone.slice(-4),failover_used:sent.failover_used,attempted:sent.attempted}});
-      }
+      const text=`Halo ${userName}, tiket bantuan Lumaway ${ticket.ticket_code} sudah dibuat. Luma sudah meneruskan konteks kendala Anda ke tim support. Balas percakapan WhatsApp support yang aktif jika ada informasi tambahan. Tim Lumaway/owner dapat ikut membantu sampai kendala selesai.`;
+      const sent=await sendWhatsAppTextWithFailover(ctx.admin,phone,text);
+      whatsappSent=true;
+      await ctx.admin.from("luma_support_messages").insert({ticket_id:ticket.id,workspace_id:workspaceId,user_id:ctx.user.id,sender_type:"system",body:`Notifikasi handoff WhatsApp terkirim melalui ${sent.provider}.`,provider:sent.provider,provider_message_id:sent.reference||null,metadata:{event:"whatsapp_handoff",failover_used:sent.failover_used,attempted:sent.attempted}});
+      await ctx.admin.from("luma_api_usage_events").insert({workspace_id:workspaceId,user_id:ctx.user.id,provider:sent.provider,service:"support_handoff",request_type:"ticket_escalation",status:"success",reference:ticket.ticket_code,metadata:{recipient_last4:phone.slice(-4),failover_used:sent.failover_used,attempted:sent.attempted}});
     }catch(error:any){
       await ctx.admin.from("luma_support_messages").insert({ticket_id:ticket.id,workspace_id:workspaceId,user_id:ctx.user.id,sender_type:"system",body:"Ticket sudah masuk ke Support Lumaway. Pengiriman WhatsApp belum berhasil; owner tetap dapat melihat tiket dari Support Desk.",metadata:{event:"whatsapp_handoff_failed",error:String(error?.message||"unknown").slice(0,300)}});
     }
