@@ -1,6 +1,6 @@
 import type {NextConfig} from 'next';
 
-const marketingOrigin = process.env.MARKETING_ORIGIN?.replace(/\/$/, '');
+const marketingOrigin = (process.env.MARKETING_ORIGIN || 'https://lumaway-marketing.vercel.app').replace(/\/$/, '');
 
 const config: NextConfig = {
  async rewrites() {

@@ -3,7 +3,8 @@
   "ignoreCommand": "git diff --quiet HEAD^ HEAD ./",
   "git": {
     "deploymentEnabled": {
-      "fix/vercel-monorepo-deployments": false
+      "fix/vercel-monorepo-deployments": false,
+      "fix/lumaway-marketing-public-rewrite": false
     }
   }
 }
