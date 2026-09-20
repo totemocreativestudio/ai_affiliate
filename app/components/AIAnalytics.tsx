@@ -254,7 +254,7 @@ export default function AIAnalytics({ workspaceId }: { workspaceId: string }) {
     </div>
 
     {menu && menuRow && typeof document!=="undefined" && createPortal(
-      <div id="analysis-history-menu" data-history-menu-root="true" className="ai-history-popup-menu" role="menu" aria-label="Analysis history actions" style={{left:`${menu.left}px`,top:`${menu.top}px`}} onPointerDown={(event)=>event.stopPropagation()} onClick={(event)=>event.stopPropagation()}>
+      <div id="analysis-history-menu" data-history-menu-root="true" className="ai-history-row-menu ai-history-popup-menu" role="menu" aria-label="Analysis history actions" style={{left:`${menu.left}px`,top:`${menu.top}px`}} onPointerDown={(event)=>event.stopPropagation()} onClick={(event)=>event.stopPropagation()}>
         <button type="button" role="menuitem" onClick={()=>{setDetail(menuRow);setMenu(null)}}>Detail Analysis</button>
         {menuRow.report ? <>
           <button type="button" role="menuitem" onClick={()=>{setMenu(null);void previewReport(menuRow.report.id)}}>Preview Document</button>
