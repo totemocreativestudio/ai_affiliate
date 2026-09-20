@@ -37,7 +37,7 @@ const ownerNav: Array<[string, IconName, string]> = [
   ["referral", "referral", "Referral & Payout"],
   ["ai", "ai", "AI & API Usage"],
   ["providers", "integration", "Provider Accounts"],
-  ["hpp", "product", "HPP & Promo Guardrail"],
+  ["hpp", "product", "Lumaway Pricing Guardrail"],
   ["broadcast", "broadcast", "Broadcast & Promo"],
   ["content", "content", "Blog & Tutorial"],
   ["knowledge", "master", "Knowledge Vault"],
@@ -152,7 +152,7 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
           <img src="/luma-mark.png" alt="Lumaway" className="brand-mark" />
           <div className="brand-wordmark">
             <strong>LUMAWAY<span className="brand-dot">.</span></strong>
-            <small>{isOwner ? "Owner Control" : "Light Up Your Potential."}</small>
+            <small>{isOwner ? "Control Center" : "Light Up Your Potential."}</small>
           </div>
         </div>
 
@@ -167,7 +167,7 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
 
         {isOwner ? (
           <>
-            <div className="sidebar-label">OWNER CONTROL</div>
+            <div className="sidebar-label">CONTROL CENTER</div>
             <nav className="side-nav owner-nav" onClick={closeOnMobile}>
               {ownerNav.map(([tab, icon, label]) => (
                 <button type="button" key={tab} className={ownerTab === tab ? "active" : ""} onClick={() => openOwner(tab, tab === "referral" ? "owner-referral-payout" : undefined)}>
