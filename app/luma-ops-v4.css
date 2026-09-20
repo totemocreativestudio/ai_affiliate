@@ -96,3 +96,10 @@
 
 @media(max-width:1180px){.target-current-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.target-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pricing-result-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){.target-current-grid,.target-form-grid,.pricing-result-grid{grid-template-columns:1fr}.target-form-grid .target-notes{grid-column:auto}.target-month-grid{padding:10px}.target-month-card{grid-template-rows:auto 130px auto auto}.target-tall-bar{height:130px}.financial-source-note{flex-direction:column}}
+
+
+/* Analysis history dropdown reliability */
+.history-hamburger-trigger::before{content:none!important;display:none!important}
+.history-hamburger-trigger{font-size:0!important;pointer-events:auto!important}
+.ai-history-popup-menu{display:grid!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;position:fixed!important;z-index:2147483640!important;width:210px!important;min-width:210px!important;max-width:calc(100vw - 24px)!important;overflow:visible!important;transform:none!important}
+.ai-history-popup-menu button{display:flex!important;align-items:center!important;width:100%!important;pointer-events:auto!important;white-space:nowrap!important}
