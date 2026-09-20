@@ -5,11 +5,15 @@ export function marketingPath(path = '') {
 }
 const configuredSiteUrl = new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://lumaway.online');
 const marketingUrl = `${configuredSiteUrl.origin}${marketingBasePath}`;
+const configuredAppUrl=(process.env.NEXT_PUBLIC_APP_URL||'').replace(/\/$/,'');
+const appUrl=!configuredAppUrl||configuredAppUrl==='https://app.lumaway.online'
+ ? 'https://www.lumaway.online/app.lumaway'
+ : configuredAppUrl;
 export const site = {
  name: 'Lumaway', tagline: 'Light Up Your Potential.',
  url: marketingUrl,
  homeUrl: `${marketingUrl}/home`,
- appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://app.lumaway.online',
+ appUrl,
  indexable: process.env.MARKETING_INDEXABLE === 'true' && process.env.VERCEL_ENV !== 'preview',
  contactEmail: process.env.MARKETING_CONTACT_EMAIL || '',
 };
