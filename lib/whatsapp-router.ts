@@ -55,17 +55,13 @@ async function settings(admin:any):Promise<WhatsAppSettings>{
 }
 
 async function markHealth(admin:any,provider:string,ok:boolean,error?:string){
-  await admin.from("luma_provider_accounts").update({
-    status:ok?"active":"error",
-    last_status:ok?"ok":String(error||"error").slice(0,300),
-    last_checked_at:new Date().toISOString(),
-    consecutive_failures:ok?0:undefined,
-    updated_at:new Date().toISOString(),
-  }).eq("provider",provider).eq("service","whatsapp");
-  if(!ok){
-    const {data}=await admin.from("luma_provider_accounts").select("consecutive_failures").eq("provider",provider).eq("service","whatsapp").maybeSingle();
-    await admin.from("luma_provider_accounts").update({consecutive_failures:Number(data?.consecutive_failures||0)+1}).eq("provider",provider).eq("service","whatsapp");
+  const now=new Date().toISOString();
+  if(ok){
+    await admin.from("luma_provider_accounts").update({status:"active",last_status:"ok",last_checked_at:now,consecutive_failures:0,updated_at:now}).eq("provider",provider).eq("service","whatsapp");
+    return;
   }
+  const {data}=await admin.from("luma_provider_accounts").select("consecutive_failures").eq("provider",provider).eq("service","whatsapp").maybeSingle();
+  await admin.from("luma_provider_accounts").update({status:"error",last_status:String(error||"error").slice(0,300),last_checked_at:now,consecutive_failures:Number(data?.consecutive_failures||0)+1,updated_at:now}).eq("provider",provider).eq("service","whatsapp");
 }
 
 async function flowKirimText(admin:any,cfg:WhatsAppSettings,phone:string,message:string){
