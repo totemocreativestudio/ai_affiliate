@@ -28,7 +28,7 @@ export default function ContentHub({workspaceId,userId}:{workspaceId:string;user
   useEffect(()=>{void load()},[workspaceId,userId]);
 
   async function track(contentType:"blog"|"tutorial",contentId:number,eventType:string,metadata:Row={}){
-    await supabase.from("luma_content_events").insert({content_type:contentType,content_id:contentId,event_type:eventType,user_id:userId,workspace_id:workspaceId,path:window.location.pathname,referrer:document.referrer||null,metadata}).catch(()=>undefined);
+    try{await supabase.from("luma_content_events").insert({content_type:contentType,content_id:contentId,event_type:eventType,user_id:userId,workspace_id:workspaceId,path:window.location.pathname,referrer:document.referrer||null,metadata})}catch{}
   }
   async function openTutorial(row:Row){
     await supabase.from("luma_tutorial_progress").upsert({user_id:userId,workspace_id:workspaceId,tutorial_id:Number(row.id),completed:true,watched_at:new Date().toISOString(),updated_at:new Date().toISOString()},{onConflict:"user_id,tutorial_id"});
