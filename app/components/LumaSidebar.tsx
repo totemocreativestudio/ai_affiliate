@@ -31,12 +31,16 @@ const masterNav: Array<[string, IconName, string]> = [
 
 const ownerNav: Array<[string, IconName, string]> = [
   ["overview", "dashboard", "Command Center"],
+  ["monitoring", "data", "Monitoring 360"],
   ["support", "support", "Support Desk"],
-  ["finance", "finance", "Payments & Token"],
+  ["finance", "finance", "Payments & Subscription"],
   ["referral", "referral", "Referral & Payout"],
   ["ai", "ai", "AI & API Usage"],
+  ["providers", "integration", "Provider Accounts"],
+  ["hpp", "product", "HPP & Promo Guardrail"],
   ["broadcast", "broadcast", "Broadcast & Promo"],
   ["content", "content", "Blog & Tutorial"],
+  ["knowledge", "master", "Knowledge Vault"],
   ["social", "community", "Social Moderation"],
   ["system", "system", "System & Issues"],
 ];
@@ -170,6 +174,12 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
                   <NavIcon name={icon} /><span className="nav-label">{label}</span>
                 </button>
               ))}
+              <details className="side-group owner-financial-group">
+                <summary><span><NavIcon name="finance" /><span className="nav-label">Laporan Keuangan & Penjualan</span></span><LumaIcon name="chevron" className="chevron" /></summary>
+                <div className="side-subnav owner-subnav">
+                  {[["sales","Total Penjualan"],["api_cost","Total Usage API"],["cashflow","Cashflow"],["margin","Margin"],["profit_loss","Laba & Rugi"]].map(([key,label])=><button type="button" key={key} onClick={()=>{openOwner("financial");window.setTimeout(()=>window.dispatchEvent(new CustomEvent("luma-financial-report-type",{detail:{type:key}})),90)}}><LumaIcon name="finance" /><span>{label}</span></button>)}
+                </div>
+              </details>
               <details className="side-group" open>
                 <summary><span><NavIcon name="integration" /><span className="nav-label">Integrations</span></span><LumaIcon name="chevron" className="chevron" /></summary>
                 <div className="side-subnav owner-subnav">
