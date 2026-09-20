@@ -30,6 +30,7 @@ import UserTicketCenter from "./components/UserTicketCenter";
 import DashboardReminder from "./components/DashboardReminder";
 import PWAInstallButton from "./components/PWAInstallButton";
 import MobileQuickNav from "./components/MobileQuickNav";
+import SystemStatusGate from "./components/SystemStatusGate";
 
 type Profile = { id: string; email: string | null; full_name: string | null; nickname: string | null; role: string; active: boolean; phone: string | null; phone_verified_at: string | null; email_verified_at: string | null; education: string | null; birth_date: string | null; bio: string | null; position_title: string | null; profile_completed: boolean };
 type Workspace = { id: string; name: string; slug: string; status: string };
@@ -403,6 +404,7 @@ export default function LumawayWorkspaceApp() {
 
   const isAdmin = profile.role === "admin";
   return <div className="luma-app">
+    <SystemStatusGate workspaceId={workspace.id} isAdmin={isAdmin} />
     <LumaSidebar profile={profile} workspace={workspace} onLogout={logout} accessLocked={accessLocked} />
     <div className="app-shell">
       <header className="topbar">
