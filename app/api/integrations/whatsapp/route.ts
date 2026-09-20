@@ -19,6 +19,8 @@ const KEYS = [
   "convia_base_url",
   "convia_otp_template",
   "convia_phone_number_id",
+  "whatsapp_failover_enabled",
+  "whatsapp_provider_order",
 ];
 
 async function getSettings(admin: any) {
@@ -39,6 +41,8 @@ async function getSettings(admin: any) {
     convia_base_url: process.env.CONVIA_BASE_URL || saved.convia_base_url || DEFAULT_CONVIA_BASE_URL,
     convia_otp_template: process.env.CONVIA_OTP_TEMPLATE || saved.convia_otp_template || "luma_otp",
     convia_phone_number_id: process.env.CONVIA_WHATSAPP_PHONE_NUMBER_ID || saved.convia_phone_number_id || "",
+    whatsapp_failover_enabled: saved.whatsapp_failover_enabled || "true",
+    whatsapp_provider_order: saved.whatsapp_provider_order || "flowkirim,convia,meta",
   };
 }
 
@@ -164,6 +168,8 @@ export async function POST(req: NextRequest) {
       convia_base_url: String(body.convia_base_url || DEFAULT_CONVIA_BASE_URL).replace(/\/$/, ""),
       convia_otp_template: String(body.convia_otp_template || "luma_otp"),
       convia_phone_number_id: String(body.convia_phone_number_id || ""),
+      whatsapp_failover_enabled: body.failover_enabled === false ? "false" : "true",
+      whatsapp_provider_order: String(body.provider_order || "flowkirim,convia,meta"),
     };
 
     for (const [setting_key, setting_value] of Object.entries(values)) {
