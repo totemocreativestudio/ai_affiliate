@@ -415,7 +415,7 @@ export default function LumawayWorkspaceApp() {
           <UploadCenter workspaceId={workspace.id} />
           <DatabaseCenter workspaceId={workspace.id} />
           <AIAnalytics workspaceId={workspace.id} />
-          <ContentHub workspaceId={workspace.id} />
+          <ContentHub workspaceId={workspace.id} userId={profile.id} />
           <SocialLumaway workspaceId={workspace.id} userId={profile.id} />
           <RestoredLegacyModules workspaceId={workspace.id} userId={profile.id} isAdmin={false} />
           <UserTicketCenter workspaceId={workspace.id} />
