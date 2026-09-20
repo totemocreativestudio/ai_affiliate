@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerContext } from "../../../../lib/server-auth";
 import { getServerSecret } from "../../../../lib/server-secrets";
-import { conviaSendText, DEFAULT_CONVIA_BASE_URL } from "../../../../lib/convia";
+import { DEFAULT_CONVIA_BASE_URL } from "../../../../lib/convia";
+import { sendWhatsAppTextWithFailover } from "../../../../lib/whatsapp-router";
+import { openAIResponsesWithFailover } from "../../../../lib/openai-router";
 import { extractOpenAIText, firstName, LUMA_SUPPORT_KNOWLEDGE, LUMA_SUPPORT_SCHEMA, supportTicketCode } from "../../../../lib/luma-support";
 
 export const runtime = "nodejs";
@@ -35,10 +37,10 @@ async function escalate(ctx:any,workspaceId:string,ticket:any,userName:string,pr
       if(apiKey){
         const cfg=await getConviaSettings(ctx.admin);
         const text=`Halo ${userName}, tiket bantuan Lumaway ${ticket.ticket_code} sudah dibuat. Luma sudah meneruskan konteks kendala Anda ke tim support. Balas percakapan WhatsApp support yang aktif jika ada informasi tambahan. Tim Lumaway/owner dapat ikut membantu sampai kendala selesai.`;
-        const raw=await conviaSendText(apiKey,phone,text,{baseUrl:cfg.baseUrl,whatsappPhoneNumberId:cfg.phoneNumberId,customerName:userName});
+        const sent=await sendWhatsAppTextWithFailover(ctx.admin,phone,text);
         whatsappSent=true;
-        await ctx.admin.from("luma_support_messages").insert({ticket_id:ticket.id,workspace_id:workspaceId,user_id:ctx.user.id,sender_type:"system",body:"Notifikasi handoff WhatsApp terkirim.",provider:"convia",provider_message_id:raw?.data?.message_id||null,metadata:{event:"whatsapp_handoff"}});
-        await ctx.admin.from("luma_api_usage_events").insert({workspace_id:workspaceId,user_id:ctx.user.id,provider:"convia",service:"support_handoff",request_type:"ticket_escalation",status:"success",reference:ticket.ticket_code,metadata:{recipient_last4:phone.slice(-4)}});
+        await ctx.admin.from("luma_support_messages").insert({ticket_id:ticket.id,workspace_id:workspaceId,user_id:ctx.user.id,sender_type:"system",body:`Notifikasi handoff WhatsApp terkirim melalui ${sent.provider}.`,provider:sent.provider,provider_message_id:sent.reference||null,metadata:{event:"whatsapp_handoff",failover_used:sent.failover_used,attempted:sent.attempted}});
+        await ctx.admin.from("luma_api_usage_events").insert({workspace_id:workspaceId,user_id:ctx.user.id,provider:sent.provider,service:"support_handoff",request_type:"ticket_escalation",status:"success",reference:ticket.ticket_code,metadata:{recipient_last4:phone.slice(-4),failover_used:sent.failover_used,attempted:sent.attempted}});
       }
     }catch(error:any){
       await ctx.admin.from("luma_support_messages").insert({ticket_id:ticket.id,workspace_id:workspaceId,user_id:ctx.user.id,sender_type:"system",body:"Ticket sudah masuk ke Support Lumaway. Pengiriman WhatsApp belum berhasil; owner tetap dapat melihat tiket dari Support Desk.",metadata:{event:"whatsapp_handoff_failed",error:String(error?.message||"unknown").slice(0,300)}});
@@ -113,15 +115,15 @@ export async function POST(req:NextRequest){
     const input:any[]=imageDataUrl
       ? [{role:"user",content:[{type:"input_text",text:currentContext},{type:"input_image",image_url:imageDataUrl}]}]
       : [{role:"user",content:[{type:"input_text",text:currentContext}]}];
-    const response=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${apiKey}`,"Content-Type":"application/json"},body:JSON.stringify({model,instructions,input,text:{format:{type:"json_schema",name:"luma_support_reply",schema:LUMA_SUPPORT_SCHEMA,strict:true}},store:false})});
-    const raw=await response.json();if(!response.ok)throw new Error(raw?.error?.message||`OpenAI request failed (${response.status})`);
+    const routed=await openAIResponsesWithFailover(ctx.admin,apiKey,{instructions,input,text:{format:{type:"json_schema",name:"luma_support_reply",schema:LUMA_SUPPORT_SCHEMA,strict:true}},store:false},model);
+    const raw=routed.raw;const actualModel=routed.model;
     const output=extractOpenAIText(raw);if(!output)throw new Error("Luma Agent tidak menerima respons AI.");
     const result=JSON.parse(output);
     if(!String(result.reply||"").toLowerCase().includes(userName.toLowerCase()))result.reply=`${userName}, ${String(result.reply||"").trim()}`;
     await ctx.admin.from("luma_support_messages").insert({ticket_id:ticket.id,workspace_id:workspaceId,user_id:ctx.user.id,sender_type:"agent",body:String(result.reply||"").slice(0,8000),provider:"openai",provider_message_id:raw?.id||null,metadata:{category:result.category,priority:result.priority,solved:result.solved,escalation_recommended:result.escalation_recommended,suggested_actions:result.suggested_actions||[]}});
     await ctx.admin.from("luma_support_tickets").update({category:result.category||"general",priority:result.priority||"normal",ai_attempts:Number(ticket.ai_attempts||0)+1,status:result.solved?"resolved":"ai_assist",resolved_at:result.solved?new Date().toISOString():null,updated_at:new Date().toISOString()}).eq("id",ticket.id).eq("user_id",ctx.user.id);
     const usage=raw?.usage||{};
-    await ctx.admin.from("luma_api_usage_events").insert({workspace_id:workspaceId,user_id:ctx.user.id,provider:"openai",service:"luma_helpdesk",request_type:"support_chat",model,input_tokens:Number(usage.input_tokens||0),output_tokens:Number(usage.output_tokens||0),total_tokens:Number(usage.total_tokens||0),status:"success",reference:ticket.ticket_code,metadata:{duration_ms:Date.now()-started,category:result.category}});
+    await ctx.admin.from("luma_api_usage_events").insert({workspace_id:workspaceId,user_id:ctx.user.id,provider:"openai",service:"luma_helpdesk",request_type:"support_chat",model:actualModel,input_tokens:Number(usage.input_tokens||0),output_tokens:Number(usage.output_tokens||0),total_tokens:Number(usage.total_tokens||0),cost_usd:routed.cost.cost_usd,cost_idr:routed.cost.cost_idr,status:"success",reference:ticket.ticket_code,metadata:{duration_ms:Date.now()-started,category:result.category,requested_model:model,fallback_used:routed.fallback_used,fx:routed.fx}});
     return NextResponse.json({ok:true,ticket_id:ticket.id,ticket_code:ticket.ticket_code,user_name:userName,reply:result.reply,solved:Boolean(result.solved),escalation_recommended:Boolean(result.escalation_recommended),category:result.category,priority:result.priority,suggested_actions:result.suggested_actions||[]});
   }catch(error:any){
     if(ctx){try{await ctx.admin.from("luma_api_usage_events").insert({workspace_id:workspaceId||null,user_id:ctx.user.id,provider:"openai",service:"luma_helpdesk",request_type:"support_chat",status:"error",metadata:{error:String(error?.message||"unknown").slice(0,500)}})}catch{}}
