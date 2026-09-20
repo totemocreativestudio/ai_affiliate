@@ -4,7 +4,8 @@
   "git": {
     "deploymentEnabled": {
       "fix/vercel-monorepo-deployments": false,
-      "fix/lumaway-marketing-public-rewrite": false
+      "fix/lumaway-marketing-public-rewrite": false,
+      "fix/lumaway-web-proxy-origin": false
     }
   }
 }

@@ -3,7 +3,9 @@ export function marketingPath(path = '') {
  const normalized = path ? (path.startsWith('/') ? path : `/${path}`) : '';
  return `${marketingBasePath}${normalized}`;
 }
-const configuredSiteUrl = new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://lumaway.online');
+const rawSiteUrl=(process.env.NEXT_PUBLIC_SITE_URL||'https://www.lumaway.online').replace(/\/$/,'');
+const publicSiteUrl=rawSiteUrl==='https://lumaway.online'?'https://www.lumaway.online':rawSiteUrl;
+const configuredSiteUrl = new URL(publicSiteUrl);
 const marketingUrl = `${configuredSiteUrl.origin}${marketingBasePath}`;
 const configuredAppUrl=(process.env.NEXT_PUBLIC_APP_URL||'').replace(/\/$/,'');
 const appUrl=!configuredAppUrl||configuredAppUrl==='https://app.lumaway.online'

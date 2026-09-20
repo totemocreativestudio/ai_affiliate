@@ -1,6 +1,9 @@
 import type {NextConfig} from 'next';
 
-const marketingOrigin = (process.env.MARKETING_ORIGIN || 'https://lumaway-marketing.vercel.app').replace(/\/$/, '');
+// Production /web proxy intentionally targets the public project alias.
+ // A stale MARKETING_ORIGIN value may point to a protected preview deployment,
+ // so it must not override the public origin used by customer-facing routes.
+const marketingOrigin = 'https://lumaway-marketing.vercel.app';
 
 const config: NextConfig = {
  async rewrites() {
