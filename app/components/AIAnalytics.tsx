@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { LumaLoadingMotion } from "./LumaMotionState";
 import { createClient } from "../../lib/supabase-browser";
 
 type Row = Record<string, any>;
@@ -14,7 +16,7 @@ const TYPES = [
 ] as const;
 const PAGE_SIZE = 10;
 
-type MenuState = { runId: string } | null;
+type MenuState = { runId: string; left: number; top: number } | null;
 
 export default function AIAnalytics({ workspaceId }: { workspaceId: string }) {
   const supabase = useMemo(() => createClient(), []);
@@ -205,18 +207,28 @@ export default function AIAnalytics({ workspaceId }: { workspaceId: string }) {
 
   function openMenu(event: React.MouseEvent<HTMLButtonElement>, row: Row) {
     event.stopPropagation();
-    setMenu((current) => current?.runId === row.run_id ? null : { runId: row.run_id });
+    if(menu?.runId===row.run_id){setMenu(null);return}
+    const rect=event.currentTarget.getBoundingClientRect();
+    const width=190;
+    const estimatedHeight=row.report?138:58;
+    const left=Math.max(10,Math.min(window.innerWidth-width-10,rect.right-width));
+    const below=rect.bottom+8;
+    const top=below+estimatedHeight<window.innerHeight?below:Math.max(10,rect.top-estimatedHeight-8);
+    setMenu({runId:row.run_id,left,top});
   }
 
   const currentHistory = useMemo(() => history.find((x) => x.run_id === runId), [history, runId]);
   const totalPages = Math.max(1, Math.ceil(history.length / PAGE_SIZE));
   const page = Math.min(historyPage, totalPages);
   const pagedHistory = history.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const menuRow = menu ? history.find((x) => x.run_id === menu.runId) : null;
 
   return <section id="ai-analytics" className="legacy-page-anchor ai-page ai-v2">
     <div className="ai-page-head"><div><div className="eyebrow">LUMA AFFILIATE INTELLIGENCE · AI ANALYTICS</div><h1>{active[1]}</h1><p className="muted">{active[2]}. Analisis mengacu pada database workspace dari file yang diupload dan dapat mengaitkan enam mode analisis.</p></div></div>
     <div className="ai-type-grid">{TYPES.map(([key, label, description]) => <button key={key} className={`ai-type-card ${type === key ? "active" : ""}`} onClick={() => { setType(key); setResult(null); setRunId(""); }}><strong>{label}</strong><span>{description}</span></button>)}</div>
     <div className="card ai-control-card"><div className="filters"><label>Start <span className="field-note">Opsional</span><input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></label><label>End <span className="field-note">Opsional</span><input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></label><button className="primary" onClick={run} disabled={busy}>{busy ? "Menganalisis..." : "✦ Analisis dengan AI"}</button><button className="secondary" onClick={() => { setStart(""); setEnd(""); }}>Reset Date</button></div><div className="ai-status">{status}</div></div>
+
+    {(busy||generatingReport)&&<div className="ai-generation-loading"><LumaLoadingMotion compact label={generatingReport?"Menyusun dokumen AI":"Lumaway AI sedang menganalisis"} detail={generatingReport?"Menyiapkan struktur, insight, dan dokumen laporan.":"Menghubungkan data workspace, menghitung KPI, lalu menyusun insight."}/></div>}
 
     {result && <div className="ai-result-grid">
       <div className="card ai-summary-card"><div className="eyebrow">EXECUTIVE SUMMARY</div><p>{result.executive_summary}</p><div className="button-row"><button className="primary" disabled={generatingReport === runId} onClick={() => generateDocument()}>{generatingReport === runId ? "Generating..." : "Generate Dokumen"}</button>{currentHistory?.report && <><button className="secondary" onClick={() => previewReport(currentHistory.report.id)}>Preview Document · 5 token*</button><button className="secondary" onClick={() => downloadReport(currentHistory.report.id)}>Download PDF · 10 token</button></>}</div><small className="muted">*Preview pertama menggunakan 5 token. Preview berikutnya gratis.</small></div>
@@ -227,8 +239,10 @@ export default function AIAnalytics({ workspaceId }: { workspaceId: string }) {
 
     <div className="card ai-history-card">
       <div className="section-head"><div><h3>Analysis & Document History</h3><p className="muted">Hasil analisis dan dokumen tersimpan per user. Maksimal 10 data per halaman.</p></div><button className="secondary" onClick={loadHistory}>Refresh</button></div>
-      {history.length ? <><div className="ai-history-scroll"><table><thead><tr><th>Analysis</th><th>Period</th><th>Document</th><th>Created</th><th aria-label="Actions" /></tr></thead><tbody>{pagedHistory.map((row) => <tr key={row.run_id}><td><b>{TYPES.find((x) => x[0] === row.analysis_type)?.[1] || row.analysis_type}</b><br /><small>{row.run_id}</small></td><td>{row.start_date || "All data"} → {row.end_date || "All data"}</td><td>{row.report ? <><b>{row.report.page_count || 20} pages</b><br /><small>{row.report.download_count ? `${row.report.download_count} download` : "Ready"}</small></> : "-"}</td><td>{new Date(row.created_at).toLocaleString("id-ID")}</td><td className="history-action-cell"><div className="history-hamburger-wrap" onClick={(event)=>event.stopPropagation()}><button type="button" className="history-action-trigger history-hamburger-trigger" onClick={(event) => openMenu(event, row)} aria-label="Buka menu history" aria-haspopup="menu" aria-expanded={menu?.runId===row.run_id}><span aria-hidden="true">☰</span></button>{menu?.runId===row.run_id&&<div className="ai-history-row-menu" role="menu"><button type="button" role="menuitem" onClick={()=>{setDetail(row);setMenu(null)}}>Detail Analysis</button>{row.report&&<button type="button" role="menuitem" onClick={()=>{setMenu(null);void previewReport(row.report.id)}}>Preview Document</button>}{row.report&&<button type="button" role="menuitem" onClick={()=>{setMenu(null);void downloadReport(row.report.id)}}>Download PDF</button>}{!row.report&&<button type="button" role="menuitem" disabled={generatingReport===row.run_id} onClick={()=>{setMenu(null);void generateDocument(row.run_id)}}>{generatingReport===row.run_id?"Generating...":"Generate Document"}</button>}</div>}</div></td></tr>)}</tbody></table></div>{totalPages > 1 && <div className="history-pagination"><button disabled={page <= 1} onClick={() => setHistoryPage((value) => Math.max(1, value - 1))}>‹</button>{Array.from({ length: totalPages }, (_, index) => index + 1).slice(Math.max(0, page - 3), Math.min(totalPages, page + 2)).map((number) => <button key={number} className={number === page ? "active" : ""} onClick={() => setHistoryPage(number)}>{number}</button>)}<button disabled={page >= totalPages} onClick={() => setHistoryPage((value) => Math.min(totalPages, value + 1))}>›</button></div>}</> : <div className="empty-state"><strong>Belum ada history.</strong></div>}
+      {history.length ? <><div className="ai-history-scroll"><table><thead><tr><th>Analysis</th><th>Period</th><th>Document</th><th>Created</th><th aria-label="Actions" /></tr></thead><tbody>{pagedHistory.map((row) => <tr key={row.run_id}><td><b>{TYPES.find((x) => x[0] === row.analysis_type)?.[1] || row.analysis_type}</b><br /><small>{row.run_id}</small></td><td>{row.start_date || "All data"} → {row.end_date || "All data"}</td><td>{row.report ? <><b>{row.report.page_count || 20} pages</b><br /><small>{row.report.download_count ? `${row.report.download_count} download` : "Ready"}</small></> : "-"}</td><td>{new Date(row.created_at).toLocaleString("id-ID")}</td><td className="history-action-cell"><button type="button" className={`history-action-trigger history-hamburger-trigger ${menu?.runId===row.run_id?"open":""}`} onClick={(event) => openMenu(event, row)} aria-label="Buka menu history" aria-haspopup="menu" aria-expanded={menu?.runId===row.run_id}><span className="burger-line"/><span className="burger-line"/><span className="burger-line"/></button></td></tr>)}</tbody></table></div>{totalPages > 1 && <div className="history-pagination"><button disabled={page <= 1} onClick={() => setHistoryPage((value) => Math.max(1, value - 1))}>‹</button>{Array.from({ length: totalPages }, (_, index) => index + 1).slice(Math.max(0, page - 3), Math.min(totalPages, page + 2)).map((number) => <button key={number} className={number === page ? "active" : ""} onClick={() => setHistoryPage(number)}>{number}</button>)}<button disabled={page >= totalPages} onClick={() => setHistoryPage((value) => Math.min(totalPages, value + 1))}>›</button></div>}</> : <div className="empty-state"><strong>Belum ada history.</strong></div>}
     </div>
+
+    {menu && menuRow && typeof document!=="undefined" && createPortal(<div className="ai-history-popup-menu" role="menu" style={{left:menu.left,top:menu.top}} onClick={(event)=>event.stopPropagation()}><button type="button" role="menuitem" onClick={()=>{setDetail(menuRow);setMenu(null)}}>Detail Analysis</button>{menuRow.report&&<button type="button" role="menuitem" onClick={()=>{setMenu(null);void previewReport(menuRow.report.id)}}>Preview Document</button>}{menuRow.report&&<button type="button" role="menuitem" onClick={()=>{setMenu(null);void downloadReport(menuRow.report.id)}}>Download PDF</button>}{!menuRow.report&&<button type="button" role="menuitem" disabled={generatingReport===menuRow.run_id} onClick={()=>{const target=menuRow.run_id;setMenu(null);void generateDocument(target)}}>{generatingReport===menuRow.run_id?"Generating...":"Generate Document"}</button>}</div>,document.body)}
 
     {detail && <div className="kanban-modal-backdrop" onClick={() => setDetail(null)}><div className="analysis-detail-modal" onClick={(event) => event.stopPropagation()}><div className="report-modal-actions"><div><strong>{TYPES.find((x) => x[0] === detail.analysis_type)?.[1] || detail.analysis_type}</strong><small>{detail.run_id}</small></div><button onClick={() => setDetail(null)}>×</button></div><div className="analysis-detail-body"><div className="eyebrow">EXECUTIVE SUMMARY</div><p>{detail.insight?.executive_summary || "Tidak ada ringkasan."}</p>{[["Key Findings", detail.insight?.key_findings], ["Creator Findings", detail.insight?.creator_findings], ["Product Findings", detail.insight?.product_findings], ["Trend Findings", detail.insight?.trend_findings], ["Anomalies", detail.insight?.anomalies], ["Recommendations", detail.insight?.recommendations]].map(([title, items]: any) => <section key={title}><h3>{title}</h3><ul>{(items || []).map((item: string, index: number) => <li key={index}>{item}</li>)}</ul></section>)}</div></div></div>}
 
