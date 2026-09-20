@@ -19,7 +19,7 @@ export default function ContentHub({workspaceId,userId}:{workspaceId:string;user
     const [b,t,p,w,progress]=await Promise.all([
       supabase.from("luma_blog_posts").select("id,slug,title,excerpt,category,cover_image_url,published_at,created_at,author_name,video_embed_url").eq("status","published").order("published_at",{ascending:false}).limit(60),
       supabase.from("tutorials").select("id,title,description,category,youtube_url,embed_url,status,created_at").eq("workspace_id",workspaceId).order("sort_order",{ascending:true}).limit(100),
-      supabase.from("luma_notifications").select("id,title,body,image_url,action_url,action_label,published_at").eq("category","promo").order("published_at",{ascending:false}).limit(30),
+      supabase.from("luma_notifications").select("id,title,body,image_url,action_url,action_label,published_at").in("category",["promo","promotion"]).order("published_at",{ascending:false}).limit(30),
       supabase.from("luma_platform_settings").select("setting_value").eq("setting_key","whatsapp_channel_url").maybeSingle(),
       supabase.from("luma_tutorial_progress").select("tutorial_id").eq("user_id",userId).eq("completed",true),
     ]);
