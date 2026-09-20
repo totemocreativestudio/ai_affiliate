@@ -9,7 +9,8 @@
       "fix/dashboard-history-otp-admin-pricing": false,
       "feat/lumaway-ops-intelligence-admin-v4": false,
       "fix/lumaway-marketing-public-rewrite": false,
-      "fix/lumaway-web-proxy-origin": false
+      "fix/lumaway-web-proxy-origin": false,
+      "fix/lumaway-public-insights-live": false
     }
   },
   "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ':(exclude)apps/marketing/**'"
