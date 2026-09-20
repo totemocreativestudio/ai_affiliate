@@ -23,6 +23,33 @@ function key(row: Row, candidates: string[], fuzzy = true) {
 function value(row: Row, candidates: string[], fuzzy = true) { const k = key(row, candidates, fuzzy); return k ? row[k] : ""; }
 function dateValue(v: any, fallback: string) { if (!v) return fallback; const d = new Date(v); return Number.isNaN(d.getTime()) ? fallback : d.toISOString().slice(0, 10); }
 const creatorCode = () => `CR-${randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+const money=(v:any)=>new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(Number(v||0));
+const iso=(d:Date)=>d.toISOString().slice(0,10);
+
+async function notifyTopCreators(admin:any,workspaceId:string,userId:string){
+  const {data:latest}=await admin.from("sales").select("data_date").eq("workspace_id",workspaceId).not("data_date","is",null).order("data_date",{ascending:false}).limit(1).maybeSingle();
+  if(!latest?.data_date)return;
+  const end=new Date(`${latest.data_date}T00:00:00Z`);
+  const weekStart=new Date(end);weekStart.setUTCDate(weekStart.getUTCDate()-6);
+  const monthStart=new Date(Date.UTC(end.getUTCFullYear(),end.getUTCMonth(),1));
+  const periods=[
+    {key:"daily",label:"Hari",start:iso(end),end:iso(end)},
+    {key:"weekly",label:"7 Hari",start:iso(weekStart),end:iso(end)},
+    {key:"monthly",label:"Bulan",start:iso(monthStart),end:iso(end)},
+  ];
+  for(const period of periods){
+    const {data}=await admin.rpc("get_creator_ranking",{p_workspace_id:workspaceId,p_start_date:period.start,p_end_date:period.end,p_platform:null,p_creator_id:null,p_search:null,p_page:1,p_page_size:3});
+    const top=(data||[]).slice(0,3);
+    if(!top.length)continue;
+    const body=top.map((x:any,i:number)=>`${i+1}. ${x.creator_name||x.username||"Creator"} · ${x.platform||"-"} · ${money(x.gmv)} · ${Number(x.orders||0).toLocaleString("id-ID")} order`).join("\n");
+    await admin.from("user_notifications").insert({
+      user_id:userId,workspace_id:workspaceId,
+      title:`🔥 Top 3 Creator On Fire · ${period.label}`,
+      message:`Periode ${period.start} s.d. ${period.end}\n${body}`,
+      kind:`creator_on_fire_${period.key}`,is_read:false,action_url:"#dashboard"
+    });
+  }
+}
 
 async function ensureCreator(admin: any, workspaceId: string, row: Row, platform: string, importId: string) {
   const name = clean(value(row, ["Creator name", "Nama Affiliate", "Creator", "Nama Creator"]));
@@ -91,6 +118,10 @@ export async function POST(req: NextRequest) {
     }else return NextResponse.json({ok:false,error:"Jenis Data tidak valid."},{status:400});
 
     const {data:existing}=await admin.from("imports").select("id,rows_imported,message").eq("workspace_id",workspaceId).eq("import_id",importId).maybeSingle();let prev:any={};try{prev=JSON.parse(existing?.message||"{}")}catch{}const stats={detected:Number(prev.detected||0)+rows.length,inserted:Number(prev.inserted||0)+inserted,updated:Number(prev.updated||0)+updated,skipped:Number(prev.skipped||0)+skipped,duplicates:Number(prev.duplicates||0),errors:Number(prev.errors||0)};const meta={workspace_id:workspaceId,import_id:importId,filename,data_type:dataType,platform,start_date:start||null,end_date:end||null,rows_imported:Number(existing?.rows_imported||0)+inserted+updated,status:batchIndex+1>=totalBatches?"Success":"Processing",imported_at:new Date().toISOString(),message:JSON.stringify(stats),file_hash:fileHash||null};if(existing?.id){const {error}=await admin.from("imports").update(meta).eq("id",existing.id);if(error)throw error}else{const {error}=await admin.from("imports").insert(meta);if(error)throw error}
-    return NextResponse.json({ok:true,import_id:importId,stats,complete:batchIndex+1>=totalBatches});
+    const complete=batchIndex+1>=totalBatches;
+    if(complete&&(dataType==="performance"||dataType==="sales")){
+      await notifyTopCreators(admin,workspaceId,ctx.user.id).catch(()=>undefined);
+    }
+    return NextResponse.json({ok:true,import_id:importId,stats,complete});
   }catch(error:any){return NextResponse.json({ok:false,error:error?.message||"Import failed."},{status:400})}
 }

@@ -48,6 +48,9 @@ const CATEGORY_LABELS: Record<string, string> = {
   promotion: "Promotion",
   education: "Education",
   info: "Information",
+  creator_on_fire_daily: "Creator On Fire · Harian",
+  creator_on_fire_weekly: "Creator On Fire · Mingguan",
+  creator_on_fire_monthly: "Creator On Fire · Bulanan",
 };
 
 function categoryLabel(category: string) {
@@ -59,6 +62,7 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
   const [rows, setRows] = useState<NotificationRow[]>([]);
   const [open, setOpen] = useState(false);
   const [toast, setToast] = useState<NotificationRow | null>(null);
+  const [toastSeconds, setToastSeconds] = useState<number | null>(null);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const firstLoad = useRef(true);
 
@@ -128,7 +132,8 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
       const fresh = list.find((item) => !item.read && !rows.some((old) => old.key === item.key));
       if (fresh) {
         setToast(fresh);
-        window.setTimeout(() => setToast(null), 7000);
+        setToastSeconds(fresh.source==="broadcast"?3:null);
+        window.setTimeout(() => {setToast(null);setToastSeconds(null)}, fresh.source==="broadcast"?3000:7000);
       }
     }
 
@@ -147,6 +152,8 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId, userId]);
+
+  useEffect(()=>{if(!toast||toastSeconds===null)return;const timer=window.setInterval(()=>setToastSeconds(v=>v===null?null:Math.max(0,v-1)),1000);return()=>window.clearInterval(timer)},[toast?.key,toastSeconds===null]);
 
   const unread = useMemo(() => rows.filter((item) => !item.read).length, [rows]);
   const categoryOptions = useMemo(() => {
@@ -229,6 +236,7 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
           <span className={`notification-category n-${toast.category}`}>{categoryLabel(toast.category)}</span>
           <strong>{toast.title}</strong>
           <p>{toast.body}</p>
+          {toastSeconds!==null&&<small className="notification-toast-countdown">Tutup otomatis dalam {toastSeconds}s</small>}
         </button>
       )}
     </div>

@@ -1,0 +1,78 @@
+
+/* Lumaway Ops v4 motion states */
+.luma-motion-state{display:flex;align-items:center;justify-content:center;gap:22px;width:100%;min-height:160px;padding:24px;border:1px solid #e4e7ec;border-radius:20px;background:linear-gradient(180deg,#fff,#fbfbfe);box-shadow:0 10px 34px rgba(15,23,42,.04);box-sizing:border-box}
+.luma-motion-state.compact{min-height:110px;padding:16px;gap:14px;border-radius:15px}
+.luma-motion-state>div:last-child{max-width:620px}.luma-motion-state strong{display:block;font-size:15px;color:#101828;margin-bottom:5px}.luma-motion-state p{margin:0;color:#667085;line-height:1.55;font-size:11px}.luma-motion-state small{display:block;margin-top:8px;color:#98a2b3;line-height:1.5}
+.luma-motion-loader{position:relative;width:86px;height:86px;flex:0 0 86px;display:grid;place-items:center}
+.loader-core{width:38px;height:38px;border-radius:14px;background:#fff;box-shadow:0 8px 24px rgba(99,91,255,.18);display:grid;place-items:center;animation:luma-core-pulse 1.25s ease-in-out infinite}
+.loader-core img{width:24px;height:24px;object-fit:contain}
+.loader-orbit{position:absolute;border-radius:50%;border:2px solid transparent;border-top-color:#635bff}
+.orbit-a{inset:8px;animation:luma-spin 1s linear infinite}.orbit-b{inset:18px;border-top-color:#a9a4ff;border-right-color:#a9a4ff;animation:luma-spin-rev 1.5s linear infinite}
+.luma-error-visual{position:relative;width:160px;height:120px;flex:0 0 160px;display:grid;place-items:center}
+.error-code{font-size:42px;font-weight:850;letter-spacing:-.06em;color:#101828;z-index:2;animation:luma-error-float 2.6s ease-in-out infinite}
+.error-ring{position:absolute;border:1.5px solid #d8d5ff;border-radius:50%;animation:luma-ring 2.2s ease-out infinite}.ring-one{width:90px;height:90px}.ring-two{width:118px;height:118px;animation-delay:.55s}
+.error-dot{position:absolute;width:8px;height:8px;border-radius:50%;background:#635bff;box-shadow:0 0 0 5px rgba(99,91,255,.08);animation:luma-error-float 2s ease-in-out infinite}.dot-one{left:13px;top:26px}.dot-two{right:10px;bottom:22px;animation-delay:.4s}.dot-three{right:35px;top:7px;animation-delay:.8s}
+.luma-error-copy h2{margin:5px 0 7px;font-size:22px;letter-spacing:-.035em;color:#101828}.luma-error-copy .primary{margin-top:14px}
+@keyframes luma-spin{to{transform:rotate(360deg)}}@keyframes luma-spin-rev{to{transform:rotate(-360deg)}}@keyframes luma-core-pulse{50%{transform:scale(.92);box-shadow:0 4px 15px rgba(99,91,255,.12)}}@keyframes luma-error-float{50%{transform:translateY(-6px)}}@keyframes luma-ring{0%{transform:scale(.72);opacity:.8}70%{opacity:.18}100%{transform:scale(1.08);opacity:0}}
+@media(max-width:620px){.luma-motion-state{flex-direction:column;text-align:center;padding:20px}.luma-error-visual{width:130px;height:100px;flex-basis:100px}.luma-motion-loader{width:72px;height:72px;flex-basis:72px}}
+
+.runtime-error-page{min-height:100vh;display:grid;place-items:center;padding:28px;background:#f6f7fb;box-sizing:border-box}.runtime-error-page .luma-motion-state{max-width:900px}
+
+/* Reliable history hamburger popup rendered through a body portal */
+.history-action-cell{width:54px;min-width:54px;text-align:right!important;overflow:visible!important}
+.history-hamburger-trigger{position:relative!important;display:inline-flex!important;flex-direction:column!important;justify-content:center!important;align-items:center!important;gap:3px!important;width:36px!important;height:34px!important;min-width:36px!important;min-height:34px!important;padding:0!important;border:1px solid #d8dee8!important;border-radius:9px!important;background:#fff!important;color:#344054!important;cursor:pointer!important;box-shadow:none!important}
+.history-hamburger-trigger .burger-line{display:block;width:14px;height:1.6px;border-radius:999px;background:currentColor;transition:transform .2s ease,opacity .2s ease}
+.history-hamburger-trigger.open .burger-line:nth-child(1){transform:translateY(4.6px) rotate(45deg)}
+.history-hamburger-trigger.open .burger-line:nth-child(2){opacity:0;transform:scaleX(.35)}
+.history-hamburger-trigger.open .burger-line:nth-child(3){transform:translateY(-4.6px) rotate(-45deg)}
+.history-hamburger-trigger:hover,.history-hamburger-trigger.open{border-color:#8178ff!important;background:#f5f3ff!important;color:#5147df!important}
+.ai-history-popup-menu{position:fixed;z-index:2147483000;width:190px;padding:6px;border:1px solid #dfe4ec;border-radius:12px;background:#fff;box-shadow:0 18px 48px rgba(15,23,42,.18);display:grid;gap:3px;animation:luma-popup-in .15s ease-out}
+.ai-history-popup-menu button{width:100%!important;min-height:37px!important;padding:8px 10px!important;border:0!important;border-radius:8px!important;background:transparent!important;color:#344054!important;text-align:left!important;box-shadow:none!important;font-size:10px!important;font-weight:700!important}
+.ai-history-popup-menu button:hover{background:#f5f3ff!important;color:#4338ca!important}
+.ai-history-popup-menu button:disabled{opacity:.5!important;cursor:not-allowed!important}
+.ai-generation-loading{margin:14px 0}
+@keyframes luma-popup-in{from{opacity:0;transform:translateY(-5px) scale(.98)}to{opacity:1;transform:none}}
+
+
+/* Ops v4: tutorial progress */
+.tutorial-card.tutorial-watched{border-color:#b7ead0!important;background:linear-gradient(180deg,#fff,#f7fffb)!important}
+.tutorial-cover{position:relative}
+.tutorial-cover em{position:absolute;right:10px;top:10px;padding:5px 8px;border-radius:999px;background:#ecfdf3;color:#027a48;font-size:8px;font-style:normal;font-weight:800}
+
+/* Global system state */
+.system-status-blocker{position:fixed;inset:0;z-index:2147482000;display:grid;place-items:center;padding:28px;background:rgba(246,247,251,.97);backdrop-filter:blur(10px)}
+.system-status-blocker .luma-motion-state{max-width:880px}
+.system-status-banner{position:fixed;left:50%;top:76px;transform:translateX(-50%);z-index:2147481000;display:flex;align-items:center;gap:10px;max-width:min(780px,calc(100vw - 32px));padding:10px 14px;border:1px solid #f0c36d;border-radius:12px;background:#fffaeb;box-shadow:0 12px 34px rgba(15,23,42,.12);font-size:10px}
+.system-status-banner.mode-outage{border-color:#f1a5a5;background:#fff3f2}.system-status-banner.mode-degraded{border-color:#a9c8ff;background:#eff6ff}
+.system-status-banner span{color:#667085;flex:1}.system-status-banner button{min-height:30px!important;padding:5px 9px!important}
+.system-control-panel{scroll-margin-top:90px}.system-password-setup{max-width:650px;padding:16px;border:1px dashed #d0d5dd;border-radius:14px;background:#fafbfc}
+.system-control-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.system-control-grid label{display:grid;gap:6px}.system-control-grid .system-wide{grid-column:1/-1}.system-change-password{margin-top:16px;padding:12px;border:1px solid #e4e7ec;border-radius:12px}.system-change-password summary{cursor:pointer;font-weight:800}
+
+/* Owner command summary */
+.owner-command-summary{display:grid;gap:16px}.owner-kpi-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.owner-kpi-grid.small{grid-template-columns:repeat(4,minmax(0,1fr))}
+.owner-command-grid{display:grid;grid-template-columns:1fr 1.25fr;gap:14px}.owner-command-grid>section:last-child{grid-column:1/-1}
+.owner-attention-row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #eef0f4}.owner-attention-row span{font-size:9px;color:#667085;text-align:right}
+.owner-quick-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.owner-quick-grid button{display:grid;gap:4px;padding:13px;border:1px solid #e4e7ec;border-radius:12px;background:#fff;text-align:left;font-weight:800}.owner-quick-grid button span{font-size:8px;color:#7b8495;font-weight:500}
+
+/* Provider account / health */
+.provider-account-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.provider-account-card{display:grid;gap:12px;padding:15px;border:1px solid #e4e7ec;border-radius:15px;background:#fff}.provider-account-card.alert{border-color:#f4c8a1;background:#fffbf5}.provider-account-card header{display:flex;justify-content:space-between;gap:10px;align-items:start}.provider-account-card header span{text-transform:uppercase;font-size:8px;color:#667085;letter-spacing:.08em}.provider-account-card h4{margin:2px 0}.provider-balance{display:flex;align-items:baseline;gap:10px}.provider-balance b{font-size:22px}.provider-balance span{color:#667085}.provider-health{display:flex;justify-content:space-between;font-size:8px;color:#667085}.provider-health-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:10px 0 16px}.provider-health-card{padding:11px;border:1px solid #e4e7ec;border-radius:12px;background:#fff}.provider-health-card.error,.provider-health-card.warning{border-color:#f1b8b4;background:#fff7f6}.provider-health-card>div{display:flex;justify-content:space-between;gap:7px}.provider-health-card span{font-size:8px;text-transform:uppercase}.provider-health-card small{display:block;margin-top:6px;color:#667085}
+
+/* Finance reports */
+.financial-report-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 14px}.financial-report-tabs button{border:1px solid #e1e6ef;background:#fff;border-radius:10px;padding:8px 11px;font-size:9px;font-weight:750}.financial-report-tabs button.active{background:#101828;color:#fff;border-color:#101828}
+.financial-snapshot,.hpp-result-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin:14px 0}.financial-snapshot>div,.hpp-result-grid>div{padding:12px;border:1px solid #e4e7ec;border-radius:12px;background:#fafbfc}.financial-snapshot span,.hpp-result-grid span{display:block;font-size:8px;color:#667085}.financial-snapshot b,.hpp-result-grid b{display:block;margin-top:4px;font-size:15px}.financial-snapshot small{display:block;margin-top:3px;color:#667085}.expense-form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;align-items:end}.expense-form label{display:grid;gap:5px;font-size:9px}.financial-ai-insight{margin-top:12px}
+
+/* HPP */
+.hpp-field-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:14px 0}.hpp-field-grid label{display:grid;gap:5px;font-size:9px;color:#667085;font-weight:700}.hpp-result-grid .loss{border-color:#f6b6b1;background:#fff4f3}.hpp-result-grid .profit{border-color:#a9dfc4;background:#f2fff8}.hpp-ai-insight.risk-high{border-color:#f4aaa5}.hpp-ai-insight.risk-medium{border-color:#f0ce7f}
+
+/* Knowledge vault */
+.knowledge-import-row{display:flex;align-items:center;gap:12px;margin:12px 0;padding:12px;border:1px dashed #cfd5df;border-radius:12px;background:#fafbfc}.knowledge-file{position:relative;display:inline-flex;padding:8px 11px;border-radius:9px;background:#101828;color:#fff;font-weight:800;cursor:pointer}.knowledge-file input{position:absolute;inset:0;opacity:0;cursor:pointer}.knowledge-import-row>span{font-size:9px;color:#667085}.knowledge-markdown{min-height:300px!important;font-family:ui-monospace,SFMono-Regular,Menlo,monospace!important}
+
+/* Blog generated visual */
+.admin-blog-preview .article-video,.article-video{margin:16px 0;aspect-ratio:16/9}.article-video iframe{width:100%;height:100%;border:0;border-radius:14px}.article-cover-db{width:100%;max-height:520px;object-fit:cover;border-radius:20px;margin-top:24px}
+
+/* Financial sidebar submenu */
+.owner-financial-group{margin-top:4px}.owner-financial-group summary{font-size:9px!important}
+
+/* Responsive */
+@media(max-width:1180px){.owner-kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.provider-health-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.financial-snapshot,.hpp-result-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.expense-form,.hpp-field-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.owner-command-grid,.provider-account-grid{grid-template-columns:1fr}.owner-command-grid>section:last-child{grid-column:auto}.owner-quick-grid{grid-template-columns:1fr}.owner-kpi-grid,.owner-kpi-grid.small,.provider-health-grid,.financial-snapshot,.hpp-result-grid,.expense-form,.hpp-field-grid{grid-template-columns:1fr}.system-control-grid{grid-template-columns:1fr}.system-control-grid .system-wide{grid-column:auto}.system-status-banner{top:62px;align-items:flex-start;flex-wrap:wrap}}

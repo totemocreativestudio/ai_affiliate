@@ -1,17 +1,7 @@
 "use client";
-
-export default function ErrorBoundary({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
-  return (
-    <main className="lumaway-route-state" role="alert">
-      <section className="lumaway-route-card">
-        <img src="/luma-mark.png" alt="Lumaway" />
-        <h1>Terjadi kesalahan</h1>
-        <p>Halaman Lumaway tidak dapat dimuat dengan sempurna. Coba muat ulang tanpa keluar dari akun Anda.</p>
-        <div className="lumaway-route-actions">
-          <button type="button" className="primary" onClick={() => reset()}>Coba lagi</button>
-          <a href="/app.lumaway/dashboard">Kembali ke Dashboard</a>
-        </div>
-      </section>
-    </main>
-  );
+import {LumaErrorMotion} from "./components/LumaMotionState";
+export default function ErrorPage({error,reset}:{error:Error&{digest?:string};reset:()=>void}){
+  const message=String(error?.message||"");
+  const code=/403/.test(message)?403:/404/.test(message)?404:/503|maintenance|unavailable/i.test(message)?503:500;
+  return <main className="runtime-error-page"><LumaErrorMotion code={code} detail={error?.digest?`Reference: ${error.digest}`:undefined} onRetry={reset}/></main>;
 }

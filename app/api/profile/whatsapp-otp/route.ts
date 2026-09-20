@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerContext } from "../../../../lib/server-auth";
 import { getServerSecret } from "../../../../lib/server-secrets";
 import { conviaSendTemplate, DEFAULT_CONVIA_BASE_URL } from "../../../../lib/convia";
+import { sendWhatsAppOtpWithFailover } from "../../../../lib/whatsapp-router";
 
 export const runtime = "nodejs";
 
@@ -150,13 +151,6 @@ export async function POST(req: NextRequest) {
 
     if (action === "request") {
       const cfg = await settings(ctx.admin);
-      const accessToken = cfg.provider === "convia"
-        ? await getServerSecret(ctx.admin, "luma_convia_api_key")
-        : await getServerSecret(ctx.admin, "luma_whatsapp_access_token");
-      if (!accessToken) {
-        return NextResponse.json({ ok: false, error: `${cfg.provider === "convia" ? "Convia" : "WhatsApp"} OTP belum dikonfigurasi oleh owner.` }, { status: 503 });
-      }
-
       const code = String(randomInt(100000, 1000000));
       const salt = randomBytes(16).toString("hex");
       await ctx.admin
@@ -175,11 +169,7 @@ export async function POST(req: NextRequest) {
       });
       if (dbError) throw dbError;
 
-      const sent = cfg.provider === "meta"
-        ? await sendViaMeta(accessToken, cfg, phone, code)
-        : cfg.provider === "convia"
-          ? await sendViaConvia(accessToken, cfg, phone, code)
-          : await sendViaFlowKirim(accessToken, cfg, phone, code);
+      const sent = await sendWhatsAppOtpWithFailover(ctx.admin, phone, code);
 
       await ctx.admin.from("luma_api_usage_events").insert({
         workspace_id: workspaceId,
@@ -196,6 +186,8 @@ export async function POST(req: NextRequest) {
           customer_id: "customerId" in sent ? sent.customerId : null,
           recipient_last4: phone.replace(/\D/g, "").slice(-4),
           flowkirim_recipient_format: sent.provider === "flowkirim" ? "digits_only" : null,
+          failover_used: sent.failover_used,
+          attempted: sent.attempted,
         },
       });
       return NextResponse.json({ ok: true, expires_in: 300, provider: sent.provider });

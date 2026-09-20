@@ -18,6 +18,8 @@ type FormState = {
   convia_base_url: string;
   convia_otp_template: string;
   convia_phone_number_id: string;
+  failover_enabled: boolean;
+  provider_order: string;
 };
 
 const INITIAL: FormState = {
@@ -34,6 +36,8 @@ const INITIAL: FormState = {
   convia_base_url: "https://api.convia.id/api/v1/public",
   convia_otp_template: "luma_otp",
   convia_phone_number_id: "",
+  failover_enabled: true,
+  provider_order: "flowkirim,convia,meta",
 };
 
 const providerLabel = (provider: Provider) =>
@@ -75,6 +79,8 @@ export default function WhatsAppIntegration({ workspaceId }: { workspaceId: stri
         convia_base_url: s.convia_base_url || "https://api.convia.id/api/v1/public",
         convia_otp_template: s.convia_otp_template || "luma_otp",
         convia_phone_number_id: s.convia_phone_number_id || "",
+        failover_enabled: String(s.whatsapp_failover_enabled || "true") !== "false",
+        provider_order: s.whatsapp_provider_order || "flowkirim,convia,meta",
       }));
       setStatus(
         d.configured
@@ -98,7 +104,7 @@ export default function WhatsAppIntegration({ workspaceId }: { workspaceId: stri
       const r = await fetch("/api/integrations/whatsapp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspace_id: workspaceId, action, test_phone: action === "test" ? testPhone.trim() : "", ...form }),
+        body: JSON.stringify({ workspace_id: workspaceId, action, test_phone: action === "test" ? testPhone.trim() : "", failover_enabled: form.failover_enabled, provider_order: form.provider_order, ...form }),
       });
       const d = await r.json();
       if (!r.ok || !d.ok) throw new Error(d.error || "Gagal menyimpan WhatsApp integration.");
@@ -195,6 +201,12 @@ export default function WhatsAppIntegration({ workspaceId }: { workspaceId: stri
         </>}
       </>}
 
+      <label>Automatic Failover
+        <select value={form.failover_enabled?"on":"off"} onChange={(e)=>setForm({...form,failover_enabled:e.target.value==="on"})}><option value="on">ON · switch provider saat gagal</option><option value="off">OFF · provider utama saja</option></select>
+      </label>
+      <label>Provider Order
+        <input value={form.provider_order} onChange={(e)=>setForm({...form,provider_order:e.target.value})} placeholder="flowkirim,convia,meta" />
+      </label>
       <label>WhatsApp Channel URL
         <input value={form.channel_url} onChange={(e) => setForm({ ...form, channel_url: e.target.value })} placeholder="Opsional · URL channel komunitas Lumaway" />
       </label>
@@ -206,7 +218,8 @@ export default function WhatsAppIntegration({ workspaceId }: { workspaceId: stri
       {form.provider === "meta" && <span className={form.phone_number_id ? "done" : ""}>Phone Number ID {form.phone_number_id ? "siap" : "dibutuhkan"}</span>}
       {form.provider === "convia" && <span className={form.convia_otp_template ? "done" : ""}>Authentication template {form.convia_otp_template ? "siap" : "dibutuhkan"}</span>}
       {form.provider === "convia" && <span>CRM API aktif untuk text, media, template & transactional messaging</span>}
-      <span>OTP expiry 5 menit</span>
+      <span className={form.failover_enabled?"done":""}>Auto failover {form.failover_enabled?"aktif":"nonaktif"} · {form.provider_order}</span>
+            <span>OTP expiry 5 menit</span>
       <span>Maks. 5 percobaan</span>
     </div>
 
