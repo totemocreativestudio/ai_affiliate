@@ -8,7 +8,8 @@
       "fix/vercel-monorepo-deployments": false,
       "fix/dashboard-history-otp-admin-pricing": false,
       "feat/lumaway-ops-intelligence-admin-v4": false,
-      "fix/lumaway-marketing-public-rewrite": false
+      "fix/lumaway-marketing-public-rewrite": false,
+      "fix/lumaway-web-proxy-origin": false
     }
   },
   "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ':(exclude)apps/marketing/**'"
