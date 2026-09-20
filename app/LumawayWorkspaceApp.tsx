@@ -31,6 +31,7 @@ import DashboardReminder from "./components/DashboardReminder";
 import PWAInstallButton from "./components/PWAInstallButton";
 import MobileQuickNav from "./components/MobileQuickNav";
 import SystemStatusGate from "./components/SystemStatusGate";
+import {LumaErrorMotion} from "./components/LumaMotionState";
 
 type Profile = { id: string; email: string | null; full_name: string | null; nickname: string | null; role: string; active: boolean; phone: string | null; phone_verified_at: string | null; email_verified_at: string | null; education: string | null; birth_date: string | null; bio: string | null; position_title: string | null; profile_completed: boolean };
 type Workspace = { id: string; name: string; slug: string; status: string };
@@ -428,7 +429,7 @@ export default function LumawayWorkspaceApp() {
           <section id="ratecard" className="legacy-page-anchor"><RatecardMaster workspaceId={workspace.id} /></section>
         </>}
         {!isAdmin && accessLocked && <div className="subscription-lock-banner"><strong>Masa akses Lumaway telah berakhir.</strong><span>Data workspace Anda tetap aman dan tidak dihapus. Buka Billing untuk memperpanjang akses.</span>{subscriptionEndsAt&&<small>Berakhir: {new Date(subscriptionEndsAt).toLocaleString("id-ID")}</small>}<button onClick={()=>navigateToSection("billing")}>Buka Billing</button></div>}
-        {error && <div className="flash error">{error}</div>}
+        {error && <LumaErrorMotion compact code={/403|access denied|tidak.*akses/i.test(error)?403:/404|tidak ditemukan/i.test(error)?404:/503|unavailable|maintenance|tidak dapat dimuat/i.test(error)?503:500} message={error} onRetry={()=>void loadSession()}/>} 
       </main>
     </div>
     {!isAdmin && <><MobileQuickNav /><DashboardReminder workspaceId={workspace.id} userId={profile.id} workspaceStatus={workspace.status} /><LumaHelpdeskAgent workspaceId={workspace.id} userId={profile.id} fullName={profile.full_name} email={profile.email} /></>}
