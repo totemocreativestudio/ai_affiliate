@@ -65,6 +65,7 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
   const [toastSeconds, setToastSeconds] = useState<number | null>(null);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const firstLoad = useRef(true);
+  const dismissedToastKeys = useRef<Set<string>>(new Set());
 
   async function load() {
     const [globalRes, directRes] = await Promise.all([
@@ -77,6 +78,7 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
         .from("user_notifications")
         .select("id,title,message,kind,is_read,action_url,created_at")
         .eq("user_id", userId)
+        .eq("workspace_id", workspaceId)
         .order("created_at", { ascending: false })
         .limit(60),
     ]);
@@ -128,13 +130,14 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
       .sort((a, b) => new Date(b.published_at || b.created_at).getTime() - new Date(a.published_at || a.created_at).getTime())
       .slice(0, 80);
 
-    if (!firstLoad.current) {
-      const fresh = list.find((item) => !item.read && !rows.some((old) => old.key === item.key));
-      if (fresh) {
-        setToast(fresh);
-        setToastSeconds(fresh.source==="broadcast"?3:null);
-        window.setTimeout(() => {setToast(null);setToastSeconds(null)}, fresh.source==="broadcast"?3000:7000);
-      }
+    const unreadCandidate = list.find((item) =>
+      !item.read &&
+      !dismissedToastKeys.current.has(item.key) &&
+      (firstLoad.current || !rows.some((old) => old.key === item.key))
+    );
+    if (unreadCandidate && !toast) {
+      setToast(unreadCandidate);
+      setToastSeconds(unreadCandidate.source==="broadcast"?3:7);
     }
 
     firstLoad.current = false;
@@ -153,7 +156,16 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId, userId]);
 
-  useEffect(()=>{if(!toast||toastSeconds===null)return;const timer=window.setInterval(()=>setToastSeconds(v=>v===null?null:Math.max(0,v-1)),1000);return()=>window.clearInterval(timer)},[toast?.key,toastSeconds===null]);
+  useEffect(()=>{
+    if(!toast||toastSeconds===null)return;
+    if(toastSeconds<=0){
+      dismissedToastKeys.current.add(toast.key);
+      setToast(null);setToastSeconds(null);
+      return;
+    }
+    const timer=window.setTimeout(()=>setToastSeconds(v=>v===null?null:Math.max(0,v-1)),1000);
+    return()=>window.clearTimeout(timer);
+  },[toast?.key,toastSeconds]);
 
   const unread = useMemo(() => rows.filter((item) => !item.read).length, [rows]);
   const categoryOptions = useMemo(() => {
@@ -166,6 +178,12 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
     [rows, categoryFilter],
   );
 
+  function dismissToast(row: NotificationRow) {
+    dismissedToastKeys.current.add(row.key);
+    setToast(null);
+    setToastSeconds(null);
+  }
+
   async function markRead(row: NotificationRow, clicked = false) {
     if (row.source === "broadcast") {
       await supabase.from("luma_notification_reads").upsert(
@@ -177,6 +195,8 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
     }
 
     setRows((previous) => previous.map((item) => (item.key === row.key ? { ...item, read: true } : item)));
+    dismissedToastKeys.current.add(row.key);
+    if(toast?.key===row.key){setToast(null);setToastSeconds(null)}
 
     if (clicked && row.action_url) {
       setOpen(false);
@@ -232,12 +252,15 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
       )}
 
       {toast && (
-        <button className="notification-toast" onClick={() => void markRead(toast, true)}>
-          <span className={`notification-category n-${toast.category}`}>{categoryLabel(toast.category)}</span>
-          <strong>{toast.title}</strong>
-          <p>{toast.body}</p>
-          {toastSeconds!==null&&<small className="notification-toast-countdown">Tutup otomatis dalam {toastSeconds}s</small>}
-        </button>
+        <div className="notification-toast" role="status" aria-live="polite">
+          <button className="notification-toast-main" onClick={() => void markRead(toast, true)}>
+            <span className={`notification-category n-${toast.category}`}>{categoryLabel(toast.category)}</span>
+            <strong>{toast.title}</strong>
+            <p>{toast.body}</p>
+            {toastSeconds!==null&&<small className="notification-toast-countdown">Tutup otomatis dalam {toastSeconds}s</small>}
+          </button>
+          <button className="notification-toast-close" type="button" aria-label="Tutup notifikasi" title="Tutup" onClick={(event)=>{event.stopPropagation();dismissToast(toast)}}>×</button>
+        </div>
       )}
     </div>
   );
