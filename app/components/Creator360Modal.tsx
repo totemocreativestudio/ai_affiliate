@@ -50,12 +50,13 @@ export default function Creator360Modal({workspaceId,creatorId,startDate,endDate
     if(!creatorId)return;
     setBusy(true);setError("");
     try{
-      const [{data:latest,error:latestError},{data:targets,error:targetError}]=await Promise.all([
-        supabase.from("sales").select("data_date").eq("workspace_id",workspaceId).eq("creator_id",creatorId).not("data_date","is",null).order("data_date",{ascending:false}).limit(1).maybeSingle(),
+      const [{data:allData,error:allError},{data:targets,error:targetError}]=await Promise.all([
+        supabase.rpc("get_creator_360_activity",{p_workspace_id:workspaceId,p_creator_id:creatorId,p_start_date:null,p_end_date:null}),
         supabase.from("creator_360_targets").select("*").eq("workspace_id",workspaceId).eq("creator_id",creatorId).order("target_year",{ascending:false}).order("target_month",{ascending:false}).limit(200)
       ]);
-      if(latestError)throw latestError;if(targetError)throw targetError;
-      const preferred=(endDate||latest?.data_date||iso(new Date())).slice(0,10);const d=utcDate(preferred);
+      if(allError)throw allError;if(targetError)throw targetError;
+      const full=Array.isArray(allData)?allData[0]:allData;
+      const preferred=(endDate||full?.latest_data_date||iso(new Date())).slice(0,10);const d=utcDate(preferred);
       setAnchorDate(preferred);setFilterYear(d.getUTCFullYear());setFilterMonth(d.getUTCMonth()+1);setTargetRows((targets||[]) as Row[]);
       if(startDate&&endDate){const s=utcDate(startDate),e=utcDate(endDate);const sameMonth=s.getUTCFullYear()===e.getUTCFullYear()&&s.getUTCMonth()===e.getUTCMonth();if(sameMonth)setPeriodMode("month")}
       setPeriodReady(true);
@@ -68,25 +69,22 @@ export default function Creator360Modal({workspaceId,creatorId,startDate,endDate
     if(e)throw e;setTargetRows((targets||[]) as Row[]);
   }
 
-  async function activity(start:string,end:string){
-    if(!creatorId)return {};
-    let query=supabase.from("sales").select("live_count,video_count,clicks,buyers,impressions,video_views,sample_content,sample_sent").eq("workspace_id",workspaceId).eq("creator_id",creatorId);
-    if(start)query=query.gte("data_date",start);if(end)query=query.lte("data_date",end);
-    const {data:rows,error:e}=await query;if(e)throw e;
-    return (rows||[]).reduce((acc:Row,row:Row)=>{for(const key of ["live_count","video_count","clicks","buyers","impressions","video_views","sample_content","sample_sent"])acc[key]=Number(acc[key]||0)+Number(row[key]||0);return acc},{});
-  }
-
   async function loadMetrics(){
     if(!creatorId)return;
     setBusy(true);setError("");
     try{
-      const currentPromise=supabase.rpc("get_creator_360",{p_workspace_id:workspaceId,p_creator_id:creatorId,p_start_date:range.start,p_end_date:range.end});
-      const previousPromise=supabase.rpc("get_creator_360",{p_workspace_id:workspaceId,p_creator_id:creatorId,p_start_date:previous.start,p_end_date:previous.end});
-      const profilePromise=supabase.from("creator_360_profiles").select("id").eq("workspace_id",workspaceId).eq("creator_id",creatorId).maybeSingle();
-      const [currentRes,previousRes,profileRes,currentActivity,previousActivity]=await Promise.all([currentPromise,previousPromise,profilePromise,activity(range.start,range.end),activity(previous.start,previous.end)]);
-      if(currentRes.error)throw currentRes.error;if(previousRes.error)throw previousRes.error;
+      const [currentRes,previousRes,profileRes,currentActivityRes,previousActivityRes]=await Promise.all([
+        supabase.rpc("get_creator_360",{p_workspace_id:workspaceId,p_creator_id:creatorId,p_start_date:range.start,p_end_date:range.end}),
+        supabase.rpc("get_creator_360",{p_workspace_id:workspaceId,p_creator_id:creatorId,p_start_date:previous.start,p_end_date:previous.end}),
+        supabase.from("creator_360_profiles").select("id").eq("workspace_id",workspaceId).eq("creator_id",creatorId).maybeSingle(),
+        supabase.rpc("get_creator_360_activity",{p_workspace_id:workspaceId,p_creator_id:creatorId,p_start_date:range.start,p_end_date:range.end}),
+        supabase.rpc("get_creator_360_activity",{p_workspace_id:workspaceId,p_creator_id:creatorId,p_start_date:previous.start,p_end_date:previous.end})
+      ]);
+      if(currentRes.error)throw currentRes.error;if(previousRes.error)throw previousRes.error;if(currentActivityRes.error)throw currentActivityRes.error;if(previousActivityRes.error)throw previousActivityRes.error;
       const row=Array.isArray(currentRes.data)?currentRes.data[0]:currentRes.data;const old=Array.isArray(previousRes.data)?previousRes.data[0]:previousRes.data;
-      if(row)row.kpi={...(row.kpi||{}),...currentActivity};if(old)old.kpi={...(old.kpi||{}),...previousActivity};
+      const currentActivity=Array.isArray(currentActivityRes.data)?currentActivityRes.data[0]:currentActivityRes.data;
+      const previousActivity=Array.isArray(previousActivityRes.data)?previousActivityRes.data[0]:previousActivityRes.data;
+      if(row)row.kpi={...(row.kpi||{}),...(currentActivity||{})};if(old)old.kpi={...(old.kpi||{}),...(previousActivity||{})};
       setData(row||null);setPrevData(old?{...old,comparison_label:previous.label}:null);setManualSaved(Boolean(profileRes.data?.id));setEditingManual(false);
       if(row?.manual_profile)setManual({...DEFAULT_MANUAL,...row.manual_profile,video_links:Array.isArray(row.manual_profile.video_links)?row.manual_profile.video_links:["","",""]});
     }catch(e:any){setError(e?.message||"Gagal memuat Customer 360.")}finally{setBusy(false)}
