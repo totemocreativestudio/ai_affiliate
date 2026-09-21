@@ -63,7 +63,10 @@ function num(v: any, kind: NumericKind = "decimal") {
     if (kind === "money") {
       // IDR exports frequently use either 1.300 or 1,300 as thousands.
       // A final 1-2 digit group is treated as decimal cents; 3 digits is grouping.
-      if (right.length === 3) return left + right;
+      if (right.length === 3) {
+        if (/Rp|IDR|USD/i.test(raw) || left.length <= 3) return left + right;
+        return left + "." + right;
+      }
       if (right.length <= 2) return left + "." + right;
       return left + right;
     }
@@ -102,6 +105,77 @@ function num(v: any, kind: NumericKind = "decimal") {
 const moneyNum = (v:any) => num(v, "money");
 const countNum = (v:any) => num(v, "count");
 const percentNum = (v:any) => num(v, "percent");
+
+type MoneyStyle = "decimal-dot" | "decimal-comma" | "grouped";
+
+function inferMoneyStyle(rows:Row[],header:string):MoneyStyle{
+  if(!header)return "grouped";
+  let dotDecimal=0,commaDecimal=0,grouped=0;
+  for(const row of rows.slice(0,500)){
+    const value=row?.[header];
+    if(value===null||value===undefined||value===""||typeof value==="number")continue;
+    const raw=String(value).trim();
+    const hasCurrency=/Rp|IDR|USD/i.test(raw);
+    const s=raw.replace(/Rp|IDR|USD/gi,"").replace(/\s+/g,"").replace(/[^0-9,.+\-]/g,"").replace(/^[+\-]/,"");
+    if(!s)continue;
+    const dots=(s.match(/\./g)||[]).length,commas=(s.match(/,/g)||[]).length;
+    if(dots&&commas){
+      const lastDot=s.lastIndexOf("."),lastComma=s.lastIndexOf(",");
+      const last=Math.max(lastDot,lastComma),suffix=s.slice(last+1);
+      if(suffix.length<=2){if(lastDot>lastComma)dotDecimal+=4;else commaDecimal+=4}else grouped+=3;
+      continue;
+    }
+    const sep=dots?".":commas?",":"";
+    if(!sep)continue;
+    const parts=s.split(sep);
+    if(parts.length>2){if(parts.slice(1).every(part=>part.length===3))grouped+=4;continue}
+    const left=(parts[0]||"").replace(/^[-+]/,""),right=parts[1]||"";
+    if(hasCurrency&&right.length===3){grouped+=3;continue}
+    if(right.length<=2&&right.length>0){if(sep===".")dotDecimal+=2;else commaDecimal+=2;continue}
+    if(right.length===3){
+      if(left.length<=3)grouped+=2;
+      else if(sep===".")dotDecimal+=1;
+      else commaDecimal+=1;
+    }
+  }
+  if(dotDecimal>=commaDecimal&&dotDecimal>grouped)return "decimal-dot";
+  if(commaDecimal>dotDecimal&&commaDecimal>grouped)return "decimal-comma";
+  return "grouped";
+}
+
+function moneyValue(v:any,style:MoneyStyle){
+  if(typeof v==="number")return Number.isFinite(v)?v:0;
+  const raw=clean(v);
+  if(!raw)return 0;
+  const hasCurrency=/Rp|IDR|USD/i.test(raw);
+  let s=raw.replace(/[()]/g,"").replace(/Rp|IDR|USD/gi,"").replace(/\s+/g,"").replace(/[^0-9,.+\-]/g,"");
+  const negative=/^\s*\(.*\)\s*$/.test(raw)||s.startsWith("-");
+  s=s.replace(/^[+\-]/,"");
+  const dots=(s.match(/\./g)||[]).length,commas=(s.match(/,/g)||[]).length;
+  let normalized=s;
+  if(dots&&commas){
+    const lastDot=s.lastIndexOf("."),lastComma=s.lastIndexOf(",");
+    const last=Math.max(lastDot,lastComma),suffix=s.slice(last+1);
+    if(suffix.length>0&&suffix.length<=2){
+      const decimalSep=lastDot>lastComma?".":",",groupSep=decimalSep==="."?",":".";
+      normalized=s.split(groupSep).join("").replace(decimalSep,".");
+    }else normalized=s.replace(/[.,]/g,"");
+  }else if(dots||commas){
+    const sep=dots?".":",",parts=s.split(sep);
+    if(parts.length>2)normalized=parts.join("");
+    else{
+      const left=parts[0]||"0",right=parts[1]||"";
+      if(right.length===3){
+        const definitelyGrouped=hasCurrency||left.length<=3||style==="grouped";
+        normalized=definitelyGrouped?left+right:left+"."+right;
+      }else if(right.length>0&&right.length<=2)normalized=left+"."+right;
+      else normalized=left+right;
+    }
+  }
+  const n=Number(normalized);
+  if(!Number.isFinite(n))return 0;
+  return negative?-Math.abs(n):n;
+}
 const norm = (v: any) => clean(v).toLowerCase().replace(/[^a-z0-9]+/g, "");
 function key(row: Row, candidates: string[], fuzzy = true) {
   const keys = Object.keys(row || {});
