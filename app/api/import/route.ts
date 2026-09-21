@@ -4,6 +4,7 @@ import { getServerContext } from "../../../lib/server-auth";
 
 export const runtime = "nodejs";
 type Row = Record<string, any>;
+const PARSER_VERSION = "universal-v3-20260921";
 
 const clean = (v: any) => (v === null || v === undefined ? "" : String(v).trim());
 type NumericKind = "money" | "count" | "percent" | "decimal";
@@ -141,8 +142,9 @@ async function notifyTopCreators(admin:any,workspaceId:string,userId:string){
 
 function detectedPlatform(rows: Row[], requested: string) {
   const headers = Object.keys(rows[0] || {}).map(norm);
-  if (headers.includes(norm("GMV dari kreator")) || headers.includes(norm("Pesanan teratribusi")) || headers.includes(norm("Perkiraan komisi"))) return "TikTok";
-  if (headers.includes(norm("Omzet Penjualan(Rp)")) || headers.includes(norm("Estimasi Komisi(Rp)")) || headers.includes(norm("ID Affiliates"))) return "Shopee";
+  const has = (...terms:string[]) => terms.some(term => headers.some(header => header.includes(norm(term))));
+  if (has("GMV dari kreator","Pesanan teratribusi","Perkiraan komisi","GMV dari LIVE kreator","GMV dari video afiliasi")) return "TikTok";
+  if (has("Omzet Penjualan","Estimasi Komisi","ID Affiliates","Nama Affiliate","Total Pembeli")) return "Shopee";
   return requested || "Other";
 }
 
@@ -214,9 +216,9 @@ function mappingSummary(mapping:PerformanceMapping){
 }
 
 function creatorKeys(row: Row) {
-  const name = clean(value(row, ["Creator name", "Nama Affiliate", "Creator", "Nama Creator"]));
-  const username = clean(value(row, ["Username Affiliate", "Username", "Affiliate Username"]));
-  const affiliateId = clean(value(row, ["ID Affiliates", "Affiliate ID"]));
+  const name = clean(value(row, ["Creator name","Creator Name","Nama Affiliate","Nama Afiliasi","Affiliate Name","Creator","Nama Creator","Username Affiliate","Username"]));
+  const username = clean(value(row, ["Username Affiliate","Username","Affiliate Username","Creator Username","Nama Pengguna"]));
+  const affiliateId = clean(value(row, ["ID Affiliates","Affiliate ID","ID Affiliate","Creator ID"]));
   return {
     name,
     username,
@@ -289,7 +291,23 @@ export async function POST(req: NextRequest) {
     const b=await req.json(); const workspaceId=clean(b.workspace_id); const dataType=clean(b.data_type); const requestedPlatform=clean(b.platform)||"Other"; const start=clean(b.start_date); const end=clean(b.end_date); const filename=clean(b.filename)||"upload"; const fileHash=clean(b.file_hash); const importId=clean(b.import_id)||`IMP-${randomUUID().replace(/-/g,"").slice(0,8).toUpperCase()}`; const rows:Row[]=Array.isArray(b.rows)?b.rows:[]; const platform=dataType==="performance"?detectedPlatform(rows,requestedPlatform):requestedPlatform; const batchIndex=Number(b.batch_index||0); const totalBatches=Math.max(1,Number(b.total_batches||1)); const force=Boolean(b.force_reimport);
     if(!workspaceId||!dataType||!rows.length)return NextResponse.json({ok:false,error:"Workspace, jenis data, dan rows wajib diisi."},{status:400});
     const ctx=await getServerContext(workspaceId); if(!ctx.canManage)return NextResponse.json({ok:false,error:"Role Anda tidak dapat melakukan import."},{status:403}); const {admin}=ctx;
-    if(batchIndex===0&&fileHash){const {data:dup,error:dupError}=await admin.from("imports").select("import_id,status").eq("workspace_id",workspaceId).eq("file_hash",fileHash);if(dupError)throw dupError;if((dup||[]).length&&!force){const states=[...new Set((dup||[]).map((x:any)=>x.status).filter(Boolean))].join(", ");return NextResponse.json({ok:false,error:`File identik sudah pernah diproses${states?" ("+states+")":""}. Aktifkan Re-import untuk membersihkan import lama/parsial lalu impor ulang.`},{status:409})}if((dup||[]).length&&force){const old=(dup||[]).map((x:any)=>x.import_id).filter(Boolean);if(old.length){await admin.from("sales").delete().eq("workspace_id",workspaceId).in("import_id",old);await admin.from("imports").delete().eq("workspace_id",workspaceId).in("import_id",old)}}}
+    if(batchIndex===0&&fileHash){
+      const {data:dup,error:dupError}=await admin.from("imports").select("import_id,status,message").eq("workspace_id",workspaceId).eq("file_hash",fileHash);
+      if(dupError)throw dupError;
+      const prior=(dup||[]) as any[];
+      const oldParser=prior.some(item=>{try{return JSON.parse(item.message||"{}").parser_version!==PARSER_VERSION}catch{return true}});
+      if(prior.length&&!force&&!oldParser){
+        const states=[...new Set(prior.map((x:any)=>x.status).filter(Boolean))].join(", ");
+        return NextResponse.json({ok:false,error:`File identik sudah pernah diproses${states?" ("+states+")":""}. Aktifkan Re-import jika memang ingin mengganti data.`},{status:409});
+      }
+      if(prior.length&&(force||oldParser)){
+        const old=prior.map((x:any)=>x.import_id).filter(Boolean);
+        if(old.length){
+          await admin.from("sales").delete().eq("workspace_id",workspaceId).in("import_id",old);
+          await admin.from("imports").delete().eq("workspace_id",workspaceId).in("import_id",old);
+        }
+      }
+    }
     let inserted=0,updated=0,skipped=0;
 
     if(dataType==="creators"){
