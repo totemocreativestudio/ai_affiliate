@@ -51,7 +51,7 @@ export default function Creator360Modal({workspaceId,creatorId,startDate,endDate
     setBusy(true);setError("");
     try{
       const [{data:allData,error:allError},{data:targets,error:targetError}]=await Promise.all([
-        supabase.rpc("get_creator_360",{p_workspace_id:workspaceId,p_creator_id:creatorId,p_start_date:null,p_end_date:null}),
+        supabase.rpc("get_creator_360_activity",{p_workspace_id:workspaceId,p_creator_id:creatorId,p_start_date:null,p_end_date:null}),
         supabase.from("creator_360_targets").select("*").eq("workspace_id",workspaceId).eq("creator_id",creatorId).order("target_year",{ascending:false}).order("target_month",{ascending:false}).limit(200)
       ]);
       if(allError)throw allError;if(targetError)throw targetError;
@@ -73,13 +73,18 @@ export default function Creator360Modal({workspaceId,creatorId,startDate,endDate
     if(!creatorId)return;
     setBusy(true);setError("");
     try{
-      const [currentRes,previousRes,profileRes]=await Promise.all([
+      const [currentRes,previousRes,profileRes,currentActivityRes,previousActivityRes]=await Promise.all([
         supabase.rpc("get_creator_360",{p_workspace_id:workspaceId,p_creator_id:creatorId,p_start_date:range.start,p_end_date:range.end}),
         supabase.rpc("get_creator_360",{p_workspace_id:workspaceId,p_creator_id:creatorId,p_start_date:previous.start,p_end_date:previous.end}),
-        supabase.from("creator_360_profiles").select("id").eq("workspace_id",workspaceId).eq("creator_id",creatorId).maybeSingle()
+        supabase.from("creator_360_profiles").select("id").eq("workspace_id",workspaceId).eq("creator_id",creatorId).maybeSingle(),
+        supabase.rpc("get_creator_360_activity",{p_workspace_id:workspaceId,p_creator_id:creatorId,p_start_date:range.start,p_end_date:range.end}),
+        supabase.rpc("get_creator_360_activity",{p_workspace_id:workspaceId,p_creator_id:creatorId,p_start_date:previous.start,p_end_date:previous.end})
       ]);
-      if(currentRes.error)throw currentRes.error;if(previousRes.error)throw previousRes.error;
+      if(currentRes.error)throw currentRes.error;if(previousRes.error)throw previousRes.error;if(currentActivityRes.error)throw currentActivityRes.error;if(previousActivityRes.error)throw previousActivityRes.error;
       const row=Array.isArray(currentRes.data)?currentRes.data[0]:currentRes.data;const old=Array.isArray(previousRes.data)?previousRes.data[0]:previousRes.data;
+      const currentActivity=Array.isArray(currentActivityRes.data)?currentActivityRes.data[0]:currentActivityRes.data;
+      const previousActivity=Array.isArray(previousActivityRes.data)?previousActivityRes.data[0]:previousActivityRes.data;
+      if(row)row.kpi={...(row.kpi||{}),...(currentActivity||{})};if(old)old.kpi={...(old.kpi||{}),...(previousActivity||{})};
       setData(row||null);setPrevData(old?{...old,comparison_label:previous.label}:null);setManualSaved(Boolean(profileRes.data?.id));setEditingManual(false);
       if(row?.manual_profile)setManual({...DEFAULT_MANUAL,...row.manual_profile,video_links:Array.isArray(row.manual_profile.video_links)?row.manual_profile.video_links:["","",""]});
     }catch(e:any){setError(e?.message||"Gagal memuat Customer 360.")}finally{setBusy(false)}
