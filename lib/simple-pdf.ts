@@ -52,16 +52,19 @@ function textLine(text: string, x: number, y: number, size = 10, bold = false) {
 }
 
 function brandMark(x: number, y: number) {
-  // Vector Lumaway mark for PDF output. Using PDF paths avoids the old
-  // blue placeholder box and renders reliably in downloaded documents.
+  // Lumaway vector mark for PDF output.
+  // Draw the mark as separate geometric strokes instead of a filled square,
+  // so it stays recognizable in every PDF viewer without external image loading.
   return [
     "q\n",
-    "0.46 0.29 0.98 rg\n",
-    `${x} ${y} 6 20 re f\n`,
-    "0.05 0.60 0.95 rg\n",
-    `${x + 6} ${y} 14 6 re f\n`,
-    "0.96 0.28 0.68 rg\n",
-    `${x + 8} ${y + 7} m ${x + 20} ${y + 7} l ${x + 20} ${y + 20} l ${x + 14} ${y + 14} l h f\n`,
+    "0.38 0.35 1.00 rg\n",
+    `${x} ${y + 3} 5 21 re f\n`,
+    "0.20 0.55 1.00 rg\n",
+    `${x + 5} ${y + 3} 7 5 re f\n`,
+    "0.75 0.35 0.98 rg\n",
+    `${x + 12} ${y + 3} 7 5 re f\n`,
+    "0.98 0.38 0.67 rg\n",
+    `${x + 14} ${y + 8} m ${x + 22} ${y + 8} l ${x + 22} ${y + 16} l ${x + 18} ${y + 20} l ${x + 14} ${y + 16} l h f\n`,
     "Q\n"
   ].join("");
 }
@@ -74,7 +77,7 @@ function buildPageContent(page: PdfPage, index: number, report: PdfReport) {
 
   commands.push(brandMark(44, 790));
   commands.push("0 0 0 rg\n");
-  commands.push(textLine("LUMAWAY.", 72, 798, 10, true));
+  commands.push(textLine("LUMAWAY.", 74, 798, 10, true));
   commands.push(textLine("AI ANALYTICS REPORT", 44, 775, 7, false));
   commands.push("0.86 0.87 0.90 RG 0.7 w 44 765 m 551 765 l S\n");
 

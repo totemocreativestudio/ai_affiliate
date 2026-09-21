@@ -64,7 +64,7 @@ export default function UserProfile({workspaceId,userId}:{workspaceId:string;use
     }).eq("id",userId);
     setBusy(false);
     if(error)return setStatus(error.message);
-    setStatus(completed?"Selamat, profil kamu sudah lengkap. Kamu dapat menggunakan seluruh fitur sesuai masa aktif.":"Data profil tersimpan. Verifikasi email dan WhatsApp untuk menyelesaikan profil.");
+    setStatus(completed?"Selamat profil kamu sudah lengkap. Kamu dapat menggunakan seluruh fitur sesuai masa aktif.":"Data profil tersimpan. Verifikasi email dan WhatsApp untuk menyelesaikan profil.");
     window.dispatchEvent(new Event("lumaway-profile-updated"));
     await load();
   }
@@ -120,6 +120,7 @@ export default function UserProfile({workspaceId,userId}:{workspaceId:string;use
 
   return <section id="profile" className="legacy-page-anchor profile-page">
     <div className="eyebrow">ACCOUNT</div><h1>My Profile</h1>{!profile?.profile_completed&&<div className="profile-completion-notice"><strong>Lengkapi profil sebelum melanjutkan</strong><span>Isi data wajib dan verifikasi email serta WhatsApp. Foto profil tetap opsional.</span></div>}<p className="muted">Data pribadi Anda terpisah dari identitas komunitas. Social Lumaway hanya menampilkan nama samaran dan mascot yang ditentukan sistem.</p>
+    {profile?.profile_completed&&<div className="profile-complete-success"><strong>Selamat profil kamu sudah lengkap.</strong><span>Kamu dapat menggunakan seluruh fitur Lumaway sesuai masa aktif akun.</span></div>}
     <div className="profile-layout">
       <div className="card profile-identity-card">
         <div className="profile-avatar-large">{profile?.avatar_url?<img src={profile.avatar_url} alt="Profile"/>:<span>{String(profile?.full_name||profile?.email||"U").slice(0,1).toUpperCase()}</span>}</div>

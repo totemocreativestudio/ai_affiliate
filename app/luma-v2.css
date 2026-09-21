@@ -36,3 +36,7 @@
 .profile-complete-badge{display:inline-flex;align-items:center;padding:5px 8px;border-radius:999px;background:#ecfdf3;color:#067647;border:1px solid #abefc6;font-size:9px;font-weight:800}
 .profile-page input:disabled,.profile-page textarea:disabled{background:#f8fafc!important;color:#475467!important;border-color:#eaecf0!important;cursor:not-allowed;opacity:1}
 .profile-page .flash.success{background:#ecfdf3!important;border-color:#abefc6!important;color:#067647!important}
+
+.profile-complete-success{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 14px;padding:12px 14px;border:1px solid #abefc6;border-radius:10px;background:#ecfdf3;color:#067647}
+.profile-complete-success strong{font-size:10px;color:#067647}
+.profile-complete-success span{font-size:10px;color:#067647}
