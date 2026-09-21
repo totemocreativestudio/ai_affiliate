@@ -307,7 +307,7 @@ function creatorKeys(row: Row) {
 }
 
 async function resolveCreatorIds(admin:any,workspaceId:string,rows:Row[],platform:string,importId:string){
-  const {data:existing,error}=await admin.from("creators").select("id,name,username,affiliate_id").eq("workspace_id",workspaceId).eq("platform",platform).limit(10000);
+  const {data:existing,error}=await admin.from("creators").select("id,name,username,affiliate_id").eq("workspace_id",workspaceId).ilike("platform",platform).limit(10000);
   if(error)throw error;
   const map=new Map<string,number>();
   const register=(row:any)=>{
@@ -354,7 +354,7 @@ async function ensureCreator(admin: any, workspaceId: string, row: Row, platform
   const username = clean(value(row, ["Username Affiliate", "Username", "Affiliate Username"]));
   const affiliateId = clean(value(row, ["ID Affiliates", "Affiliate ID"]));
   if (!name && !username) return null;
-  let q = admin.from("creators").select("id").eq("workspace_id", workspaceId).eq("platform", platform).limit(1);
+  let q = admin.from("creators").select("id").eq("workspace_id", workspaceId).ilike("platform", platform).limit(1);
   if (username) q = q.ilike("username", username); else if (affiliateId) q = q.eq("affiliate_id", affiliateId); else q = q.ilike("name", name);
   const { data: existing } = await q.maybeSingle(); if (existing?.id) return existing.id;
   const { data, error } = await admin.from("creators").insert({ workspace_id:workspaceId,creator_code:creatorCode(),name:name||username,username:username||name,platform,affiliate_id:affiliateId||null,status:"Active",source_import_id:importId,updated_at:new Date().toISOString() }).select("id").single();
@@ -391,7 +391,7 @@ export async function POST(req: NextRequest) {
       let cleanup=admin.from("sales").delete()
         .eq("workspace_id",workspaceId)
         .eq("data_type","performance")
-        .eq("platform",platform);
+        .ilike("platform",platform);
       if(start)cleanup=cleanup.eq("data_date",start);
       if(end)cleanup=cleanup.eq("end_date",end);
       const {error:cleanupError}=await cleanup;
@@ -403,10 +403,11 @@ export async function POST(req: NextRequest) {
       })
         .eq("workspace_id",workspaceId)
         .eq("data_type","performance")
-        .eq("platform",platform);
+        .ilike("platform",platform);
       if(start)supersede=supersede.eq("start_date",start);
       if(end)supersede=supersede.eq("end_date",end);
-      await supersede.neq("import_id",importId);
+      const {error:supersedeError}=await supersede.neq("import_id",importId);
+      if(supersedeError)throw supersedeError;
     }
 
     if(dataType==="creators"){
