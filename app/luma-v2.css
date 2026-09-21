@@ -27,3 +27,12 @@
 @media(max-width:1280px){.promo-type-grid{grid-template-columns:repeat(3,1fr)}.billing-kpi-grid{grid-template-columns:repeat(2,1fr)}.admin-kpi-grid{grid-template-columns:repeat(3,1fr)}.affiliate-summary-grid{grid-template-columns:1fr}.promo-studio-v2-grid{grid-template-columns:1fr}}
 @media(max-width:900px){.profile-layout{grid-template-columns:1fr}.profile-identity-card{text-align:left}.profile-avatar-large{margin-left:0}.billing-history-grid,.affiliate-main-grid,.profile-security-grid,.admin-overview-grid{grid-template-columns:1fr}.token-package-grid{grid-template-columns:1fr}.admin-package-row{grid-template-columns:1fr 1fr}.admin-kpi-grid{grid-template-columns:repeat(2,1fr)}.social-output-grid{grid-template-columns:1fr}}
 @media(max-width:640px){.promo-type-grid,.tone-grid,.billing-kpi-grid,.admin-kpi-grid{grid-template-columns:1fr}.affiliate-mini-stats{grid-template-columns:1fr}.billing-title-row,.admin-owner-hero{flex-direction:column}.a4-page{width:680px;height:962px;padding:55px 52px}.a4-page footer{left:52px;right:52px}.analysis-detail-shell,.document-preview-shell{padding:8px}.admin-package-row{grid-template-columns:1fr}}
+
+
+/* Profile completed/edit state */
+.profile-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px}
+.profile-card-head h3{margin:0}
+.profile-card-head>div{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.profile-complete-badge{display:inline-flex;align-items:center;padding:5px 8px;border-radius:999px;background:#ecfdf3;color:#067647;border:1px solid #abefc6;font-size:9px;font-weight:800}
+.profile-page input:disabled,.profile-page textarea:disabled{background:#f8fafc!important;color:#475467!important;border-color:#eaecf0!important;cursor:not-allowed;opacity:1}
+.profile-page .flash.success{background:#ecfdf3!important;border-color:#abefc6!important;color:#067647!important}
