@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 type PdfSection = { heading?: string; body?: string };
 type PdfPage = {
   page_number?: number;
@@ -15,6 +18,21 @@ type PdfReport = {
   document_json?: { document_title?: string; pages?: PdfPage[] } | null;
   watermark_removed_at?: string | null;
 };
+
+type PdfObject = string | Buffer;
+const LOGO_WIDTH = 96;
+const LOGO_HEIGHT = 102;
+let logoCache: Buffer | null = null;
+
+function getLumawayLogoData() {
+  if (logoCache) return logoCache;
+  try {
+    logoCache = readFileSync(path.join(process.cwd(), "public", "brand", "lumaway-pdf-logo.rgbz"));
+  } catch {
+    logoCache = Buffer.alloc(0);
+  }
+  return logoCache;
+}
 
 function ascii(value: unknown) {
   return String(value ?? "")
@@ -51,22 +69,8 @@ function textLine(text: string, x: number, y: number, size = 10, bold = false) {
   return `BT /${bold ? "F2" : "F1"} ${size} Tf ${x} ${y} Td (${escPdf(ascii(text))}) Tj ET\n`;
 }
 
-function brandMark(x: number, y: number) {
-  // Lumaway vector mark for PDF output.
-  // Draw the mark as separate geometric strokes instead of a filled square,
-  // so it stays recognizable in every PDF viewer without external image loading.
-  return [
-    "q\n",
-    "0.38 0.35 1.00 rg\n",
-    `${x} ${y + 3} 5 21 re f\n`,
-    "0.20 0.55 1.00 rg\n",
-    `${x + 5} ${y + 3} 7 5 re f\n`,
-    "0.75 0.35 0.98 rg\n",
-    `${x + 12} ${y + 3} 7 5 re f\n`,
-    "0.98 0.38 0.67 rg\n",
-    `${x + 14} ${y + 8} m ${x + 22} ${y + 8} l ${x + 22} ${y + 16} l ${x + 18} ${y + 20} l ${x + 14} ${y + 16} l h f\n`,
-    "Q\n"
-  ].join("");
+function logoCommand() {
+  return "q 29 0 0 31 44 787 cm /Logo Do Q\n";
 }
 
 function buildPageContent(page: PdfPage, index: number, report: PdfReport) {
@@ -75,9 +79,9 @@ function buildPageContent(page: PdfPage, index: number, report: PdfReport) {
   const subtitle = page.subtitle || "";
   const isCover = index === 0;
 
-  commands.push(brandMark(44, 790));
+  commands.push(logoCommand());
   commands.push("0 0 0 rg\n");
-  commands.push(textLine("LUMAWAY.", 74, 798, 10, true));
+  commands.push(textLine("LUMAWAY.", 80, 798, 10, true));
   commands.push(textLine("AI ANALYTICS REPORT", 44, 775, 7, false));
   commands.push("0.86 0.87 0.90 RG 0.7 w 44 765 m 551 765 l S\n");
 
@@ -160,42 +164,68 @@ function buildPageContent(page: PdfPage, index: number, report: PdfReport) {
   return commands.join("");
 }
 
+function imageObject(data: Buffer) {
+  if (!data.length) {
+    const pixel = Buffer.from([255, 255, 255]);
+    return Buffer.concat([
+      Buffer.from("<< /Type /XObject /Subtype /Image /Width 1 /Height 1 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length 3 >>\nstream\n", "ascii"),
+      pixel,
+      Buffer.from("\nendstream", "ascii"),
+    ]);
+  }
+  return Buffer.concat([
+    Buffer.from(`<< /Type /XObject /Subtype /Image /Width ${LOGO_WIDTH} /Height ${LOGO_HEIGHT} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /Length ${data.length} >>\nstream\n`, "ascii"),
+    data,
+    Buffer.from("\nendstream", "ascii"),
+  ]);
+}
+
+function asBuffer(object: PdfObject) {
+  return Buffer.isBuffer(object) ? object : Buffer.from(object, "ascii");
+}
+
 export function generateReportPdf(report: PdfReport) {
   const sourcePages = report.document_json?.pages || [];
   const pages = sourcePages.length ? sourcePages.slice(0, 20) : [{ title: report.title || "Lumaway Report" }];
 
-  const objects: string[] = [];
-  // 1: catalog, 2: pages tree, 3/4 fonts. Page/content objects begin at 5.
+  const objects: PdfObject[] = [];
+  // 1: catalog, 2: pages tree, 3/4 fonts, 5: official Lumaway logo image.
   objects[1] = "<< /Type /Catalog /Pages 2 0 R >>";
   const kids: string[] = [];
   objects[3] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>";
   objects[4] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>";
+  objects[5] = imageObject(getLumawayLogoData());
 
   pages.forEach((page, index) => {
-    const pageObject = 5 + index * 2;
+    const pageObject = 6 + index * 2;
     const contentObject = pageObject + 1;
     kids.push(`${pageObject} 0 R`);
     const stream = buildPageContent(page, index, report);
     objects[contentObject] = `<< /Length ${Buffer.byteLength(stream, "ascii")} >>\nstream\n${stream}endstream`;
-    objects[pageObject] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentObject} 0 R >>`;
+    objects[pageObject] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> /XObject << /Logo 5 0 R >> >> /Contents ${contentObject} 0 R >>`;
   });
 
   objects[2] = `<< /Type /Pages /Kids [${kids.join(" ")}] /Count ${pages.length} >>`;
 
-  let pdf = "%PDF-1.4\n%LUMAWAY\n";
+  const chunks: Buffer[] = [Buffer.from("%PDF-1.4\n%LUMAWAY\n", "ascii")];
   const offsets: number[] = [0];
+  let byteOffset = chunks[0].length;
+
   for (let i = 1; i < objects.length; i++) {
-    offsets[i] = Buffer.byteLength(pdf, "ascii");
-    pdf += `${i} 0 obj\n${objects[i]}\nendobj\n`;
+    offsets[i] = byteOffset;
+    const prefix = Buffer.from(`${i} 0 obj\n`, "ascii");
+    const body = asBuffer(objects[i]);
+    const suffix = Buffer.from("\nendobj\n", "ascii");
+    chunks.push(prefix, body, suffix);
+    byteOffset += prefix.length + body.length + suffix.length;
   }
 
-  const xrefOffset = Buffer.byteLength(pdf, "ascii");
-  pdf += `xref\n0 ${objects.length}\n`;
-  pdf += "0000000000 65535 f \n";
+  const xrefOffset = byteOffset;
+  let xref = `xref\n0 ${objects.length}\n0000000000 65535 f \n`;
   for (let i = 1; i < objects.length; i++) {
-    pdf += `${String(offsets[i]).padStart(10, "0")} 00000 n \n`;
+    xref += `${String(offsets[i]).padStart(10, "0")} 00000 n \n`;
   }
-  pdf += `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
-
-  return Buffer.from(pdf, "ascii");
+  xref += `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  chunks.push(Buffer.from(xref, "ascii"));
+  return Buffer.concat(chunks);
 }
