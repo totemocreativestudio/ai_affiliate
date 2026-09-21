@@ -6,48 +6,101 @@ export const runtime = "nodejs";
 type Row = Record<string, any>;
 
 const clean = (v: any) => (v === null || v === undefined ? "" : String(v).trim());
-function num(v: any) {
+type NumericKind = "money" | "count" | "percent" | "decimal";
+
+function num(v: any, kind: NumericKind = "decimal") {
   if (typeof v === "number") return Number.isFinite(v) ? v : 0;
-  let s = clean(v)
-    .replace(/\u00a0/g, "")
+
+  let raw = clean(v).replace(/\u00a0/g, " ").trim();
+  if (!raw) return 0;
+
+  // Preserve scientific notation from exports such as 1.3E+06.
+  const scientific = raw
     .replace(/Rp|IDR|USD/gi, "")
     .replace(/%/g, "")
     .replace(/\s+/g, "")
-    .replace(/[^0-9,().+\-]/g, "");
-  if (!s) return 0;
-
-  const negative = /^\(.*\)$/.test(s);
-  s = s.replace(/[()]/g, "");
-  const comma = s.lastIndexOf(",");
-  const dot = s.lastIndexOf(".");
-
-  if (comma >= 0 && dot >= 0) {
-    // Whichever separator appears last is the decimal separator.
-    if (comma > dot) s = s.replace(/\./g, "").replace(",", ".");
-    else s = s.replace(/,/g, "");
-  } else if (comma >= 0) {
-    const parts = s.split(",");
-    if (parts.length > 2 && parts.slice(1).every((part) => part.length === 3)) s = parts.join("");
-    else if (parts.length === 2) {
-      const [left, right] = parts;
-      if (right.length === 3 && left.replace(/^[+\-]/, "").length <= 3) s = left + right;
-      else if (right.length <= 2) s = left + "." + right;
-      else s = left + right;
-    } else s = s.replace(/,/g, "");
-  } else if (dot >= 0) {
-    const parts = s.split(".");
-    if (parts.length > 2 && parts.slice(1).every((part) => part.length === 3)) s = parts.join("");
-    else if (parts.length === 2) {
-      const [left, right] = parts;
-      // Indonesian formatted amounts such as 130.000 / 1.300 are thousands,
-      // while API/CSV decimals such as 481641.6 or 367350.325 remain decimals.
-      if (right.length === 3 && left.replace(/^[+\-]/, "").length <= 3) s = left + right;
-    }
+    .replace(",", ".");
+  if (/^[+\-]?\d+(?:\.\d+)?[eE][+\-]?\d+$/.test(scientific)) {
+    const n = Number(scientific);
+    return Number.isFinite(n) ? n : 0;
   }
 
-  const n = Number(s);
-  return Number.isFinite(n) ? (negative ? -n : n) : 0;
+  const negative = /^\s*\(.*\)\s*$/.test(raw);
+  let s = raw
+    .replace(/[()]/g, "")
+    .replace(/Rp|IDR|USD/gi, "")
+    .replace(/%/g, "")
+    .replace(/[\s']/g, "")
+    .replace(/[^0-9,.+\-]/g, "");
+  if (!s) return 0;
+
+  const sign = s.startsWith("-") ? -1 : 1;
+  s = s.replace(/^[+\-]/, "");
+
+  if (kind === "count") {
+    // Counts are whole units. Both Indonesian and English thousands separators
+    // are removed: 1.300, 1,300, 12.000 -> 1300 / 1300 / 12000.
+    const digits = s.replace(/[.,]/g, "");
+    const n = Number(digits);
+    return Number.isFinite(n) ? (negative ? -Math.abs(n) : sign * n) : 0;
+  }
+
+  const comma = s.lastIndexOf(",");
+  const dot = s.lastIndexOf(".");
+  const normalizeSingle = (separator: "," | ".") => {
+    const parts = s.split(separator);
+    if (parts.length > 2) {
+      const allGroups = parts.slice(1).every((part) => part.length === 3);
+      if (allGroups) return parts.join("");
+      const decimal = parts.pop() || "";
+      return parts.join("") + (decimal ? "." + decimal : "");
+    }
+    const left = parts[0] || "0";
+    const right = parts[1] || "";
+    if (!right) return left;
+
+    if (kind === "money") {
+      // IDR exports frequently use either 1.300 or 1,300 as thousands.
+      // A final 1-2 digit group is treated as decimal cents; 3 digits is grouping.
+      if (right.length === 3) return left + right;
+      if (right.length <= 2) return left + "." + right;
+      return left + right;
+    }
+
+    // Percent / generic decimal: one separator is decimal unless it is a
+    // clear 3-digit thousands group with a short integer prefix.
+    if (right.length === 3 && left.length <= 3) return left + right;
+    return left + "." + right;
+  };
+
+  let normalized = s;
+  if (comma >= 0 && dot >= 0) {
+    // When both separators exist, the final separator is decimal only when
+    // its suffix is 1-2 digits. Otherwise both are thousands separators.
+    const last = Math.max(comma, dot);
+    const suffix = s.slice(last + 1);
+    if (suffix.length > 0 && suffix.length <= 2) {
+      const decimalSep = comma > dot ? "," : ".";
+      const groupSep = decimalSep === "," ? "." : ",";
+      normalized = s.split(groupSep).join("").replace(decimalSep, ".");
+    } else {
+      normalized = s.replace(/[.,]/g, "");
+    }
+  } else if (comma >= 0) {
+    normalized = normalizeSingle(",");
+  } else if (dot >= 0) {
+    normalized = normalizeSingle(".");
+  }
+
+  const n = Number(normalized);
+  if (!Number.isFinite(n)) return 0;
+  const signed = sign * n;
+  return negative ? -Math.abs(signed) : signed;
 }
+
+const moneyNum = (v:any) => num(v, "money");
+const countNum = (v:any) => num(v, "count");
+const percentNum = (v:any) => num(v, "percent");
 const norm = (v: any) => clean(v).toLowerCase().replace(/[^a-z0-9]+/g, "");
 function key(row: Row, candidates: string[], fuzzy = true) {
   const keys = Object.keys(row || {});
@@ -91,6 +144,73 @@ function detectedPlatform(rows: Row[], requested: string) {
   if (headers.includes(norm("GMV dari kreator")) || headers.includes(norm("Pesanan teratribusi")) || headers.includes(norm("Perkiraan komisi"))) return "TikTok";
   if (headers.includes(norm("Omzet Penjualan(Rp)")) || headers.includes(norm("Estimasi Komisi(Rp)")) || headers.includes(norm("ID Affiliates"))) return "Shopee";
   return requested || "Other";
+}
+
+type PerformanceMapping = {
+  creatorName:string; username:string; affiliateId:string;
+  gmv:string; qty:string; orders:string; commission:string; refund:string;
+  clicks:string; buyers:string; newBuyers:string; liveGmv:string; videoGmv:string; showcaseGmv:string;
+  ctr:string; ctor:string; liveCount:string; videoCount:string; sampleContent:string; sampleSent:string; impressions:string; videoViews:string;
+};
+
+function findHeader(row:Row,candidates:string[],exclude:string[]=[]){
+  const headers=Object.keys(row||{});
+  const excluded=exclude.map(norm);
+  const allowed=(header:string)=>!excluded.some(token=>norm(header).includes(token));
+  for(const candidate of candidates){
+    const exact=headers.find(header=>allowed(header)&&norm(header)===norm(candidate));
+    if(exact)return exact;
+  }
+  for(const candidate of candidates){
+    const nc=norm(candidate);
+    if(nc.length<3)continue;
+    const loose=headers.find(header=>{
+      if(!allowed(header))return false;
+      const nh=norm(header);
+      return nh.includes(nc)||nc.includes(nh);
+    });
+    if(loose)return loose;
+  }
+  return "";
+}
+
+function performanceMapping(row:Row,platform:string):PerformanceMapping{
+  const common={
+    creatorName:findHeader(row,["Nama Affiliate","Nama Afiliasi","Affiliate Name","Creator Name","Nama Creator","Creator","Username Affiliate","Username"]),
+    username:findHeader(row,["Username Affiliate","Username","Affiliate Username","Nama Pengguna","Creator Username"]),
+    affiliateId:findHeader(row,["ID Affiliates","Affiliate ID","ID Affiliate","Creator ID"]),
+    gmv:findHeader(row,["GMV dari kreator","GMV Kreator","Creator GMV","Omzet Penjualan(Rp)","Omzet Penjualan","Total GMV","GMV","Total Penjualan","Nilai Penjualan","Sales Amount","Revenue"],["rate","persentase","growth"]),
+    qty:findHeader(row,["Produk yang terjual dari kreator","Produk Terjual","Jumlah Produk Terjual","Unit Terjual","Item Terjual","Items Sold","Qty Paid","Qty","Quantity","Units Sold"]),
+    orders:findHeader(row,["Pesanan teratribusi","Pesanan","Jumlah Pesanan","Total Pesanan","Attributed Orders","Orders","Order Count"],["id","rate"]),
+    commission:findHeader(row,["Perkiraan komisi","Estimasi Komisi(Rp)","Estimasi Komisi","Komisi Affiliate","Komisi Afiliasi","Total Komisi","Estimated Commission","Commission","Komisi"],["rate","tingkat","persentase","%"]),
+    refund:findHeader(row,["Pengembalian dana","Refund","Refund Amount","Nilai Refund"]),
+    clicks:findHeader(row,["Clicks","Klik Produk","Product Clicks","Klik"]),
+    buyers:findHeader(row,["Total Pembeli","Pembeli","Buyers","Jumlah Pembeli"],["baru","new"]),
+    newBuyers:findHeader(row,["Pembeli Baru","New Buyers","New Buyer"]),
+    liveGmv:findHeader(row,["GMV dari LIVE kreator","GMV LIVE kreator","LIVE GMV","Live GMV"]),
+    videoGmv:findHeader(row,["GMV dari video afiliasi","GMV Video Afiliasi","Video GMV"]),
+    showcaseGmv:findHeader(row,["GMV dari kartu produk afiliasi","Showcase GMV","Product Card GMV"]),
+    ctr:findHeader(row,["CTR","Click Through Rate"]),
+    ctor:findHeader(row,["CTOR","Click To Order Rate"]),
+    liveCount:findHeader(row,["Siaran LIVE","Jumlah LIVE","Live Count","LIVE"]),
+    videoCount:findHeader(row,["Jumlah Video","Video Count","Video"],["gmv","view","tayangan"]),
+    sampleContent:findHeader(row,["Jumlah konten sampel","Sample Content","Konten Sampel"]),
+    sampleSent:findHeader(row,["Sampel terkirim","Sample Sent","Samples Sent"]),
+    impressions:findHeader(row,["Impresi produk","Product Impressions","Impressions","Impresi"]),
+    videoViews:findHeader(row,["Tayangan video","Video Views","Views Video"])
+  };
+  if(platform.toLowerCase()==="shopee"){
+    common.gmv=common.gmv||findHeader(row,["Penjualan Affiliate","Penjualan Afiliasi","Sales"]);
+    common.orders=common.orders||findHeader(row,["Pesanan dari Affiliate","Pesanan Afiliasi"]);
+    common.qty=common.qty||findHeader(row,["Produk Terjual dari Affiliate","Produk dari Affiliate"]);
+  }
+  return common;
+}
+
+function mappedRaw(row:Row,keyName:string){return keyName?row[keyName]:""}
+
+function mappingSummary(mapping:PerformanceMapping){
+  return Object.fromEntries(Object.entries(mapping).filter(([,header])=>Boolean(header)));
 }
 
 function creatorKeys(row: Row) {
