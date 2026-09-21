@@ -205,7 +205,7 @@ export default function InternalExcelGrid({workspaceId}:{workspaceId:string}){
         const platformHeader=safeHeaders.find(h=>normalized(h)==="platform");
         const platform=platformHeader?String(objects[0]?.[platformHeader]||"Other"):"Other";
         const importId=`GRID-${crypto.randomUUID().replace(/-/g,"").slice(0,10).toUpperCase()}`;
-        const batchSize=300;const total=Math.ceil(objects.length/batchSize);
+        const batchSize=1000;const total=Math.ceil(objects.length/batchSize);
         for(let i=0;i<total;i++){
           const response=await fetch("/api/import",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
             workspace_id:workspaceId,data_type:importTarget,platform,start_date:"",end_date:"",
@@ -215,7 +215,7 @@ export default function InternalExcelGrid({workspaceId}:{workspaceId:string}){
           const result=await response.json();
           if(!response.ok||!result.ok)throw new Error(result.error||"Sinkron database gagal.");
         }
-        syncMessage=` · otomatis masuk ke database ${importTarget.replaceAll("_"," ")}`;
+        syncMessage=` · otomatis masuk ke database ${importTarget.replaceAll("_"," ")}`;window.dispatchEvent(new CustomEvent("lumaway-database-updated",{detail:{import_id:importId,rows:objects.length,target:importTarget}}));
       }
       await loadSheets();setSheetId(created.data.id);setMode("sheet");setImportRows([]);setImportHeaders([]);setMappedHeaders([]);setStatus(`${payload.length.toLocaleString("id-ID")} row berhasil diimpor${syncMessage}.`);
     }catch(error:any){setStatus(error?.message||"error, terjadi kesalahan.")}finally{setBusy(false)}
