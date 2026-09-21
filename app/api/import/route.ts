@@ -110,7 +110,7 @@ function creatorKeys(row: Row) {
 }
 
 async function resolveCreatorIds(admin:any,workspaceId:string,rows:Row[],platform:string,importId:string){
-  const {data:existing,error}=await admin.from("creators").select("id,name,username,affiliate_id").eq("workspace_id",workspaceId).eq("platform",platform);
+  const {data:existing,error}=await admin.from("creators").select("id,name,username,affiliate_id").eq("workspace_id",workspaceId).eq("platform",platform).limit(10000);
   if(error)throw error;
   const map=new Map<string,number>();
   const register=(row:any)=>{
