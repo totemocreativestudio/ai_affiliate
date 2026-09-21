@@ -133,9 +133,10 @@ function inferMoneyStyle(rows:Row[],header:string):MoneyStyle{
     if(hasCurrency&&right.length===3){grouped+=3;continue}
     if(right.length<=2&&right.length>0){if(sep===".")dotDecimal+=2;else commaDecimal+=2;continue}
     if(right.length===3){
+      // Three trailing digits are ambiguous. Treat short prefixes as a clear
+      // thousands group, but do not infer a decimal convention from this case
+      // alone. Decimal style requires stronger evidence (1-2 decimal digits).
       if(left.length<=3)grouped+=2;
-      else if(sep===".")dotDecimal+=1;
-      else commaDecimal+=1;
     }
   }
   if(dotDecimal>=commaDecimal&&dotDecimal>grouped)return "decimal-dot";
