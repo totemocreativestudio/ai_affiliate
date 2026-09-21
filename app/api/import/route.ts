@@ -307,7 +307,7 @@ function creatorKeys(row: Row) {
 }
 
 async function resolveCreatorIds(admin:any,workspaceId:string,rows:Row[],platform:string,importId:string){
-  const {data:existing,error}=await admin.from("creators").select("id,name,username,affiliate_id").eq("workspace_id",workspaceId).eq("platform",platform).limit(10000);
+  const {data:existing,error}=await admin.from("creators").select("id,name,username,affiliate_id").eq("workspace_id",workspaceId).ilike("platform",platform).limit(10000);
   if(error)throw error;
   const map=new Map<string,number>();
   const register=(row:any)=>{
@@ -354,7 +354,7 @@ async function ensureCreator(admin: any, workspaceId: string, row: Row, platform
   const username = clean(value(row, ["Username Affiliate", "Username", "Affiliate Username"]));
   const affiliateId = clean(value(row, ["ID Affiliates", "Affiliate ID"]));
   if (!name && !username) return null;
-  let q = admin.from("creators").select("id").eq("workspace_id", workspaceId).eq("platform", platform).limit(1);
+  let q = admin.from("creators").select("id").eq("workspace_id", workspaceId).ilike("platform", platform).limit(1);
   if (username) q = q.ilike("username", username); else if (affiliateId) q = q.eq("affiliate_id", affiliateId); else q = q.ilike("name", name);
   const { data: existing } = await q.maybeSingle(); if (existing?.id) return existing.id;
   const { data, error } = await admin.from("creators").insert({ workspace_id:workspaceId,creator_code:creatorCode(),name:name||username,username:username||name,platform,affiliate_id:affiliateId||null,status:"Active",source_import_id:importId,updated_at:new Date().toISOString() }).select("id").single();
@@ -383,7 +383,32 @@ export async function POST(req: NextRequest) {
         }
       }
     }
-    let inserted=0,updated=0,skipped=0;
+    let inserted=0,updated=0,skipped=0,duplicates=0;
+
+    if(batchIndex===0&&dataType==="performance"){
+      // Affiliate Performance is a period snapshot. Keep exactly one snapshot
+      // per workspace + platform + period, regardless of filename/hash.
+      let cleanup=admin.from("sales").delete()
+        .eq("workspace_id",workspaceId)
+        .eq("data_type","performance")
+        .ilike("platform",platform);
+      if(start)cleanup=cleanup.eq("data_date",start);
+      if(end)cleanup=cleanup.eq("end_date",end);
+      const {error:cleanupError}=await cleanup;
+      if(cleanupError)throw cleanupError;
+
+      let supersede=admin.from("imports").update({
+        status:"Superseded",
+        message:JSON.stringify({parser_version:PARSER_VERSION,note:"Replaced by a newer upload for the same platform and period."})
+      })
+        .eq("workspace_id",workspaceId)
+        .eq("data_type","performance")
+        .ilike("platform",platform);
+      if(start)supersede=supersede.eq("start_date",start);
+      if(end)supersede=supersede.eq("end_date",end);
+      const {error:supersedeError}=await supersede.neq("import_id",importId);
+      if(supersedeError)throw supersedeError;
+    }
 
     if(dataType==="creators"){
       for(const row of rows){const name=clean(value(row,["Nama Affiliate","Creator Name","Creator"]));const username=clean(value(row,["Username Affiliate","Username"]));if(!name&&!username){skipped++;continue}const p=clean(value(row,["Platform"],false))||platform;let q=admin.from("creators").select("id,creator_code").eq("workspace_id",workspaceId).eq("platform",p).limit(1);q=username?q.ilike("username",username):q.ilike("name",name);const {data:ex}=await q.maybeSingle();const payload={workspace_id:workspaceId,creator_code:clean(value(row,["Creator Code"],false))||ex?.creator_code||creatorCode(),name:name||username,username:username||name,platform:p,affiliate_id:clean(value(row,["ID Affiliates","Affiliate ID"]))||null,phone:clean(value(row,["Phone","No HP","WhatsApp"]))||null,address:clean(value(row,["Address","Alamat"]))||null,payment_type:clean(value(row,["Payment/Barter","Payment Type"]))||null,ratecard:moneyNum(value(row,["Ratecard"])),profile_url:clean(value(row,["Profile URL","Social Media","Profile Link"]))||null,status:clean(value(row,["Status"]))||"Active",notes:clean(value(row,["Notes","Note","Catatan"]))||null,source_import_id:importId,updated_at:new Date().toISOString()};if(ex?.id){const {error}=await admin.from("creators").update(payload).eq("id",ex.id);if(error)throw error;updated++}else{const {error}=await admin.from("creators").insert(payload);if(error)throw error;inserted++}}
@@ -479,16 +504,27 @@ export async function POST(req: NextRequest) {
           liveCount=countNum(value(row,["Siaran LIVE","Live Count"]));
           videoCount=countNum(value(row,["Video","Video Count"]));
         }
-        const orderId=clean(value(row,["Order ID","OrderID","ID Pesanan"]));const itemId=clean(value(row,["Item ID","ItemID","ID Item"]));const tx=clean(value(row,["Transaction ID","TransactionID","ID Transaksi"]));const sku=dataType==="sales"?clean(value(row,["SKU","Kode SKU"],false)):"";const product=dataType==="sales"?clean(value(row,["Product Name","Nama Produk","Produk"],false)):"";const dataDate=dataType==="sales"?dateValue(value(row,["Transaction Date","Tanggal Transaksi","Tanggal","Date","Data Date"]),start):start;const unique=tx||[orderId,itemId].filter(Boolean).join("|")||`${fileHash||importId}|${batchIndex}-${i}`;
+        const orderId=clean(value(row,["Order ID","OrderID","ID Pesanan"]));const itemId=clean(value(row,["Item ID","ItemID","ID Item"]));const tx=clean(value(row,["Transaction ID","TransactionID","ID Transaksi"]));const sku=dataType==="sales"?clean(value(row,["SKU","Kode SKU"],false)):"";const product=dataType==="sales"?clean(value(row,["Product Name","Nama Produk","Produk"],false)):"";const dataDate=dataType==="sales"?dateValue(value(row,["Transaction Date","Tanggal Transaksi","Tanggal","Date","Data Date"]),start):start;const unique=dataType==="performance"?`creator:${creatorId}|start:${start||"all"}|end:${end||start||"all"}`:tx||[orderId,itemId].filter(Boolean).join("|")||`${fileHash||importId}|${batchIndex}-${i}`;
         const storeName=clean(value(row,["Store Name","Shop Name","Nama Toko","Toko","Seller Name","Store","Shop"],false));const storeId=clean(value(row,["Store ID","Shop ID","Seller ID","ID Toko"],false));const costProduct=moneyNum(value(row,["HPP","Cost Product","Product Cost","Harga Modal"],false));const shippingCost=moneyNum(value(row,["Shipping Cost","Ongkir","Biaya Ongkir"],false));const adsSpend=moneyNum(value(row,["Ads Spend","Ad Spend","Biaya Ads","Iklan"],false));const points=num(value(row,["Points","Point","Poin"],false));
-        payloads.push({workspace_id:workspaceId,record_key:`sales|${workspaceId}|${platform}|${unique}`,data_type:dataType,transaction_id:tx||null,order_id:orderId||null,item_id:itemId||null,data_date:dataDate||null,end_date:end||dataDate||null,creator_id:creatorId,creator_name:creatorName,username,platform,channel:dataType==="performance"?"Affiliate Performance":clean(value(row,["Channel","Saluran"]))||"Affiliate",store_name:storeName||null,store_id:storeId||null,sku:sku||null,product_name:product||null,category:dataType==="sales"?clean(value(row,["Category","Kategori"],false))||null:null,qty,orders:orders||(orderId?1:0),gmv,refund,commission,cost_product:costProduct,shipping_cost:shippingCost,ads_spend:adsSpend,points,clicks,buyers,new_buyers:newBuyers,live_gmv:liveGmv,video_gmv:videoGmv,showcase_gmv:showcaseGmv,ctr,ctor,live_count:liveCount,video_count:videoCount,sample_content:sampleContent,sample_sent:sampleSent,impressions,video_views:videoViews,source_file:filename,imported_at:new Date().toISOString(),import_id:importId,updated_at:new Date().toISOString()});
+        payloads.push({workspace_id:workspaceId,record_key:`${dataType}|${workspaceId}|${platform}|${unique}`,data_type:dataType,transaction_id:tx||null,order_id:orderId||null,item_id:itemId||null,data_date:dataDate||null,end_date:end||dataDate||null,creator_id:creatorId,creator_name:creatorName,username,platform,channel:dataType==="performance"?"Affiliate Performance":clean(value(row,["Channel","Saluran"]))||"Affiliate",store_name:storeName||null,store_id:storeId||null,sku:sku||null,product_name:product||null,category:dataType==="sales"?clean(value(row,["Category","Kategori"],false))||null:null,qty,orders:orders||(orderId?1:0),gmv,refund,commission,cost_product:costProduct,shipping_cost:shippingCost,ads_spend:adsSpend,points,clicks,buyers,new_buyers:newBuyers,live_gmv:liveGmv,video_gmv:videoGmv,showcase_gmv:showcaseGmv,ctr,ctor,live_count:liveCount,video_count:videoCount,sample_content:sampleContent,sample_sent:sampleSent,impressions,video_views:videoViews,source_file:filename,imported_at:new Date().toISOString(),import_id:importId,updated_at:new Date().toISOString()});
       }
-      if(payloads.length){const {data:saved,error}=await admin.from("sales").upsert(payloads,{onConflict:"record_key"}).select("id");if(error)throw error;inserted+=saved?.length||payloads.length}
+      if(payloads.length){
+        const byKey=new Map<string,Row>();
+        for(const payload of payloads){
+          const key=String(payload.record_key||"");
+          if(byKey.has(key))duplicates++;
+          byKey.set(key,payload);
+        }
+        const deduped=[...byKey.values()];
+        const {data:saved,error}=await admin.from("sales").upsert(deduped,{onConflict:"record_key"}).select("id");
+        if(error)throw error;
+        inserted+=saved?.length||deduped.length;
+      }
     }else return NextResponse.json({ok:false,error:"Jenis Data tidak valid."},{status:400});
 
     const {data:existing}=await admin.from("imports").select("id,rows_imported,message").eq("workspace_id",workspaceId).eq("import_id",importId).maybeSingle();
     let prev:any={};try{prev=JSON.parse(existing?.message||"{}")}catch{}
-    const stats={detected:Number(prev.detected||0)+rows.length,inserted:Number(prev.inserted||0)+inserted,updated:Number(prev.updated||0)+updated,skipped:Number(prev.skipped||0)+skipped,duplicates:Number(prev.duplicates||0),errors:Number(prev.errors||0)};
+    const stats={detected:Number(prev.detected||0)+rows.length,inserted:Number(prev.inserted||0)+inserted,updated:Number(prev.updated||0)+updated,skipped:Number(prev.skipped||0)+skipped,duplicates:Number(prev.duplicates||0)+duplicates,errors:Number(prev.errors||0)};
     const currentMapping=dataType==="performance"?mappingSummary(performanceMapping(rows[0]||{},platform)):undefined;
     const message={...stats,parser_version:PARSER_VERSION,mapping:currentMapping||prev.mapping||null};
     const meta={workspace_id:workspaceId,import_id:importId,filename,data_type:dataType,platform,start_date:start||null,end_date:end||null,rows_imported:Number(existing?.rows_imported||0)+inserted+updated,status:batchIndex+1>=totalBatches?"Success":"Processing",imported_at:new Date().toISOString(),message:JSON.stringify(message),file_hash:fileHash||null};
