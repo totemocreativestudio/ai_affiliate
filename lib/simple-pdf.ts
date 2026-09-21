@@ -51,16 +51,30 @@ function textLine(text: string, x: number, y: number, size = 10, bold = false) {
   return `BT /${bold ? "F2" : "F1"} ${size} Tf ${x} ${y} Td (${escPdf(ascii(text))}) Tj ET\n`;
 }
 
+function brandMark(x: number, y: number) {
+  // Vector Lumaway mark for PDF output. Using PDF paths avoids the old
+  // blue placeholder box and renders reliably in downloaded documents.
+  return [
+    "q\n",
+    "0.46 0.29 0.98 rg\n",
+    `${x} ${y} 6 20 re f\n`,
+    "0.05 0.60 0.95 rg\n",
+    `${x + 6} ${y} 14 6 re f\n`,
+    "0.96 0.28 0.68 rg\n",
+    `${x + 8} ${y + 7} m ${x + 20} ${y + 7} l ${x + 20} ${y + 20} l ${x + 14} ${y + 14} l h f\n`,
+    "Q\n"
+  ].join("");
+}
+
 function buildPageContent(page: PdfPage, index: number, report: PdfReport) {
   const commands: string[] = [];
   const title = page.title || report.document_json?.document_title || report.title || "Lumaway AI Analytics Report";
   const subtitle = page.subtitle || "";
   const isCover = index === 0;
 
-  commands.push("0.39 0.36 1 rg\n");
-  commands.push("44 793 18 18 re f\n");
+  commands.push(brandMark(44, 790));
   commands.push("0 0 0 rg\n");
-  commands.push(textLine("LUMAWAY", 70, 798, 10, true));
+  commands.push(textLine("LUMAWAY.", 72, 798, 10, true));
   commands.push(textLine("AI ANALYTICS REPORT", 44, 775, 7, false));
   commands.push("0.86 0.87 0.90 RG 0.7 w 44 765 m 551 765 l S\n");
 
