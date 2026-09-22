@@ -4,7 +4,7 @@ import { getServerContext } from "../../../lib/server-auth";
 
 export const runtime = "nodejs";
 type Row = Record<string, any>;
-const PARSER_VERSION = "universal-v4-20260922";
+const PARSER_VERSION = "universal-v5-20260922";
 
 const clean = (v: any) => (v === null || v === undefined ? "" : String(v).trim());
 type NumericKind = "money" | "count" | "percent" | "decimal";
@@ -225,7 +225,7 @@ function detectedPlatform(rows: Row[], requested: string) {
 
 type PerformanceMapping = {
   creatorName:string; username:string; affiliateId:string;
-  gmv:string; qty:string; orders:string; commission:string; refund:string;
+  gmv:string; qty:string; orders:string; commission:string; refund:string; refundQty:string;
   clicks:string; buyers:string; newBuyers:string; liveGmv:string; videoGmv:string; showcaseGmv:string;
   ctr:string; ctor:string; liveCount:string; videoCount:string; sampleContent:string; sampleSent:string; impressions:string; videoViews:string;
 };
@@ -244,7 +244,7 @@ function findHeader(row:Row,candidates:string[],exclude:string[]=[]){
     const loose=headers.find(header=>{
       if(!allowed(header))return false;
       const nh=norm(header);
-      return nh.includes(nc)||nc.includes(nh);
+      return nh.includes(nc);
     });
     if(loose)return loose;
   }
@@ -260,7 +260,8 @@ function performanceMapping(row:Row,platform:string):PerformanceMapping{
     qty:findHeader(row,["Produk yang terjual dari kreator","Produk Terjual","Jumlah Produk Terjual","Unit Terjual","Item Terjual","Item Sold","Items Sold","Qty Paid","Qty","Quantity","Units Sold"]),
     orders:findHeader(row,["Pesanan teratribusi","Pesanan","Jumlah Pesanan","Total Pesanan","Attributed Orders","Orders","Order Count"],["id","rate"]),
     commission:findHeader(row,["Perkiraan komisi","Estimasi Komisi(Rp)","Estimasi Komisi","Est.Commission(Rp)","Est. Commission(Rp)","Est Commission(Rp)","Est.Commission","Estimated Commission(Rp)","Estimated Commission","Komisi Affiliate","Komisi Afiliasi","Total Komisi","Commission","Komisi"],["rate","tingkat","persentase","percentage"]),
-    refund:findHeader(row,["Pengembalian dana","Refund","Refund Amount","Nilai Refund"]),
+    refund:findHeader(row,["Pengembalian dana","Refund","Refund Amount","Nilai Refund","Refunded GMV"]),
+    refundQty:findHeader(row,["Produk yang dikembalikan dananya","Refunded items sold","Refunded Items","Refunded Qty","Produk Refund"]),
     clicks:findHeader(row,["Clicks","Klik Produk","Product Clicks","Klik"]),
     buyers:findHeader(row,["Total Pembeli","Pembeli","Buyers","Jumlah Pembeli"],["baru","new"]),
     newBuyers:findHeader(row,["Pembeli Baru","New Buyers","New Buyer"]),
