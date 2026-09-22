@@ -667,6 +667,13 @@ export async function POST(req: NextRequest) {
             }));
             const {error:variantError}=await admin.from("product_variants").insert(variantPayloads);
             if(variantError)throw variantError;
+            for(const item of filled){
+              const {error:linkError}=await admin.from("product_platform_items")
+                .update({variant_slot:item.slot,updated_at:now})
+                .eq("workspace_id",workspaceId).eq("product_master_id",Number(master.id))
+                .ilike("variant_name",item.name);
+              if(linkError)throw linkError;
+            }
           }
         }
       }
