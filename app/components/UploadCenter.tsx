@@ -69,10 +69,10 @@ export default function UploadCenter({ workspaceId }: Props) {
   </div>
   <div className="card">
    <div className="section-head"><div><h3>{currentInfo.title}</h3><p className="muted">Tujuan data: <b>{currentInfo.destination}</b></p></div><button type="button" className="secondary" onClick={()=>navigateToSection("tutorial")}>Tutorial Upload</button></div>
-   <div className="grid">
+   {(!platformless||!periodless)&&<div className="upload-period-grid">
     {!platformless&&<label>Platform<select value={platform} onChange={e=>setPlatform(e.target.value)}><option>TikTok</option><option>Shopee</option><option>Instagram</option><option>Other</option></select></label>}
     {!periodless&&<><label>Start Date <span className="field-note">Opsional · dd/mm/yyyy</span><input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)}/></label><label>End Date <span className="field-note">Opsional · dd/mm/yyyy</span><input type="date" value={endDate} onChange={e=>setEndDate(e.target.value)}/></label></>}
-   </div>
+   </div>}
    {periodless&&<div className="owner-inline-note">Master SKU / Produk dan Product HPP tidak menggunakan periode Start Date / End Date pada Upload Center.</div>}
    <label>File CSV/XLSX<input key={dataType} type="file" accept={accept} onChange={e=>setFile(e.target.files?.[0]||null)}/></label>
    <label className="inline-check"><input type="checkbox" checked={force} onChange={e=>setForce(e.target.checked)}/>Re-import file yang sama untuk mengganti hasil import sebelumnya</label>
@@ -82,13 +82,13 @@ export default function UploadCenter({ workspaceId }: Props) {
    {result?.mapping&&<div className="import-mapping-audit"><strong>Mapping file terdeteksi</strong><div>{Object.entries(result.mapping).map(([field,header])=><span key={field}><b>{field}</b> → {String(header)}</span>)}</div></div>}
    {result?.headers&&!result?.mapping&&<div className="import-mapping-audit error-audit"><strong>Header file yang terbaca</strong><p>{result.headers.join(" · ")}</p></div>}
   </div>
-  <div className="card">
+  {dataType!=="creators"&&<div className="card">
    <div className="section-head"><div><h3>Mapping yang digunakan · {currentInfo.title}</h3><p className="muted">Format berikut dikenali otomatis oleh importer. Header dapat memakai pasangan nama yang ditulis dengan tanda “/”.</p></div><button type="button" className="secondary" onClick={()=>navigateToSection("tutorial")}>Lihat Tutorial</button></div>
    <ul className="legacy-list">{currentInfo.mapping.map((item,index)=><li key={item}><b>{index+1}.</b> {item}</li>)}</ul>
    {dataType==="product_performance"&&<div className="owner-inline-note"><b>Disclaimer:</b> Product ID = Kode Produk/Kode Item. GMV = Sales(Rp)/Omzet Penjualan. Product Performance hanya masuk Product Ranking dan tidak masuk Ranking Creator.</div>}
    {dataType==="product_hpp"&&<div className="owner-inline-note">Jika HPP belum diupload, HPP tetap dapat diisi atau diedit manual melalui <b>Master Data → Product Master</b>. Kolom Period/Periode pada file bersifat opsional.</div>}
    {dataType==="creators"&&<div className="owner-inline-note">Master Creator akan tersedia pada <b>Master Data → Listings</b> sebagai referensi creator untuk pengelolaan listing.</div>}
    {dataType==="creator_samples"&&<div className="owner-inline-note">Creator Samples akan langsung tersedia pada <b>Master Data → Creator Samples</b>.</div>}
-  </div>
+  </div>}
  </section>
 }
