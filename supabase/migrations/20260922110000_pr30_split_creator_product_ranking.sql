@@ -171,4 +171,5 @@ end
 $function$;
 
 revoke all on function public.get_product_ranking(uuid,date,date,text,text,integer,integer) from public;
+revoke all on function public.get_product_ranking(uuid,date,date,text,text,integer,integer) from anon;
 grant execute on function public.get_product_ranking(uuid,date,date,text,text,integer,integer) to authenticated;
