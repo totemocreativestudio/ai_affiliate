@@ -498,6 +498,92 @@ export async function POST(req: NextRequest) {
       skipped+=rows.length-payloads.length;
     }else if(dataType==="product_hpp"){
       for(const row of rows){const sku=clean(value(row,["sku","SKU"]));const period=clean(value(row,["period","Period"]));if(!sku||!period){skipped++;continue}const payload={workspace_id:workspaceId,sku,period,product_id:num(value(row,["product_id","Product ID"]))||null,product_name:clean(value(row,["product_name","Product Name"]))||null,hpp:moneyNum(value(row,["hpp","HPP"])),selling_price:moneyNum(value(row,["selling_price","Selling Price"])),notes:clean(value(row,["notes","Notes"]))||null,source_import_id:importId,updated_at:new Date().toISOString()};const {data:ex}=await admin.from("product_hpp_history").select("id").eq("workspace_id",workspaceId).eq("sku",sku).eq("period",period).maybeSingle();if(ex?.id){const {error}=await admin.from("product_hpp_history").update(payload).eq("id",ex.id);if(error)throw error;updated++}else{const {error}=await admin.from("product_hpp_history").insert(payload);if(error)throw error;inserted++}}
+    }else if(dataType==="product_performance"){
+      const map=productPerformanceMapping(rows[0]||{},platform);
+      if(!map.sku||!map.productName||(!map.gmv&&!map.qty)){
+        return NextResponse.json({
+          ok:false,
+          error:"Format Product Performance belum dikenali. Wajib tersedia Product ID/Kode Item, Product Name/Nama Item, serta GMV/Omzet atau Items Sold/Produk Terjual.",
+          detected_platform:platform,
+          headers:Object.keys(rows[0]||{}),
+          mapping:mappingSummary(map)
+        },{status:422});
+      }
+
+      const styles={
+        price:inferMoneyStyle(rows,map.price),
+        gmv:inferMoneyStyle(rows,map.gmv),
+        commission:inferMoneyStyle(rows,map.commission),
+        refund:inferMoneyStyle(rows,map.refund),
+        flatFee:inferMoneyStyle(rows,map.flatFee)
+      };
+      const payloads:Row[]=[];
+      const masterBySku=new Map<string,Row>();
+      for(let i=0;i<rows.length;i++){
+        const row=rows[i];
+        const sku=clean(mappedRaw(row,map.sku));
+        const productName=clean(mappedRaw(row,map.productName));
+        if(!sku&&!productName){skipped++;continue}
+        const canonicalSku=sku||`NAME-${norm(productName).slice(0,64)}`;
+        const gmv=moneyValue(mappedRaw(row,map.gmv),styles.gmv);
+        const qty=countNum(mappedRaw(row,map.qty));
+        const commission=moneyValue(mappedRaw(row,map.commission),styles.commission);
+        const refund=moneyValue(mappedRaw(row,map.refund),styles.refund);
+        const refundQty=countNum(mappedRaw(row,map.refundQty));
+        const orders=countNum(mappedRaw(row,map.orders));
+        const clicks=countNum(mappedRaw(row,map.clicks));
+        const buyers=countNum(mappedRaw(row,map.buyers));
+        const newBuyers=countNum(mappedRaw(row,map.newBuyers));
+        const samples=countNum(mappedRaw(row,map.samples));
+        const salesCreator=countNum(mappedRaw(row,map.salesCreator));
+        const liveCount=countNum(mappedRaw(row,map.liveCount));
+        const videoCount=countNum(mappedRaw(row,map.videoCount));
+        const flatFee=moneyValue(mappedRaw(row,map.flatFee),styles.flatFee);
+        const reportedRoi=num(mappedRaw(row,map.roi),"decimal");
+        const unique=`sku:${canonicalSku.toLowerCase()}|start:${start||"all"}|end:${end||start||"all"}`;
+        payloads.push({
+          workspace_id:workspaceId,
+          record_key:`product_performance|${workspaceId}|${platform}|${unique}`,
+          data_type:"product_performance",
+          data_date:start||null,end_date:end||start||null,
+          creator_id:null,creator_name:null,username:null,
+          platform,channel:"Product Performance",
+          sku:canonicalSku,product_name:productName||canonicalSku,
+          qty,orders,gmv,refund,refund_qty:refundQty,commission,
+          clicks,buyers,new_buyers:newBuyers,
+          live_count:liveCount,video_count:videoCount,
+          sample_sent:samples,sales_creator:salesCreator,
+          flat_fee:flatFee,reported_roi:reportedRoi,
+          source_file:filename,imported_at:new Date().toISOString(),import_id:importId,updated_at:new Date().toISOString()
+        });
+        const skuNorm=canonicalSku.toLowerCase();
+        masterBySku.set(skuNorm,{
+          workspace_id:workspaceId,sku:canonicalSku,sku_normalized:skuNorm,
+          product_name:productName||canonicalSku,
+          selling_price:moneyValue(mappedRaw(row,map.price),styles.price),
+          status:"Active",source_import_id:importId,updated_at:new Date().toISOString()
+        });
+      }
+
+      if(payloads.length){
+        const byKey=new Map<string,Row>();
+        for(const payload of payloads){
+          const key=String(payload.record_key||"");
+          if(byKey.has(key))duplicates++;
+          byKey.set(key,payload);
+        }
+        const deduped=[...byKey.values()];
+        const {data:saved,error}=await admin.from("sales").upsert(deduped,{onConflict:"record_key"}).select("id");
+        if(error)throw error;
+        inserted+=saved?.length||deduped.length;
+      }
+
+      const masters=[...masterBySku.values()];
+      for(let i=0;i<masters.length;i+=500){
+        const part=masters.slice(i,i+500);
+        const {error}=await admin.from("product_master").upsert(part,{onConflict:"workspace_id,sku_normalized"});
+        if(error)throw error;
+      }
     }else if(dataType==="performance"||dataType==="sales"){
       const payloads:Row[]=[];
       const perfMap=dataType==="performance"?performanceMapping(rows[0]||{},platform):null;
