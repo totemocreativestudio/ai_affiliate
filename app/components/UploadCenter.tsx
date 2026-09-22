@@ -82,7 +82,7 @@ export default function UploadCenter({ workspaceId }: Props) {
    </div></div>
    <div><b style={{display:"block",fontSize:11,marginBottom:8}}>MASTER DATA</b><div className="button-row">
     <button type="button" className={dataType==="creators"?"primary":"secondary"} onClick={()=>{setDataType("creators");setFile(null);setStatus("");setResult(null)}}>Master Creator</button>
-    <button type="button" className={dataType==="products"?"primary":"secondary"} onClick={()=>{setDataType("products");setStartDate("");setEndDate("");setFile(null);setStatus("");setResult(null)}}>Master SKU / Produk</button>
+    <button type="button" className={dataType==="products"?"primary":"secondary"} onClick={()=>{setDataType("products");if(platform!=="Shopee"&&platform!=="TikTok")setPlatform("Shopee");setStartDate("");setEndDate("");setFile(null);setStatus("");setResult(null)}}>Master SKU / Produk</button>
     <button type="button" className={dataType==="product_hpp"?"primary":"secondary"} onClick={()=>{setDataType("product_hpp");setStartDate("");setEndDate("");setFile(null);setStatus("");setResult(null)}}>Product HPP</button>
     <button type="button" className={dataType==="creator_samples"?"primary":"secondary"} onClick={()=>{setDataType("creator_samples");setFile(null);setStatus("");setResult(null)}}>Creator Samples</button>
    </div></div>
