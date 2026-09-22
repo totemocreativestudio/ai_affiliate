@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../../lib/supabase-browser";
 
 type Product = {
@@ -15,6 +15,27 @@ type Product = {
   point_per_unit: number | null;
   status: string | null;
   notes: string | null;
+};
+
+type PlatformItem = {
+  id: number;
+  product_master_id: number;
+  sku: string;
+  platform: string;
+  product_code: string;
+  product_name: string | null;
+  variant_slot: number | null;
+  variant_name: string | null;
+};
+
+type ProductVariant = {
+  id: number;
+  product_master_id: number;
+  sku: string;
+  slot: number;
+  variant_name: string;
+  hpp: number | null;
+  selling_price: number | null;
 };
 
 type ProductForm = {
@@ -49,6 +70,8 @@ export default function ProductMaster({
   const supabase = createClient();
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [platformItems, setPlatformItems] = useState<PlatformItem[]>([]);
+  const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -61,19 +84,35 @@ export default function ProductMaster({
     setLoading(true);
     setError("");
 
-    const { data, error } = await supabase
-      .from("product_master")
-      .select(
-        "id,workspace_id,sku,sku_normalized,product_name,category,selling_price,cost_price,point_per_unit,status,notes"
-      )
-      .eq("workspace_id", workspaceId)
-      .order("sku", { ascending: true });
+    const [productsResult, platformResult, variantsResult] = await Promise.all([
+      supabase
+        .from("product_master")
+        .select("id,workspace_id,sku,sku_normalized,product_name,category,selling_price,cost_price,point_per_unit,status,notes")
+        .eq("workspace_id", workspaceId)
+        .order("sku", { ascending: true }),
+      supabase
+        .from("product_platform_items")
+        .select("id,product_master_id,sku,platform,product_code,product_name,variant_slot,variant_name")
+        .eq("workspace_id", workspaceId)
+        .order("platform", { ascending: true })
+        .order("product_code", { ascending: true }),
+      supabase
+        .from("product_variants")
+        .select("id,product_master_id,sku,slot,variant_name,hpp,selling_price")
+        .eq("workspace_id", workspaceId)
+        .order("slot", { ascending: true }),
+    ]);
 
-    if (error) {
-      setError(error.message);
+    const firstError = productsResult.error || platformResult.error || variantsResult.error;
+    if (firstError) {
+      setError(firstError.message);
       setProducts([]);
+      setPlatformItems([]);
+      setVariants([]);
     } else {
-      setProducts((data ?? []) as Product[]);
+      setProducts((productsResult.data ?? []) as Product[]);
+      setPlatformItems((platformResult.data ?? []) as PlatformItem[]);
+      setVariants((variantsResult.data ?? []) as ProductVariant[]);
     }
 
     setLoading(false);
@@ -164,11 +203,22 @@ export default function ProductMaster({
     let result;
 
     if (editingId !== null) {
+      const original = products.find((product) => product.id === editingId);
       result = await supabase
         .from("product_master")
         .update(payload)
         .eq("id", editingId)
         .eq("workspace_id", workspaceId);
+
+      if (!result.error && original && original.sku_normalized !== payload.sku_normalized) {
+        const oldSku = original.sku;
+        await Promise.all([
+          supabase.from("product_platform_items").update({ sku: payload.sku }).eq("workspace_id", workspaceId).eq("product_master_id", editingId),
+          supabase.from("product_variants").update({ sku: payload.sku }).eq("workspace_id", workspaceId).eq("product_master_id", editingId),
+          supabase.from("product_hpp_history").update({ sku: payload.sku }).eq("workspace_id", workspaceId).eq("product_master_id", editingId),
+          supabase.from("sales").update({ sku: payload.sku }).eq("workspace_id", workspaceId).eq("sku", oldSku),
+        ]);
+      }
     } else {
       result = await supabase
         .from("product_master")
@@ -212,6 +262,26 @@ export default function ProductMaster({
     await loadProducts();
   }
 
+  const mappingsByProduct = useMemo(() => {
+    const map = new Map<number, PlatformItem[]>();
+    for (const item of platformItems) {
+      const list = map.get(item.product_master_id) || [];
+      list.push(item);
+      map.set(item.product_master_id, list);
+    }
+    return map;
+  }, [platformItems]);
+
+  const variantsByProduct = useMemo(() => {
+    const map = new Map<number, ProductVariant[]>();
+    for (const variant of variants) {
+      const list = map.get(variant.product_master_id) || [];
+      list.push(variant);
+      map.set(variant.product_master_id, list);
+    }
+    return map;
+  }, [variants]);
+
   const filteredProducts = products.filter((product) => {
     const keyword = search.trim().toLowerCase();
 
@@ -220,7 +290,15 @@ export default function ProductMaster({
     return (
       product.sku?.toLowerCase().includes(keyword) ||
       product.product_name?.toLowerCase().includes(keyword) ||
-      product.category?.toLowerCase().includes(keyword)
+      product.category?.toLowerCase().includes(keyword) ||
+      (mappingsByProduct.get(product.id) || []).some((item) =>
+        [item.platform, item.product_code, item.variant_name].filter(Boolean).some((value) =>
+          String(value).toLowerCase().includes(keyword)
+        )
+      ) ||
+      (variantsByProduct.get(product.id) || []).some((variant) =>
+        variant.variant_name.toLowerCase().includes(keyword)
+      )
     );
   });
 
@@ -266,7 +344,7 @@ export default function ProductMaster({
               fontSize: 13,
             }}
           >
-            Master data produk dan SKU workspace
+            Master produk dikelompokkan berdasarkan SKU induk. Satu SKU dapat memiliki banyak kode produk Shopee/TikTok dan variasi.
           </p>
         </div>
 
@@ -290,7 +368,7 @@ export default function ProductMaster({
       <div style={{ marginTop: 18 }}>
         <input
           type="text"
-          placeholder="Cari SKU, nama produk, atau kategori..."
+          placeholder="Cari SKU, nama produk, kategori, kode Shopee/TikTok, atau variasi..."
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           style={{
@@ -492,8 +570,11 @@ export default function ProductMaster({
             <thead>
               <tr>
                 {[
-                  "SKU",
+                  "SKU Induk",
                   "Produk",
+                  "Shopee",
+                  "TikTok",
+                  "Variasi",
                   "Kategori",
                   "Selling Price",
                   "HPP",
@@ -526,6 +607,40 @@ export default function ProductMaster({
 
                   <td style={{ padding: 10 }}>
                     {product.product_name || "-"}
+                  </td>
+
+                  <td style={{ padding: 10, minWidth: 180 }}>
+                    {(mappingsByProduct.get(product.id) || []).filter((item) => item.platform.toLowerCase() === "shopee").length ? (
+                      <div style={{ display: "grid", gap: 5 }}>
+                        {(mappingsByProduct.get(product.id) || []).filter((item) => item.platform.toLowerCase() === "shopee").map((item) => (
+                          <span key={item.id} style={{ display: "block" }}>
+                            <b>{item.product_code}</b>{item.variant_name ? <small style={{ display: "block", color: "#667085" }}>{item.variant_name}</small> : null}
+                          </span>
+                        ))}
+                      </div>
+                    ) : "-"}
+                  </td>
+
+                  <td style={{ padding: 10, minWidth: 180 }}>
+                    {(mappingsByProduct.get(product.id) || []).filter((item) => item.platform.toLowerCase() === "tiktok").length ? (
+                      <div style={{ display: "grid", gap: 5 }}>
+                        {(mappingsByProduct.get(product.id) || []).filter((item) => item.platform.toLowerCase() === "tiktok").map((item) => (
+                          <span key={item.id} style={{ display: "block" }}>
+                            <b>{item.product_code}</b>{item.variant_name ? <small style={{ display: "block", color: "#667085" }}>{item.variant_name}</small> : null}
+                          </span>
+                        ))}
+                      </div>
+                    ) : "-"}
+                  </td>
+
+                  <td style={{ padding: 10, minWidth: 160 }}>
+                    {(variantsByProduct.get(product.id) || []).length ? (
+                      <div style={{ display: "grid", gap: 4 }}>
+                        {(variantsByProduct.get(product.id) || []).map((variant) => (
+                          <span key={variant.id}>{variant.slot}. {variant.variant_name}</span>
+                        ))}
+                      </div>
+                    ) : "-"}
                   </td>
 
                   <td style={{ padding: 10 }}>
