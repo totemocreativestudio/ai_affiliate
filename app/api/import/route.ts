@@ -218,8 +218,8 @@ async function notifyTopCreators(admin:any,workspaceId:string,userId:string){
 function detectedPlatform(rows: Row[], requested: string) {
   const headers = Object.keys(rows[0] || {}).map(norm);
   const has = (...terms:string[]) => terms.some(term => headers.some(header => header.includes(norm(term))));
-  if (has("GMV dari kreator","Pesanan teratribusi","Perkiraan komisi","GMV dari LIVE kreator","GMV dari video afiliasi")) return "TikTok";
-  if (has("Omzet Penjualan","Estimasi Komisi","ID Affiliates","Nama Affiliate","Affiliate ID","Affiliate Name","Affiliate Username","Sales(Rp)","Item Sold","Est.Commission(Rp)","Total Buyers")) return "Shopee";
+  if (has("GMV dari kreator","Pesanan teratribusi","Perkiraan komisi","GMV dari LIVE kreator","GMV dari video afiliasi","Product ID","LIVE streams","Refunded GMV","Refunded items sold")) return "TikTok";
+  if (has("Omzet Penjualan","Estimasi Komisi","ID Affiliates","Nama Affiliate","Affiliate ID","Affiliate Name","Affiliate Username","Sales(Rp)","Item Sold","Est.Commission(Rp)","Total Buyers","Kode Item","Nama Item","Produk Terjual")) return "Shopee";
   return requested || "Other";
 }
 
