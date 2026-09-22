@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
     let productQuery = admin
       .from("sales")
       .select(
-        "id,data_type,data_date,end_date,platform,channel,sku,product_name,qty,orders,gmv,commission,refund,refund_qty,clicks,buyers,new_buyers,live_count,video_count,roi,import_id",
+        "id,data_type,data_date,end_date,platform,channel,sku,product_code,variant_name,product_name,qty,orders,gmv,commission,refund,refund_qty,clicks,buyers,new_buyers,live_count,video_count,roi,import_id",
         { count: "exact" }
       )
       .eq("workspace_id", workspaceId)
