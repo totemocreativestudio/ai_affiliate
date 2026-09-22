@@ -3,6 +3,7 @@ export const APP_BASE = "/app.lumaway";
 const SECTION_ROUTES: Record<string, string> = {
   dashboard: "dashboard",
   upload: "upload",
+  tutorial: "tutorial",
   "excel-sync": "excel-sync",
   database: "database",
   agreements: "agreements",
