@@ -39,6 +39,7 @@ function inferPeriodFromFilename(filename:string){
 export default function UploadCenter({ workspaceId }: Props) {
  const supabase=createClient();const [dataType,setDataType]=useState("performance");const [platform,setPlatform]=useState("TikTok");const [startDate,setStartDate]=useState("");const [endDate,setEndDate]=useState("");const [file,setFile]=useState<File|null>(null);const [force,setForce]=useState(false);const [busy,setBusy]=useState(false);const [status,setStatus]=useState("");const [result,setResult]=useState<any>(null);const accept=useMemo(()=>".csv,.xlsx,.xls",[]);
  const periodless=dataType==="products"||dataType==="product_hpp";
+ const platformless=periodless;
  const uploadInfo:Record<string,{title:string;destination:string;mapping:string[]}>={
    performance:{title:"Affiliate Performance",destination:"Dashboard → Ranking Creator & Customer 360",mapping:platform==="Shopee"?["Affiliate ID","Affiliate Name","Affiliate Username","Sales(Rp)","Item Sold","Orders","Clicks","Est.Commission(Rp)","Total Buyers","New Buyers"]:["Creator name","GMV dari kreator","Pesanan teratribusi","Produk yang terjual dari kreator","Perkiraan komisi","Siaran LIVE","Video","Sampel","CTR","Impresi","Tayangan video"]},
    product_performance:{title:"Product Performance",destination:"Dashboard → Product Ranking & Master Data → Product Master",mapping:platform==="Shopee"?["Item id / Kode Item","Item Name / Nama Item","Price(Rp) / Harga(Rp)","Sales(Rp) / Omzet Penjualan(Rp)","Item Sold / Produk Terjual","Orders / Pesanan","Clicks","Est.Commission(Rp) / Estimasi Komisi(Rp)","ROI","Total Buyers / Total Pembeli","New Buyers / Pembeli Baru"]:["Product ID / Kode Produk","Product name / Nama Produk","GMV / Omzet Penjualan","Items sold","Est. commission","Samples","Sales creator","LIVE streams","Videos","Refunded GMV","Refunded items sold","Est. flat fee"]},
@@ -69,7 +70,7 @@ export default function UploadCenter({ workspaceId }: Props) {
   <div className="card">
    <div className="section-head"><div><h3>{currentInfo.title}</h3><p className="muted">Tujuan data: <b>{currentInfo.destination}</b></p></div><button type="button" className="secondary" onClick={()=>navigateToSection("tutorial")}>Tutorial Upload</button></div>
    <div className="grid">
-    <label>Platform<select value={platform} onChange={e=>setPlatform(e.target.value)}><option>TikTok</option><option>Shopee</option><option>Instagram</option><option>Other</option></select></label>
+    {!platformless&&<label>Platform<select value={platform} onChange={e=>setPlatform(e.target.value)}><option>TikTok</option><option>Shopee</option><option>Instagram</option><option>Other</option></select></label>}
     {!periodless&&<><label>Start Date <span className="field-note">Opsional · dd/mm/yyyy</span><input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)}/></label><label>End Date <span className="field-note">Opsional · dd/mm/yyyy</span><input type="date" value={endDate} onChange={e=>setEndDate(e.target.value)}/></label></>}
    </div>
    {periodless&&<div className="owner-inline-note">Master SKU / Produk dan Product HPP tidak menggunakan periode Start Date / End Date pada Upload Center.</div>}
