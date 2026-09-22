@@ -244,3 +244,33 @@ html[data-theme="dark"] .lumaway-loading-screen{background:#080e1b!important;col
 .owner-package-editor .owner-package-row>small{grid-column:1/-1;color:#667085}
 @media(max-width:1180px){.owner-plan-editor-row{grid-template-columns:repeat(4,minmax(0,1fr))}.owner-plan-editor-row .primary{min-height:38px}.owner-package-editor .owner-package-row{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
 @media(max-width:700px){.history-action-cell{min-width:150px}.ai-history-row-menu{width:150px}.owner-plan-editor-row,.owner-package-editor .owner-package-row{grid-template-columns:1fr!important}.owner-plan-editor-row .owner-price-preview,.owner-package-editor .owner-package-row>small{grid-column:auto}}
+
+
+/* PR31: compact upload periods + Ads Spend Support input */
+.upload-period-grid{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:12px!important;
+  align-items:end!important;
+  margin-bottom:12px;
+}
+.upload-period-grid label{min-width:0!important;width:100%!important}
+.ads-support-input{
+  display:grid;
+  gap:8px;
+  margin-top:14px;
+  padding-top:14px;
+  border-top:1px solid #e4e7ec;
+}
+.ads-support-input label small{
+  display:block;
+  margin-top:2px;
+  color:#667085;
+  font-size:9px;
+  font-weight:500;
+}
+.ads-support-input input{margin-top:2px}
+.ads-support-input .primary{width:100%}
+@media(max-width:900px){
+  .upload-period-grid{grid-template-columns:1fr!important}
+}
