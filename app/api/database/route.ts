@@ -46,6 +46,11 @@ export async function GET(req: NextRequest) {
       .eq("workspace_id", workspaceId)
       .in("data_type", ["performance", "sales"])
       .order("data_date", { ascending: false })
+      .order("gmv", { ascending: false, nullsFirst: false })
+      .order("orders", { ascending: false, nullsFirst: false })
+      .order("qty", { ascending: false, nullsFirst: false })
+      .order("commission", { ascending: false, nullsFirst: false })
+      .order("creator_name", { ascending: true, nullsFirst: false })
       .range((page - 1) * pageSize, page * pageSize - 1);
 
     let productQuery = admin
@@ -72,20 +77,42 @@ export async function GET(req: NextRequest) {
       productQuery = productQuery.eq("platform", platform);
     }
 
-    const [salesResult, productResult] = await Promise.all([salesQuery, productQuery]);
+    const summaryPromise = admin.rpc("get_database_affiliate_summary", {
+      p_workspace_id: workspaceId,
+      p_start_date: start || null,
+      p_end_date: end || null,
+      p_platform: platform || null,
+    });
+
+    const [salesResult, productResult, summaryResult] = await Promise.all([
+      salesQuery,
+      productQuery,
+      summaryPromise,
+    ]);
     if (salesResult.error) throw salesResult.error;
     if (productResult.error) throw productResult.error;
+    if (summaryResult.error) throw summaryResult.error;
 
     return NextResponse.json({
       ok: true,
       imports: imports || [],
       sales: salesResult.data || [],
       total: salesResult.count || 0,
+      affiliate_summary: summaryResult.data?.[0] || {
+        total_rows: 0,
+        active_rows: 0,
+        zero_rows: 0,
+        total_qty: 0,
+        total_orders: 0,
+        total_gmv: 0,
+        total_commission: 0,
+      },
       product_performance: productResult.data || [],
       product_total: productResult.count || 0,
       page,
       product_page: productPage,
       page_size: pageSize,
+      default_sort: "date_desc_activity_desc",
     });
   } catch (error: any) {
     return NextResponse.json(
