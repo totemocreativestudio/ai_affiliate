@@ -4,7 +4,7 @@ import { getServerContext } from "../../../lib/server-auth";
 
 export const runtime = "nodejs";
 type Row = Record<string, any>;
-const PARSER_VERSION = "universal-v6-20260922";
+const PARSER_VERSION = "universal-v7-20260922";
 
 const clean = (v: any) => (v === null || v === undefined ? "" : String(v).trim());
 type NumericKind = "money" | "count" | "percent" | "decimal";
@@ -219,7 +219,7 @@ function detectedPlatform(rows: Row[], requested: string) {
   const headers = Object.keys(rows[0] || {}).map(norm);
   const has = (...terms:string[]) => terms.some(term => headers.some(header => header.includes(norm(term))));
   if (has("GMV dari kreator","Pesanan teratribusi","Perkiraan komisi","GMV dari LIVE kreator","GMV dari video afiliasi","Product ID","LIVE streams","Refunded GMV","Refunded items sold")) return "TikTok";
-  if (has("Omzet Penjualan","Estimasi Komisi","ID Affiliates","Nama Affiliate","Affiliate ID","Affiliate Name","Affiliate Username","Sales(Rp)","Item Sold","Est.Commission(Rp)","Total Buyers","Kode Item","Nama Item","Produk Terjual")) return "Shopee";
+  if (has("Omzet Penjualan","Estimasi Komisi","ID Affiliates","Nama Affiliate","Affiliate ID","Affiliate Name","Affiliate Username","Sales(Rp)","Item Sold","Est.Commission(Rp)","Total Buyers","Kode Item","Nama Item","Item id","Item Name","Price(Rp)","Produk Terjual")) return "Shopee";
   return requested || "Other";
 }
 
@@ -303,7 +303,7 @@ type ProductPerformanceMapping={
 function productPerformanceMapping(row:Row,platform:string):ProductPerformanceMapping{
   const common={
     sku:findHeader(row,["Kode Item","Product ID","Item ID","Kode Produk","SKU"]),
-    productName:findHeader(row,["Nama Item","Product name","Product Name","Nama Produk","Produk"]),
+    productName:findHeader(row,["Nama Item","Item Name","Product name","Product Name","Nama Produk","Produk"]),
     price:findHeader(row,["Harga(Rp)","Harga","Price(Rp)","Price"]),
     gmv:findHeader(row,["Omzet Penjualan(Rp)","Omzet Penjualan","GMV","Sales(Rp)","Sales"]),
     qty:findHeader(row,["Produk Terjual","Items sold","Item Sold","Qty","Quantity"]),
@@ -477,7 +477,49 @@ export async function POST(req: NextRequest) {
       if(payloads.length){const {error}=await admin.from("shipping").insert(payloads);if(error)throw error;inserted+=payloads.length}
       skipped+=rows.length-payloads.length;
     }else if(dataType==="product_hpp"){
-      for(const row of rows){const sku=clean(value(row,["sku","SKU"]));const period=clean(value(row,["period","Period"]));if(!sku||!period){skipped++;continue}const payload={workspace_id:workspaceId,sku,period,product_id:num(value(row,["product_id","Product ID"]))||null,product_name:clean(value(row,["product_name","Product Name"]))||null,hpp:moneyNum(value(row,["hpp","HPP"])),selling_price:moneyNum(value(row,["selling_price","Selling Price"])),notes:clean(value(row,["notes","Notes"]))||null,source_import_id:importId,updated_at:new Date().toISOString()};const {data:ex}=await admin.from("product_hpp_history").select("id").eq("workspace_id",workspaceId).eq("sku",sku).eq("period",period).maybeSingle();if(ex?.id){const {error}=await admin.from("product_hpp_history").update(payload).eq("id",ex.id);if(error)throw error;updated++}else{const {error}=await admin.from("product_hpp_history").insert(payload);if(error)throw error;inserted++}}
+      for(const row of rows){
+        const sku=clean(value(row,["sku","SKU","Kode SKU"]));
+        if(!sku){skipped++;continue}
+        const period=clean(value(row,["period","Period","Periode"]))||"MASTER";
+        const productName=clean(value(row,["product_name","Product Name","Nama Produk"]))||null;
+        const hpp=moneyNum(value(row,["hpp","HPP","Cost Price","Harga Modal"]));
+        const sellingRaw=value(row,["selling_price","Selling Price","Harga Jual"]);
+        const sellingPrice=moneyNum(sellingRaw);
+        const now=new Date().toISOString();
+        const payload={workspace_id:workspaceId,sku,period,product_id:num(value(row,["product_id","Product ID","Item ID"]))||null,product_name:productName,hpp,selling_price:sellingPrice,notes:clean(value(row,["notes","Notes","Catatan"]))||null,source_import_id:importId,updated_at:now};
+        const {data:ex}=await admin.from("product_hpp_history").select("id").eq("workspace_id",workspaceId).eq("sku",sku).eq("period",period).maybeSingle();
+        if(ex?.id){
+          const {error}=await admin.from("product_hpp_history").update(payload).eq("id",ex.id);
+          if(error)throw error;
+          updated++;
+        }else{
+          const {error}=await admin.from("product_hpp_history").insert(payload);
+          if(error)throw error;
+          inserted++;
+        }
+
+        const skuNorm=sku.toLowerCase();
+        const {data:master,error:masterFindError}=await admin.from("product_master")
+          .select("id,product_name,selling_price")
+          .eq("workspace_id",workspaceId)
+          .eq("sku_normalized",skuNorm)
+          .maybeSingle();
+        if(masterFindError)throw masterFindError;
+        if(master?.id){
+          const masterPatch:Row={cost_price:hpp,source_import_id:importId,updated_at:now};
+          if(productName)masterPatch.product_name=productName;
+          if(clean(sellingRaw))masterPatch.selling_price=sellingPrice;
+          const {error:masterError}=await admin.from("product_master").update(masterPatch).eq("id",master.id);
+          if(masterError)throw masterError;
+        }else{
+          const {error:masterError}=await admin.from("product_master").insert({
+            workspace_id:workspaceId,sku,sku_normalized:skuNorm,product_name:productName||sku,
+            selling_price:clean(sellingRaw)?sellingPrice:0,cost_price:hpp,point_per_unit:0,
+            status:"Active",source_import_id:importId,updated_at:now
+          });
+          if(masterError)throw masterError;
+        }
+      }
     }else if(dataType==="product_performance"){
       const mapping=productPerformanceMapping(rows[0]||{},platform);
       if(!mapping.sku||!mapping.productName||!mapping.gmv){
