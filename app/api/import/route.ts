@@ -4,7 +4,7 @@ import { getServerContext } from "../../../lib/server-auth";
 
 export const runtime = "nodejs";
 type Row = Record<string, any>;
-const PARSER_VERSION = "universal-v7-20260922";
+const PARSER_VERSION = "universal-v8-pr32-20260922";
 
 const clean = (v: any) => (v === null || v === undefined ? "" : String(v).trim());
 type NumericKind = "money" | "count" | "percent" | "decimal";
@@ -450,7 +450,124 @@ export async function POST(req: NextRequest) {
     if(dataType==="creators"){
       for(const row of rows){const name=clean(value(row,["Nama Affiliate","Creator Name","Creator"]));const username=clean(value(row,["Username Affiliate","Username"]));if(!name&&!username){skipped++;continue}const p=clean(value(row,["Platform"],false))||platform;let q=admin.from("creators").select("id,creator_code").eq("workspace_id",workspaceId).eq("platform",p).limit(1);q=username?q.ilike("username",username):q.ilike("name",name);const {data:ex}=await q.maybeSingle();const payload={workspace_id:workspaceId,creator_code:clean(value(row,["Creator Code"],false))||ex?.creator_code||creatorCode(),name:name||username,username:username||name,platform:p,affiliate_id:clean(value(row,["ID Affiliates","Affiliate ID"]))||null,phone:clean(value(row,["Phone","No HP","WhatsApp"]))||null,address:clean(value(row,["Address","Alamat"]))||null,payment_type:clean(value(row,["Payment/Barter","Payment Type"]))||null,ratecard:moneyNum(value(row,["Ratecard"])),profile_url:clean(value(row,["Profile URL","Social Media","Profile Link"]))||null,status:clean(value(row,["Status"]))||"Active",notes:clean(value(row,["Notes","Note","Catatan"]))||null,source_import_id:importId,updated_at:new Date().toISOString()};if(ex?.id){const {error}=await admin.from("creators").update(payload).eq("id",ex.id);if(error)throw error;updated++}else{const {error}=await admin.from("creators").insert(payload);if(error)throw error;inserted++}}
     }else if(dataType==="products"){
-      for(const row of rows){const sku=clean(value(row,["SKU","Kode SKU"],false));if(!sku){skipped++;continue}const skuNorm=sku.toLowerCase();const payload={workspace_id:workspaceId,sku,sku_normalized:skuNorm,product_name:clean(value(row,["Product Name","Nama Produk"]))||sku,category:clean(value(row,["Category","Kategori"]))||null,selling_price:moneyNum(value(row,["Selling Price","Harga Jual"])),cost_price:moneyNum(value(row,["Cost Price","HPP"])),point_per_unit:num(value(row,["Point per Unit","Point"])),status:clean(value(row,["Status"]))||"Active",source_import_id:importId,updated_at:new Date().toISOString()};const {data:ex}=await admin.from("product_master").select("id").eq("workspace_id",workspaceId).eq("sku_normalized",skuNorm).maybeSingle();if(ex?.id){const {error}=await admin.from("product_master").update(payload).eq("id",ex.id);if(error)throw error;updated++}else{const {error}=await admin.from("product_master").insert(payload);if(error)throw error;inserted++}}
+      const masterCache=new Map<string,any>();
+      const variantsCache=new Map<number,any[]>();
+
+      async function getMasterForSku(sku:string){
+        const skuNorm=sku.toLowerCase();
+        if(masterCache.has(skuNorm))return masterCache.get(skuNorm);
+        const {data,error}=await admin.from("product_master")
+          .select("id,sku,product_name,category,selling_price,cost_price,point_per_unit,status,notes")
+          .eq("workspace_id",workspaceId).eq("sku_normalized",skuNorm).maybeSingle();
+        if(error)throw error;
+        masterCache.set(skuNorm,data||null);
+        return data||null;
+      }
+
+      async function loadVariants(productMasterId:number){
+        if(variantsCache.has(productMasterId))return variantsCache.get(productMasterId)!;
+        const {data,error}=await admin.from("product_variants")
+          .select("id,slot,variant_name,hpp,selling_price")
+          .eq("workspace_id",workspaceId).eq("product_master_id",productMasterId)
+          .order("slot",{ascending:true});
+        if(error)throw error;
+        const list=data||[];
+        variantsCache.set(productMasterId,list);
+        return list;
+      }
+
+      for(const row of rows){
+        const sku=clean(value(row,["SKU","Kode SKU"],false));
+        if(!sku){skipped++;continue}
+        const skuNorm=sku.toLowerCase();
+        const now=new Date().toISOString();
+        const productName=clean(value(row,["Product Name","Nama Produk"]))||sku;
+        const category=clean(value(row,["Category","Kategori"]))||null;
+        const sellingRaw=value(row,["Selling Price","Harga Jual"]);
+        const costRaw=value(row,["Cost Price","HPP","Harga Modal"]);
+        const pointRaw=value(row,["Point per Unit","Point"]);
+        const statusRaw=clean(value(row,["Status"]));
+        const notesRaw=clean(value(row,["Notes","Note","Catatan"]));
+        const productCode=clean(value(row,["Product Code","Kode Produk","Product ID","Item ID","Item id","Kode Item","ID Produk"]));
+        const variantName=clean(value(row,["Variant","Variation","Variasi","Nama Variasi","Variant Name","Variation Name"]));
+        const requestedSlot=countNum(value(row,["Variant Slot","Variation Slot","Slot Variasi"]));
+
+        let master=await getMasterForSku(sku);
+        const masterPayload:Row={
+          workspace_id:workspaceId,sku,sku_normalized:skuNorm,product_name:productName,
+          source_import_id:importId,updated_at:now
+        };
+        if(category)masterPayload.category=category;
+        if(clean(sellingRaw))masterPayload.selling_price=moneyNum(sellingRaw);
+        if(clean(costRaw))masterPayload.cost_price=moneyNum(costRaw);
+        if(clean(pointRaw))masterPayload.point_per_unit=num(pointRaw);
+        if(statusRaw)masterPayload.status=statusRaw;
+        if(notesRaw)masterPayload.notes=notesRaw;
+
+        if(master?.id){
+          const {error}=await admin.from("product_master").update(masterPayload).eq("id",master.id).eq("workspace_id",workspaceId);
+          if(error)throw error;
+          updated++;
+          master={...master,...masterPayload};
+        }else{
+          const {data:newMaster,error}=await admin.from("product_master").insert({
+            ...masterPayload,status:statusRaw||"Active",
+            selling_price:clean(sellingRaw)?moneyNum(sellingRaw):0,
+            cost_price:clean(costRaw)?moneyNum(costRaw):0,
+            point_per_unit:clean(pointRaw)?num(pointRaw):0
+          }).select("id,sku,product_name,category,selling_price,cost_price,point_per_unit,status,notes").single();
+          if(error)throw error;
+          inserted++;
+          master=newMaster;
+        }
+        masterCache.set(skuNorm,master);
+
+        let variantSlot:number|null=null;
+        if(variantName){
+          const variants=await loadVariants(Number(master.id));
+          const existingVariant=variants.find((x:any)=>String(x.variant_name||"").toLowerCase()===variantName.toLowerCase());
+          if(existingVariant){
+            variantSlot=Number(existingVariant.slot);
+          }else{
+            const occupied=new Set(variants.map((x:any)=>Number(x.slot)));
+            const preferred=requestedSlot>=1&&requestedSlot<=15?requestedSlot:0;
+            variantSlot=preferred&&!occupied.has(preferred)?preferred:Array.from({length:15},(_,i)=>i+1).find(slot=>!occupied.has(slot))||null;
+            if(!variantSlot)throw new Error(`SKU ${sku} sudah memiliki 15 variasi. Maksimal variasi per SKU adalah 15.`);
+            const variantPayload={
+              workspace_id:workspaceId,product_master_id:Number(master.id),sku,slot:variantSlot,
+              variant_name:variantName,hpp:clean(costRaw)?moneyNum(costRaw):null,
+              selling_price:clean(sellingRaw)?moneyNum(sellingRaw):null,
+              source_import_id:importId,updated_at:now
+            };
+            const {data:newVariant,error}=await admin.from("product_variants").insert(variantPayload).select("id,slot,variant_name,hpp,selling_price").single();
+            if(error)throw error;
+            variants.push(newVariant);
+          }
+        }
+
+        if(productCode){
+          const listingPayload={
+            workspace_id:workspaceId,product_master_id:Number(master.id),sku,platform,
+            product_code:productCode,product_name:productName,
+            variant_slot:variantSlot,variant_name:variantName||null,
+            source_import_id:importId,updated_at:now
+          };
+          const {error:listingError}=await admin.from("product_platform_items")
+            .upsert(listingPayload,{onConflict:"workspace_id,platform,product_code"});
+          if(listingError)throw listingError;
+
+          const salesPatch:Row={product_code:productCode,sku,updated_at:now};
+          if(variantName)salesPatch.variant_name=variantName;
+          const {error:oldSalesError}=await admin.from("sales").update(salesPatch)
+            .eq("workspace_id",workspaceId).eq("data_type","product_performance")
+            .ilike("platform",platform).eq("sku",productCode);
+          if(oldSalesError)throw oldSalesError;
+          const {error:newSalesError}=await admin.from("sales").update(salesPatch)
+            .eq("workspace_id",workspaceId).eq("data_type","product_performance")
+            .ilike("platform",platform).eq("product_code",productCode);
+          if(newSalesError)throw newSalesError;
+        }
+      }
     }else if(dataType==="creator_samples"){
       const payloads=rows.map(row=>({workspace_id:workspaceId,creator_id:countNum(value(row,["creator_id","Creator ID"]))||null,creator_name:clean(value(row,["creator_name","Creator Name"]))||null,platform:clean(value(row,["platform","Platform"]))||platform,sku:clean(value(row,["sku","SKU"]))||null,product_name:clean(value(row,["product_name","Product Name"]))||null,sample_status:clean(value(row,["sample_status","Sample Status"]))||"sent",sent_date:clean(value(row,["sent_date","Sent Date"]))||null,return_date:clean(value(row,["return_date","Return Date"]))||null,qty:countNum(value(row,["qty","Qty"]))||1,product_value:moneyNum(value(row,["product_value","Product Value"])),tracking:clean(value(row,["tracking","Tracking"]))||null,notes:clean(value(row,["notes","Notes"]))||null,source:"upload",source_import_id:importId,updated_at:new Date().toISOString()})).filter(x=>x.creator_id||x.creator_name);if(payloads.length){const {error}=await admin.from("creator_samples").insert(payloads);if(error)throw error;inserted+=payloads.length}skipped+=rows.length-payloads.length;
     }else if(dataType==="shipping"){
@@ -480,14 +597,46 @@ export async function POST(req: NextRequest) {
       for(const row of rows){
         const sku=clean(value(row,["sku","SKU","Kode SKU"]));
         if(!sku){skipped++;continue}
+        const skuNorm=sku.toLowerCase();
         const period=clean(value(row,["period","Period","Periode"]))||"MASTER";
         const productName=clean(value(row,["product_name","Product Name","Nama Produk"]))||null;
-        const hpp=moneyNum(value(row,["hpp","HPP","Cost Price","Harga Modal"]));
+        const hppRaw=value(row,["hpp","HPP","Cost Price","Harga Modal"]);
+        const hpp=moneyNum(hppRaw);
         const sellingRaw=value(row,["selling_price","Selling Price","Harga Jual"]);
         const sellingPrice=moneyNum(sellingRaw);
         const now=new Date().toISOString();
-        const payload={workspace_id:workspaceId,sku,period,product_id:num(value(row,["product_id","Product ID","Item ID"]))||null,product_name:productName,hpp,selling_price:sellingPrice,notes:clean(value(row,["notes","Notes","Catatan"]))||null,source_import_id:importId,updated_at:now};
-        const {data:ex}=await admin.from("product_hpp_history").select("id").eq("workspace_id",workspaceId).eq("sku",sku).eq("period",period).maybeSingle();
+
+        let {data:master,error:masterFindError}=await admin.from("product_master")
+          .select("id,product_name,selling_price,cost_price")
+          .eq("workspace_id",workspaceId).eq("sku_normalized",skuNorm).maybeSingle();
+        if(masterFindError)throw masterFindError;
+        if(master?.id){
+          const masterPatch:Row={source_import_id:importId,updated_at:now};
+          if(productName)masterPatch.product_name=productName;
+          if(clean(hppRaw))masterPatch.cost_price=hpp;
+          if(clean(sellingRaw))masterPatch.selling_price=sellingPrice;
+          const {error:masterError}=await admin.from("product_master").update(masterPatch).eq("id",master.id).eq("workspace_id",workspaceId);
+          if(masterError)throw masterError;
+        }else{
+          const {data:newMaster,error:masterError}=await admin.from("product_master").insert({
+            workspace_id:workspaceId,sku,sku_normalized:skuNorm,product_name:productName||sku,
+            selling_price:clean(sellingRaw)?sellingPrice:0,cost_price:clean(hppRaw)?hpp:0,point_per_unit:0,
+            status:"Active",source_import_id:importId,updated_at:now
+          }).select("id,product_name,selling_price,cost_price").single();
+          if(masterError)throw masterError;
+          master=newMaster;
+        }
+
+        const payload={
+          workspace_id:workspaceId,product_master_id:Number(master.id),sku,period,
+          product_id:null,product_name:productName,hpp,
+          selling_price:clean(sellingRaw)?sellingPrice:0,
+          notes:clean(value(row,["notes","Notes","Catatan"]))||null,
+          source_import_id:importId,updated_at:now
+        };
+        const {data:ex,error:hppFindError}=await admin.from("product_hpp_history")
+          .select("id").eq("workspace_id",workspaceId).ilike("sku",sku).eq("period",period).maybeSingle();
+        if(hppFindError)throw hppFindError;
         if(ex?.id){
           const {error}=await admin.from("product_hpp_history").update(payload).eq("id",ex.id);
           if(error)throw error;
@@ -498,26 +647,27 @@ export async function POST(req: NextRequest) {
           inserted++;
         }
 
-        const skuNorm=sku.toLowerCase();
-        const {data:master,error:masterFindError}=await admin.from("product_master")
-          .select("id,product_name,selling_price")
-          .eq("workspace_id",workspaceId)
-          .eq("sku_normalized",skuNorm)
-          .maybeSingle();
-        if(masterFindError)throw masterFindError;
-        if(master?.id){
-          const masterPatch:Row={cost_price:hpp,source_import_id:importId,updated_at:now};
-          if(productName)masterPatch.product_name=productName;
-          if(clean(sellingRaw))masterPatch.selling_price=sellingPrice;
-          const {error:masterError}=await admin.from("product_master").update(masterPatch).eq("id",master.id);
-          if(masterError)throw masterError;
-        }else{
-          const {error:masterError}=await admin.from("product_master").insert({
-            workspace_id:workspaceId,sku,sku_normalized:skuNorm,product_name:productName||sku,
-            selling_price:clean(sellingRaw)?sellingPrice:0,cost_price:hpp,point_per_unit:0,
-            status:"Active",source_import_id:importId,updated_at:now
-          });
-          if(masterError)throw masterError;
+        const rowHeaders=Object.keys(row||{});
+        const hasVariantTemplate=rowHeaders.some(header=>/^varia(nt|tion|si)\s*0?([1-9]|1[0-5])$/i.test(String(header).trim()));
+        if(hasVariantTemplate){
+          const filled:{slot:number;name:string}[]=[];
+          for(let slot=1;slot<=15;slot++){
+            const name=clean(value(row,[`Variasi ${slot}`,`Variant ${slot}`,`Variation ${slot}`],false));
+            if(name)filled.push({slot,name});
+          }
+          const {error:clearVariantError}=await admin.from("product_variants").delete()
+            .eq("workspace_id",workspaceId).eq("product_master_id",Number(master.id));
+          if(clearVariantError)throw clearVariantError;
+          if(filled.length){
+            const variantPayloads=filled.map(item=>({
+              workspace_id:workspaceId,product_master_id:Number(master.id),sku,slot:item.slot,
+              variant_name:item.name,hpp:clean(hppRaw)?hpp:null,
+              selling_price:clean(sellingRaw)?sellingPrice:null,
+              source_import_id:importId,updated_at:now
+            }));
+            const {error:variantError}=await admin.from("product_variants").insert(variantPayloads);
+            if(variantError)throw variantError;
+          }
         }
       }
     }else if(dataType==="product_performance"){
