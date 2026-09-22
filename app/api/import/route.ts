@@ -680,14 +680,27 @@ export async function POST(req: NextRequest) {
         commission:inferMoneyStyle(rows,mapping.commission),refund:inferMoneyStyle(rows,mapping.refund),
         flatFee:inferMoneyStyle(rows,mapping.flatFee)
       };
+
+      const productCodes=[...new Set(rows.map(row=>clean(mappedRaw(row,mapping.sku))).filter(Boolean))];
+      const platformMap=new Map<string,Row>();
+      for(let offset=0;offset<productCodes.length;offset+=500){
+        const part=productCodes.slice(offset,offset+500);
+        const {data:mapped,error:mappedError}=await admin.from("product_platform_items")
+          .select("product_code,sku,variant_name,product_master_id")
+          .eq("workspace_id",workspaceId).ilike("platform",platform).in("product_code",part);
+        if(mappedError)throw mappedError;
+        for(const item of mapped||[])platformMap.set(String(item.product_code||"").toLowerCase(),item as Row);
+      }
+
       const payloads:Row[]=[];
-      const productMasterPayloads:Row[]=[];
       for(let i=0;i<rows.length;i++){
         const row=rows[i];
-        const sku=clean(mappedRaw(row,mapping.sku));
+        const productCode=clean(mappedRaw(row,mapping.sku));
         const productName=clean(mappedRaw(row,mapping.productName));
-        if(!sku&&!productName){skipped++;continue}
-        const keySku=sku||`product-${norm(productName)}`;
+        if(!productCode&&!productName){skipped++;continue}
+        const mapped=productCode?platformMap.get(productCode.toLowerCase()):null;
+        const canonicalSku=clean(mapped?.sku)||productCode||`product-${norm(productName)}`;
+        const variantName=clean(mapped?.variant_name)||null;
         const gmv=moneyValue(mappedRaw(row,mapping.gmv),styles.gmv);
         const qty=countNum(mappedRaw(row,mapping.qty));
         const orders=countNum(mappedRaw(row,mapping.orders));
@@ -703,23 +716,27 @@ export async function POST(req: NextRequest) {
         const videoCount=countNum(mappedRaw(row,mapping.videoCount));
         const flatFee=moneyValue(mappedRaw(row,mapping.flatFee),styles.flatFee);
         const roi=num(mappedRaw(row,mapping.roi),"decimal");
-        const sellingPrice=moneyValue(mappedRaw(row,mapping.price),styles.price);
         const dataDate=start||null;
-        const recordKey=`product_performance|${workspaceId}|${platform}|${start||"all"}|${end||start||"all"}|${keySku.toLowerCase()}`;
-        payloads.push({workspace_id:workspaceId,record_key:recordKey,data_type:"product_performance",data_date:dataDate,end_date:end||dataDate,creator_id:null,creator_name:null,username:null,platform,channel:"Product Performance",sku:keySku,product_name:productName||keySku,qty,orders,gmv,refund,refund_qty:refundQty,commission,clicks,buyers,new_buyers:newBuyers,live_count:liveCount,video_count:videoCount,sample_sent:sampleSent,sales_creator:salesCreator,flat_fee:flatFee,roi,source_file:filename,imported_at:new Date().toISOString(),import_id:importId,updated_at:new Date().toISOString()});
-        const skuNorm=keySku.toLowerCase();
-        productMasterPayloads.push({workspace_id:workspaceId,sku:keySku,sku_normalized:skuNorm,product_name:productName||keySku,selling_price:sellingPrice,status:"Active",source_import_id:importId,updated_at:new Date().toISOString()});
+        const uniqueCode=(productCode||canonicalSku).toLowerCase();
+        const recordKey=`product_performance|${workspaceId}|${platform}|${start||"all"}|${end||start||"all"}|${uniqueCode}`;
+        payloads.push({
+          workspace_id:workspaceId,record_key:recordKey,data_type:"product_performance",
+          data_date:dataDate,end_date:end||dataDate,creator_id:null,creator_name:null,username:null,
+          platform,channel:"Product Performance",sku:canonicalSku,product_code:productCode||null,
+          variant_name:variantName,product_name:productName||canonicalSku,qty,orders,gmv,refund,
+          refund_qty:refundQty,commission,clicks,buyers,new_buyers:newBuyers,live_count:liveCount,
+          video_count:videoCount,sample_sent:sampleSent,sales_creator:salesCreator,flat_fee:flatFee,roi,
+          source_file:filename,imported_at:new Date().toISOString(),import_id:importId,updated_at:new Date().toISOString()
+        });
       }
-      const byKey=new Map<string,Row>();for(const payload of payloads){if(byKey.has(payload.record_key))duplicates++;byKey.set(payload.record_key,payload)}
+      const byKey=new Map<string,Row>();
+      for(const payload of payloads){if(byKey.has(payload.record_key))duplicates++;byKey.set(payload.record_key,payload)}
       const deduped=[...byKey.values()];
-      const productsBySku=new Map<string,Row>();for(const payload of productMasterPayloads)productsBySku.set(String(payload.sku_normalized),payload);
-      const productRows=[...productsBySku.values()];
-      for(let i=0;i<productRows.length;i+=500){
-        const part=productRows.slice(i,i+500);
-        const {error:productError}=await admin.from("product_master").upsert(part,{onConflict:"workspace_id,sku_normalized"});
-        if(productError)throw productError;
+      if(deduped.length){
+        const {data:saved,error}=await admin.from("sales").upsert(deduped,{onConflict:"record_key"}).select("id");
+        if(error)throw error;
+        inserted+=saved?.length||deduped.length;
       }
-      if(deduped.length){const {data:saved,error}=await admin.from("sales").upsert(deduped,{onConflict:"record_key"}).select("id");if(error)throw error;inserted+=saved?.length||deduped.length}
     }else if(dataType==="performance"||dataType==="sales"){
       const payloads:Row[]=[];
       const perfMap=dataType==="performance"?performanceMapping(rows[0]||{},platform):null;
