@@ -4,7 +4,7 @@ import { getServerContext } from "../../../lib/server-auth";
 
 export const runtime = "nodejs";
 type Row = Record<string, any>;
-const PARSER_VERSION = "universal-v5-20260922";
+const PARSER_VERSION = "universal-v6-20260922";
 
 const clean = (v: any) => (v === null || v === undefined ? "" : String(v).trim());
 type NumericKind = "money" | "count" | "percent" | "decimal";
@@ -298,7 +298,7 @@ function mappingSummary(mapping:PerformanceMapping){
 type ProductPerformanceMapping={
   sku:string; productName:string; price:string; gmv:string; qty:string; orders:string; clicks:string;
   commission:string; buyers:string; newBuyers:string; samples:string; salesCreator:string; liveCount:string;
-  videoCount:string; refund:string; refundQty:string; flatFee:string;
+  videoCount:string; refund:string; refundQty:string; flatFee:string; roi:string;
 };
 function productPerformanceMapping(row:Row,platform:string):ProductPerformanceMapping{
   const common={
@@ -318,7 +318,8 @@ function productPerformanceMapping(row:Row,platform:string):ProductPerformanceMa
     videoCount:findHeader(row,["Videos","Video","Jumlah Video"]),
     refund:findHeader(row,["Refunded GMV","Pengembalian dana","Refund GMV"]),
     refundQty:findHeader(row,["Refunded items sold","Refunded Items Sold","Produk yang dikembalikan dananya","Item Refund"]),
-    flatFee:findHeader(row,["Est. flat fee","Estimated flat fee","Flat fee"])
+    flatFee:findHeader(row,["Est. flat fee","Estimated flat fee","Flat fee"]),
+    roi:findHeader(row,["ROI"])
   };
   return common;
 }
@@ -509,10 +510,11 @@ export async function POST(req: NextRequest) {
         const liveCount=countNum(mappedRaw(row,mapping.liveCount));
         const videoCount=countNum(mappedRaw(row,mapping.videoCount));
         const flatFee=moneyValue(mappedRaw(row,mapping.flatFee),styles.flatFee);
+        const roi=num(mappedRaw(row,mapping.roi),"decimal");
         const sellingPrice=moneyValue(mappedRaw(row,mapping.price),styles.price);
         const dataDate=start||null;
         const recordKey=`product_performance|${workspaceId}|${platform}|${start||"all"}|${end||start||"all"}|${keySku.toLowerCase()}`;
-        payloads.push({workspace_id:workspaceId,record_key:recordKey,data_type:"product_performance",data_date:dataDate,end_date:end||dataDate,creator_id:null,creator_name:null,username:null,platform,channel:"Product Performance",sku:keySku,product_name:productName||keySku,qty,orders,gmv,refund,refund_qty:refundQty,commission,clicks,buyers,new_buyers:newBuyers,live_count:liveCount,video_count:videoCount,sample_sent:sampleSent,sales_creator:salesCreator,flat_fee:flatFee,source_file:filename,imported_at:new Date().toISOString(),import_id:importId,updated_at:new Date().toISOString()});
+        payloads.push({workspace_id:workspaceId,record_key:recordKey,data_type:"product_performance",data_date:dataDate,end_date:end||dataDate,creator_id:null,creator_name:null,username:null,platform,channel:"Product Performance",sku:keySku,product_name:productName||keySku,qty,orders,gmv,refund,refund_qty:refundQty,commission,clicks,buyers,new_buyers:newBuyers,live_count:liveCount,video_count:videoCount,sample_sent:sampleSent,sales_creator:salesCreator,flat_fee:flatFee,roi,source_file:filename,imported_at:new Date().toISOString(),import_id:importId,updated_at:new Date().toISOString()});
         const skuNorm=keySku.toLowerCase();
         productMasterPayloads.push({workspace_id:workspaceId,sku:keySku,sku_normalized:skuNorm,product_name:productName||keySku,selling_price:sellingPrice,status:"Active",source_import_id:importId,updated_at:new Date().toISOString()});
       }
