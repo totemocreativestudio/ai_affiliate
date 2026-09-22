@@ -18,9 +18,25 @@ export async function DELETE(req:NextRequest){
 
     await admin.from("sales").delete().eq("workspace_id",workspaceId).eq("import_id",importId);
     await admin.from("creator_samples").delete().eq("workspace_id",workspaceId).eq("source_import_id",importId);
+    await admin.from("product_platform_items").delete().eq("workspace_id",workspaceId).eq("source_import_id",importId);
+    await admin.from("product_variants").delete().eq("workspace_id",workspaceId).eq("source_import_id",importId);
     await admin.from("product_hpp_history").delete().eq("workspace_id",workspaceId).eq("source_import_id",importId);
+
     if(record.data_type==="products"){
-      await admin.from("product_master").delete().eq("workspace_id",workspaceId).eq("source_import_id",importId);
+      const {data:candidates}=await admin.from("product_master")
+        .select("id").eq("workspace_id",workspaceId).eq("source_import_id",importId);
+      for(const product of candidates||[]){
+        const [{count:mappingCount},{count:variantCount},{count:hppCount}]=await Promise.all([
+          admin.from("product_platform_items").select("id",{count:"exact",head:true}).eq("workspace_id",workspaceId).eq("product_master_id",product.id),
+          admin.from("product_variants").select("id",{count:"exact",head:true}).eq("workspace_id",workspaceId).eq("product_master_id",product.id),
+          admin.from("product_hpp_history").select("id",{count:"exact",head:true}).eq("workspace_id",workspaceId).eq("product_master_id",product.id),
+        ]);
+        if(Number(mappingCount||0)===0&&Number(variantCount||0)===0&&Number(hppCount||0)===0){
+          await admin.from("product_master").delete().eq("workspace_id",workspaceId).eq("id",product.id);
+        }else{
+          await admin.from("product_master").update({source_import_id:null}).eq("workspace_id",workspaceId).eq("id",product.id);
+        }
+      }
     }else{
       await admin.from("product_master").update({source_import_id:null}).eq("workspace_id",workspaceId).eq("source_import_id",importId);
     }
