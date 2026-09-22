@@ -17,6 +17,10 @@ export default function DatabaseCenter({ workspaceId }: Props) {
   const [error, setError] = useState("");
   const [importSort,setImportSort]=useState({key:"imported_at",asc:false});
   const [salesSort,setSalesSort]=useState({key:"data_date",asc:false});
+  const [deleteTarget,setDeleteTarget]=useState<Row|null>(null);
+  const [verifyCode,setVerifyCode]=useState("");
+  const [verifyInput,setVerifyInput]=useState("");
+  const [deleteBusy,setDeleteBusy]=useState(false);
 
   async function load(targetPage = page) {
     setLoading(true); setError("");
@@ -36,11 +40,31 @@ export default function DatabaseCenter({ workspaceId }: Props) {
   const toggleImportSort=(key:string)=>setImportSort(v=>({key,asc:v.key===key?!v.asc:true}));
   const toggleSalesSort=(key:string)=>setSalesSort(v=>({key,asc:v.key===key?!v.asc:true}));
 
+  function requestDelete(row:Row){
+    setDeleteTarget(row);
+    setVerifyCode(String(Math.floor(100+Math.random()*900)));
+    setVerifyInput("");
+    setError("");
+  }
+  async function confirmDelete(){
+    if(!deleteTarget)return;
+    if(verifyInput!==verifyCode){setError("Kode persetujuan tidak sesuai.");return}
+    setDeleteBusy(true);setError("");
+    try{
+      const r=await fetch("/api/database/import",{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({workspace_id:workspaceId,import_id:deleteTarget.import_id})});
+      const d=await r.json();
+      if(!r.ok||!d.ok)throw new Error(d.error||"Gagal menghapus import.");
+      setDeleteTarget(null);setVerifyInput("");setVerifyCode("");
+      await load(1);
+      window.dispatchEvent(new CustomEvent("lumaway-database-updated",{detail:{deleted_import_id:d.import_id}}));
+    }catch(e:any){setError(e?.message||"Gagal menghapus import.")}finally{setDeleteBusy(false)}
+  }
+
   return <section id="database" className="legacy-page-anchor">
     <div className="page-head"><div><div className="eyebrow">DATABASE</div><h1>Database</h1><p className="muted">Upload history dan Latest Sales / Performance dari workspace aktif.</p></div></div>
-    <div className="card"><div className="section-head"><div><h3>Upload / Import History</h3><p className="muted">50 import terbaru.</p></div><button className="secondary" onClick={() => load(1)}>Refresh</button></div><div className="scroll"><table><thead><tr>{[["import_id","Import ID"],["filename","File"],["data_type","Type"],["platform","Platform"],["start_date","Period"],["rows_imported","Rows"],["status","Status"],["imported_at","Imported"]].map(([key,label])=><th key={key}><button className="table-sort" onClick={()=>toggleImportSort(key)}>{label}<span>{importSort.key===key?(importSort.asc?"↑":"↓"):"↕"}</span></button></th>)}</tr></thead><tbody>
-      {sortedImports.map((x: Row) => <tr key={x.id || x.import_id}><td>{x.import_id}</td><td>{x.filename}</td><td>{x.data_type}</td><td>{x.platform}</td><td>{x.start_date || "-"} → {x.end_date || "-"}</td><td>{Number(x.rows_imported || 0).toLocaleString("id-ID")}</td><td>{x.status}</td><td>{x.imported_at || "-"}</td></tr>)}
-      {!data.imports?.length && <tr><td colSpan={8}>Belum ada import.</td></tr>}
+    <div className="card"><div className="section-head"><div><h3>Upload / Import History</h3><p className="muted">50 import terbaru.</p></div><button className="secondary" onClick={() => load(1)}>Refresh</button></div><div className="scroll"><table><thead><tr>{[["import_id","Import ID"],["filename","File"],["data_type","Type"],["platform","Platform"],["start_date","Period"],["rows_imported","Rows"],["status","Status"],["imported_at","Imported"]].map(([key,label])=><th key={key}><button className="table-sort" onClick={()=>toggleImportSort(key)}>{label}<span>{importSort.key===key?(importSort.asc?"↑":"↓"):"↕"}</span></button></th>)}<th>Action</th></tr></thead><tbody>
+      {sortedImports.map((x: Row) => <tr key={x.id || x.import_id}><td>{x.import_id}</td><td>{x.filename}</td><td>{x.data_type}</td><td>{x.platform}</td><td>{x.start_date || "-"} → {x.end_date || "-"}</td><td>{Number(x.rows_imported || 0).toLocaleString("id-ID")}</td><td>{x.status}</td><td>{x.imported_at || "-"}</td><td><button className="danger-lite" onClick={()=>requestDelete(x)}>Hapus</button></td></tr>)}
+      {!data.imports?.length && <tr><td colSpan={9}>Belum ada import.</td></tr>}
     </tbody></table></div></div>
     <div className="card"><h3>Latest Sales / Performance</h3><div className="filters"><label>Start <span className="field-note">Opsional</span><input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></label><label>End <span className="field-note">Opsional</span><input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></label><label>Platform<select value={platform} onChange={(e) => setPlatform(e.target.value)}><option value="">All</option><option>TikTok</option><option>Shopee</option><option>Instagram</option></select></label><button onClick={() => load(1)} disabled={loading}>{loading ? "Loading..." : "Apply"}</button><button className="secondary" onClick={() => { setStart(""); setEnd(""); setPlatform(""); setTimeout(() => load(1), 0); }}>Reset</button></div>
       {error && <div className="flash error">{error}</div>}
@@ -50,5 +74,16 @@ export default function DatabaseCenter({ workspaceId }: Props) {
       </tbody></table></div>
       <div className="pager"><span className="pager-info">Page {page} / {totalPages} · {Number(data.total || 0).toLocaleString("id-ID")} row</span><div className="button-row"><button className="secondary" disabled={page <= 1 || loading} onClick={() => load(page - 1)}>Previous</button><button className="secondary" disabled={page >= totalPages || loading} onClick={() => load(page + 1)}>Next</button></div></div>
     </div>
+    {deleteTarget&&<div className="confirm-overlay" onMouseDown={e=>{if(e.target===e.currentTarget&&!deleteBusy)setDeleteTarget(null)}}>
+      <div className="confirm-card">
+        <h3>Hapus data import?</h3>
+        <p>Anda yakin untuk hapus <b>{deleteTarget.filename}</b>?</p>
+        <div className="confirm-warning">Data database yang berasal dari import ini akan ikut dihapus. Tindakan ini tidak dapat dibatalkan.</div>
+        <label>Kode persetujuan <strong className="verify-code">{verifyCode}</strong>
+          <input inputMode="numeric" maxLength={3} value={verifyInput} onChange={e=>setVerifyInput(e.target.value.replace(/\D/g,"").slice(0,3))} placeholder="Masukkan 3 angka"/>
+        </label>
+        <div className="button-row"><button className="secondary" disabled={deleteBusy} onClick={()=>setDeleteTarget(null)}>TIDAK</button><button className="danger" disabled={deleteBusy||verifyInput!==verifyCode} onClick={()=>void confirmDelete()}>{deleteBusy?"Menghapus...":"YA, HAPUS"}</button></div>
+      </div>
+    </div>}
   </section>;
 }
