@@ -66,6 +66,7 @@ export default function ProductMaster({
       .select(
         "id,workspace_id,sku,sku_normalized,product_name,category,selling_price,cost_price,point_per_unit,status,notes"
       )
+      .eq("workspace_id", workspaceId)
       .order("sku", { ascending: true });
 
     if (error) {
@@ -79,8 +80,14 @@ export default function ProductMaster({
   }
 
   useEffect(() => {
-    loadProducts();
-  }, []);
+    void loadProducts();
+  }, [workspaceId]);
+
+  useEffect(() => {
+    const refresh = () => { void loadProducts(); };
+    window.addEventListener("lumaway-database-updated", refresh as EventListener);
+    return () => window.removeEventListener("lumaway-database-updated", refresh as EventListener);
+  }, [workspaceId]);
 
   function openAdd() {
     setEditingId(null);
@@ -160,7 +167,8 @@ export default function ProductMaster({
       result = await supabase
         .from("product_master")
         .update(payload)
-        .eq("id", editingId);
+        .eq("id", editingId)
+        .eq("workspace_id", workspaceId);
     } else {
       result = await supabase
         .from("product_master")
@@ -193,7 +201,8 @@ export default function ProductMaster({
     const { error } = await supabase
       .from("product_master")
       .delete()
-      .eq("id", id);
+      .eq("id", id)
+      .eq("workspace_id", workspaceId);
 
     if (error) {
       setError(error.message);
