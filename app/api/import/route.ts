@@ -347,6 +347,22 @@ function productPerformanceMapping(row:Row,platform:string):ProductPerformanceMa
   return common;
 }
 
+function hasMeaningfulRaw(rows:Row[],header:string){
+  if(!header)return false;
+  return rows.some(row=>{
+    const raw=clean(row?.[header]);
+    if(!raw)return false;
+    const normalized=raw.replace(/Rp|IDR|USD|%/gi,"").replace(/[^0-9]/g,"");
+    return /[1-9]/.test(normalized);
+  });
+}
+
+function validateParsedMetric(rows:Row[],header:string,payloads:Row[],field:string,label:string){
+  if(!header||!hasMeaningfulRaw(rows,header))return "";
+  const parsed=payloads.some(row=>Math.abs(Number(row?.[field]||0))>0);
+  return parsed?"":`${label} terdeteksi pada file tetapi seluruh nilainya menjadi 0 setelah parsing.`;
+}
+
 function creatorKeys(row: Row) {
   const name = clean(value(row, ["Creator name","Creator Name","Nama Affiliate","Nama Afiliasi","Affiliate Name","Creator","Nama Creator","Username Affiliate","Username"]));
   const username = clean(value(row, ["Username Affiliate","Username","Affiliate Username","Creator Username","Nama Pengguna"]));
@@ -565,6 +581,23 @@ export async function POST(req: NextRequest) {
         });
       }
 
+      if(dataType==="performance"&&perfMap){
+        const issues=[
+          validateParsedMetric(rows,perfMap.gmv,payloads,"gmv","GMV"),
+          validateParsedMetric(rows,perfMap.qty,payloads,"qty","Qty / Produk Terjual"),
+          validateParsedMetric(rows,perfMap.orders,payloads,"orders","Orders / Pesanan"),
+          validateParsedMetric(rows,perfMap.commission,payloads,"commission","Komisi")
+        ].filter(Boolean);
+        if(issues.length){
+          return NextResponse.json({
+            ok:false,
+            error:"Validasi angka gagal: "+issues.join(" "),
+            detected_platform:platform,
+            headers:Object.keys(rows[0]||{}),
+            mapping:mappingSummary(perfMap)
+          },{status:422});
+        }
+      }
       if(payloads.length){
         const byKey=new Map<string,Row>();
         for(const payload of payloads){
@@ -614,13 +647,14 @@ export async function POST(req: NextRequest) {
         const username=dataType==="performance"&&perfMap
           ? clean(mappedRaw(row,perfMap.username))||creatorName
           : clean(value(row,["Username Affiliate","Username"]))||creatorName;
-        let gmv=0,qty=0,orders=0,commission=0,refund=0,clicks=0,buyers=0,newBuyers=0,liveGmv=0,videoGmv=0,showcaseGmv=0,ctr=0,ctor=0,liveCount=0,videoCount=0,sampleContent=0,sampleSent=0,impressions=0,videoViews=0;
+        let gmv=0,qty=0,orders=0,commission=0,refund=0,refundQty=0,clicks=0,buyers=0,newBuyers=0,liveGmv=0,videoGmv=0,showcaseGmv=0,ctr=0,ctor=0,liveCount=0,videoCount=0,sampleContent=0,sampleSent=0,impressions=0,videoViews=0;
         if(dataType==="performance"&&perfMap&&moneyStyles){
           gmv=moneyValue(mappedRaw(row,perfMap.gmv),moneyStyles.gmv);
           qty=countNum(mappedRaw(row,perfMap.qty));
           orders=countNum(mappedRaw(row,perfMap.orders));
           commission=moneyValue(mappedRaw(row,perfMap.commission),moneyStyles.commission);
           refund=moneyValue(mappedRaw(row,perfMap.refund),moneyStyles.refund);
+          refundQty=countNum(mappedRaw(row,perfMap.refundQty));
           clicks=countNum(mappedRaw(row,perfMap.clicks));
           buyers=countNum(mappedRaw(row,perfMap.buyers));
           newBuyers=countNum(mappedRaw(row,perfMap.newBuyers));
@@ -635,6 +669,7 @@ export async function POST(req: NextRequest) {
           sampleSent=countNum(mappedRaw(row,perfMap.sampleSent));
           impressions=countNum(mappedRaw(row,perfMap.impressions));
           videoViews=countNum(mappedRaw(row,perfMap.videoViews));
+          if(clicks===0&&impressions>0&&ctr>0)clicks=Math.round(impressions*ctr/100);
         }else{
           gmv=moneyNum(value(row,["GMV","Omzet Penjualan(Rp)","Omzet Penjualan"]));
           qty=countNum(value(row,["Qty Paid","Quantity","Qty","Produk Terjual"]));
@@ -649,7 +684,7 @@ export async function POST(req: NextRequest) {
         }
         const orderId=clean(value(row,["Order ID","OrderID","ID Pesanan"]));const itemId=clean(value(row,["Item ID","ItemID","ID Item"]));const tx=clean(value(row,["Transaction ID","TransactionID","ID Transaksi"]));const sku=dataType==="sales"?clean(value(row,["SKU","Kode SKU"],false)):"";const product=dataType==="sales"?clean(value(row,["Product Name","Nama Produk","Produk"],false)):"";const dataDate=dataType==="sales"?dateValue(value(row,["Transaction Date","Tanggal Transaksi","Tanggal","Date","Data Date"]),start):start;const unique=dataType==="performance"?`creator:${creatorId}|start:${start||"all"}|end:${end||start||"all"}`:tx||[orderId,itemId].filter(Boolean).join("|")||`${fileHash||importId}|${batchIndex}-${i}`;
         const storeName=clean(value(row,["Store Name","Shop Name","Nama Toko","Toko","Seller Name","Store","Shop"],false));const storeId=clean(value(row,["Store ID","Shop ID","Seller ID","ID Toko"],false));const costProduct=moneyNum(value(row,["HPP","Cost Product","Product Cost","Harga Modal"],false));const shippingCost=moneyNum(value(row,["Shipping Cost","Ongkir","Biaya Ongkir"],false));const adsSpend=moneyNum(value(row,["Ads Spend","Ad Spend","Biaya Ads","Iklan"],false));const points=num(value(row,["Points","Point","Poin"],false));
-        payloads.push({workspace_id:workspaceId,record_key:`${dataType}|${workspaceId}|${platform}|${unique}`,data_type:dataType,transaction_id:tx||null,order_id:orderId||null,item_id:itemId||null,data_date:dataDate||null,end_date:end||dataDate||null,creator_id:creatorId,creator_name:creatorName,username,platform,channel:dataType==="performance"?"Affiliate Performance":clean(value(row,["Channel","Saluran"]))||"Affiliate",store_name:storeName||null,store_id:storeId||null,sku:sku||null,product_name:product||null,category:dataType==="sales"?clean(value(row,["Category","Kategori"],false))||null:null,qty,orders:orders||(orderId?1:0),gmv,refund,commission,cost_product:costProduct,shipping_cost:shippingCost,ads_spend:adsSpend,points,clicks,buyers,new_buyers:newBuyers,live_gmv:liveGmv,video_gmv:videoGmv,showcase_gmv:showcaseGmv,ctr,ctor,live_count:liveCount,video_count:videoCount,sample_content:sampleContent,sample_sent:sampleSent,impressions,video_views:videoViews,source_file:filename,imported_at:new Date().toISOString(),import_id:importId,updated_at:new Date().toISOString()});
+        payloads.push({workspace_id:workspaceId,record_key:`${dataType}|${workspaceId}|${platform}|${unique}`,data_type:dataType,transaction_id:tx||null,order_id:orderId||null,item_id:itemId||null,data_date:dataDate||null,end_date:end||dataDate||null,creator_id:creatorId,creator_name:creatorName,username,platform,channel:dataType==="performance"?"Affiliate Performance":clean(value(row,["Channel","Saluran"]))||"Affiliate",store_name:storeName||null,store_id:storeId||null,sku:sku||null,product_name:product||null,category:dataType==="sales"?clean(value(row,["Category","Kategori"],false))||null:null,qty,orders:orders||(orderId?1:0),gmv,refund,refund_qty:refundQty,commission,cost_product:costProduct,shipping_cost:shippingCost,ads_spend:adsSpend,points,clicks,buyers,new_buyers:newBuyers,live_gmv:liveGmv,video_gmv:videoGmv,showcase_gmv:showcaseGmv,ctr,ctor,live_count:liveCount,video_count:videoCount,sample_content:sampleContent,sample_sent:sampleSent,impressions,video_views:videoViews,source_file:filename,imported_at:new Date().toISOString(),import_id:importId,updated_at:new Date().toISOString()});
       }
       if(payloads.length){
         const byKey=new Map<string,Row>();
