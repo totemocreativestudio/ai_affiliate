@@ -21,6 +21,7 @@ export default function DatabaseCenter({ workspaceId }: Props) {
   const [verifyCode,setVerifyCode]=useState("");
   const [verifyInput,setVerifyInput]=useState("");
   const [deleteBusy,setDeleteBusy]=useState(false);
+  const [deleteStep,setDeleteStep]=useState<"confirm"|"verify">("confirm");
 
   async function load(targetPage = page) {
     setLoading(true); setError("");
@@ -42,9 +43,15 @@ export default function DatabaseCenter({ workspaceId }: Props) {
 
   function requestDelete(row:Row){
     setDeleteTarget(row);
-    setVerifyCode(String(Math.floor(100+Math.random()*900)));
+    setDeleteStep("confirm");
+    setVerifyCode("");
     setVerifyInput("");
     setError("");
+  }
+  function beginDeleteVerification(){
+    setVerifyCode(String(Math.floor(100+Math.random()*900)));
+    setVerifyInput("");
+    setDeleteStep("verify");
   }
   async function confirmDelete(){
     if(!deleteTarget)return;
@@ -54,7 +61,7 @@ export default function DatabaseCenter({ workspaceId }: Props) {
       const r=await fetch("/api/database/import",{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({workspace_id:workspaceId,import_id:deleteTarget.import_id})});
       const d=await r.json();
       if(!r.ok||!d.ok)throw new Error(d.error||"Gagal menghapus import.");
-      setDeleteTarget(null);setVerifyInput("");setVerifyCode("");
+      setDeleteTarget(null);setDeleteStep("confirm");setVerifyInput("");setVerifyCode("");
       await load(1);
       window.dispatchEvent(new CustomEvent("lumaway-database-updated",{detail:{deleted_import_id:d.import_id}}));
     }catch(e:any){setError(e?.message||"Gagal menghapus import.")}finally{setDeleteBusy(false)}
@@ -76,13 +83,19 @@ export default function DatabaseCenter({ workspaceId }: Props) {
     </div>
     {deleteTarget&&<div className="confirm-overlay" onMouseDown={e=>{if(e.target===e.currentTarget&&!deleteBusy)setDeleteTarget(null)}}>
       <div className="confirm-card">
-        <h3>Hapus data import?</h3>
-        <p>Anda yakin untuk hapus <b>{deleteTarget.filename}</b>?</p>
-        <div className="confirm-warning">Data database yang berasal dari import ini akan ikut dihapus. Tindakan ini tidak dapat dibatalkan.</div>
-        <label>Kode persetujuan <strong className="verify-code">{verifyCode}</strong>
-          <input inputMode="numeric" maxLength={3} value={verifyInput} onChange={e=>setVerifyInput(e.target.value.replace(/\D/g,"").slice(0,3))} placeholder="Masukkan 3 angka"/>
-        </label>
-        <div className="button-row"><button className="secondary" disabled={deleteBusy} onClick={()=>setDeleteTarget(null)}>TIDAK</button><button className="danger" disabled={deleteBusy||verifyInput!==verifyCode} onClick={()=>void confirmDelete()}>{deleteBusy?"Menghapus...":"YA, HAPUS"}</button></div>
+        {deleteStep==="confirm"?<>
+          <h3>Hapus data import?</h3>
+          <p>Anda yakin untuk hapus <b>{deleteTarget.filename}</b>?</p>
+          <div className="confirm-warning">Data database yang berasal dari import ini akan ikut dihapus. Tindakan ini tidak dapat dibatalkan.</div>
+          <div className="button-row"><button className="secondary" disabled={deleteBusy} onClick={()=>setDeleteTarget(null)}>TIDAK</button><button className="danger" disabled={deleteBusy} onClick={beginDeleteVerification}>YA</button></div>
+        </>:<>
+          <h3>Verifikasi persetujuan</h3>
+          <p>Masukkan kode 3 angka berikut untuk menyetujui penghapusan <b>{deleteTarget.filename}</b>.</p>
+          <label>Kode persetujuan <strong className="verify-code">{verifyCode}</strong>
+            <input inputMode="numeric" maxLength={3} autoFocus value={verifyInput} onChange={e=>setVerifyInput(e.target.value.replace(/\D/g,"").slice(0,3))} placeholder="Masukkan 3 angka"/>
+          </label>
+          <div className="button-row"><button className="secondary" disabled={deleteBusy} onClick={()=>setDeleteStep("confirm")}>KEMBALI</button><button className="danger" disabled={deleteBusy||verifyInput!==verifyCode} onClick={()=>void confirmDelete()}>{deleteBusy?"Menghapus...":"HAPUS"}</button></div>
+        </>}
       </div>
     </div>}
   </section>;
