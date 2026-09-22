@@ -19,7 +19,11 @@ export async function DELETE(req:NextRequest){
     await admin.from("sales").delete().eq("workspace_id",workspaceId).eq("import_id",importId);
     await admin.from("creator_samples").delete().eq("workspace_id",workspaceId).eq("source_import_id",importId);
     await admin.from("product_hpp_history").delete().eq("workspace_id",workspaceId).eq("source_import_id",importId);
-    await admin.from("product_master").delete().eq("workspace_id",workspaceId).eq("source_import_id",importId);
+    if(record.data_type==="products"){
+      await admin.from("product_master").delete().eq("workspace_id",workspaceId).eq("source_import_id",importId);
+    }else{
+      await admin.from("product_master").update({source_import_id:null}).eq("workspace_id",workspaceId).eq("source_import_id",importId);
+    }
     // Creator rows are intentionally not deleted because they may already be referenced
     // by later imports / Customer 360 history. Only their source link is cleared.
     await admin.from("creators").update({source_import_id:null}).eq("workspace_id",workspaceId).eq("source_import_id",importId);
