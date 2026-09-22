@@ -9,6 +9,11 @@ type Creator = {
   name: string | null;
   username: string | null;
   platform: string | null;
+  affiliate_id: string | null;
+  phone: string | null;
+  payment_type: string | null;
+  ratecard: number | null;
+  status: string | null;
 };
 
 type Product = {
@@ -109,7 +114,7 @@ export default function Listings({
 
         supabase
           .from("creators")
-          .select("id,creator_code,name,username,platform")
+          .select("id,creator_code,name,username,platform,affiliate_id,phone,payment_type,ratecard,status")
           .eq("workspace_id", workspaceId)
           .order("name")
           .limit(7770),
@@ -141,6 +146,12 @@ export default function Listings({
 
   useEffect(() => {
     loadData();
+  }, [workspaceId]);
+
+  useEffect(() => {
+    const refresh = () => { void loadData(); };
+    window.addEventListener("lumaway-database-updated", refresh as EventListener);
+    return () => window.removeEventListener("lumaway-database-updated", refresh as EventListener);
   }, [workspaceId]);
 
   function updateField(
@@ -379,6 +390,14 @@ async function saveListing() {
     );
   }).slice(0, 50);
 
+  const visibleMasterCreators = creators.filter((creator) => {
+    const q = search.toLowerCase().trim();
+    if (!q) return true;
+    return [creator.creator_code,creator.name,creator.username,creator.platform,creator.affiliate_id,creator.phone,creator.payment_type,creator.status]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(q));
+  });
+
   const visibleRows = rows.filter((row) => {
     const q = search.toLowerCase().trim();
 
@@ -473,6 +492,10 @@ async function saveListing() {
         </div>
       )}
 
+      <div style={{border:"1px solid #e5e7eb",borderRadius:8,padding:14,marginBottom:18,background:"#fff"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:10}}><div><h3 style={{margin:0}}>Master Creator</h3><p style={{margin:"5px 0 0",color:"#777",fontSize:12}}>Data Master Creator dari Upload Center. Digunakan sebagai referensi creator pada Listings.</p></div><span style={{fontSize:12,color:"#667085"}}>{visibleMasterCreators.length} creator</span></div>
+        {visibleMasterCreators.length===0?<p style={{color:"#777"}}>Belum ada Master Creator.</p>:<div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr>{["Code","Creator","Username","Platform","Affiliate ID","Phone","Payment","Ratecard","Status"].map(h=><th key={h} style={{textAlign:"left",padding:8,borderBottom:"1px solid #e5e7eb",whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead><tbody>{visibleMasterCreators.map(creator=><tr key={creator.id}><td style={{padding:8}}>{creator.creator_code||"-"}</td><td style={{padding:8}}><b>{creator.name||"-"}</b></td><td style={{padding:8}}>{creator.username||"-"}</td><td style={{padding:8}}>{creator.platform||"-"}</td><td style={{padding:8}}>{creator.affiliate_id||"-"}</td><td style={{padding:8}}>{creator.phone||"-"}</td><td style={{padding:8}}>{creator.payment_type||"-"}</td><td style={{padding:8}}>Rp {Number(creator.ratecard||0).toLocaleString("id-ID")}</td><td style={{padding:8}}>{creator.status||"-"}</td></tr>)}</tbody></table></div>}
+      </div>
       {showForm && (
         <div
           style={{
