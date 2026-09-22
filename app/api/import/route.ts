@@ -4,7 +4,7 @@ import { getServerContext } from "../../../lib/server-auth";
 
 export const runtime = "nodejs";
 type Row = Record<string, any>;
-const PARSER_VERSION = "universal-v8-pr32-20260922";
+const PARSER_VERSION = "universal-v9-pr33-20260922";
 
 const clean = (v: any) => (v === null || v === undefined ? "" : String(v).trim());
 type NumericKind = "money" | "count" | "percent" | "decimal";
@@ -835,13 +835,61 @@ export async function POST(req: NextRequest) {
     if(existing?.id){const {error}=await admin.from("imports").update(meta).eq("id",existing.id);if(error)throw error}else{const {error}=await admin.from("imports").insert(meta);if(error)throw error}
     const complete=batchIndex+1>=totalBatches;
     let persistedRows:number|null=null;
+    let quality:Row|null=null;
+    let warning:string|null=null;
+
     if(complete&&(dataType==="performance"||dataType==="sales"||dataType==="product_performance")){
       const {count,error:countError}=await admin.from("sales").select("id",{count:"exact",head:true}).eq("workspace_id",workspaceId).eq("import_id",importId);
       if(countError)throw countError;
       persistedRows=Number(count||0);
       if(persistedRows<=0)throw new Error("Import selesai diproses tetapi tidak ada row yang tersimpan ke database.");
+
+      if(dataType==="performance"||dataType==="sales"){
+        const {data:qualityRows,error:qualityError}=await admin.rpc("get_import_metric_quality",{
+          p_workspace_id:workspaceId,
+          p_import_id:importId
+        });
+        if(qualityError)throw qualityError;
+        quality=(qualityRows?.[0]||null) as Row|null;
+
+        if(quality&&Number(quality.total_rows||0)!==persistedRows){
+          const qualityMessage={
+            ...message,
+            parser_version:PARSER_VERSION,
+            quality,
+            validation_error:`Persisted row mismatch: import=${persistedRows}, quality=${Number(quality.total_rows||0)}`
+          };
+          await admin.from("imports").update({
+            status:"Error",
+            message:JSON.stringify(qualityMessage)
+          }).eq("workspace_id",workspaceId).eq("import_id",importId);
+          throw new Error("Validasi import gagal: jumlah row yang tersimpan tidak konsisten. Data tidak dianggap sukses.");
+        }
+
+        if(quality&&Number(quality.total_rows||0)>0&&Number(quality.active_rows||0)===0){
+          warning="Import tersimpan, tetapi seluruh Qty, Orders, GMV, dan Commission bernilai 0. Periksa apakah file sumber memang tidak memiliki transaksi atau mapping header berubah.";
+        }
+
+        await admin.from("imports").update({
+          status:"Success",
+          message:JSON.stringify({...message,parser_version:PARSER_VERSION,quality,warning})
+        }).eq("workspace_id",workspaceId).eq("import_id",importId);
+      }
+
       await notifyTopCreators(admin,workspaceId,ctx.user.id).catch(()=>undefined);
     }
-    return NextResponse.json({ok:true,import_id:importId,stats,complete,persisted_rows:persistedRows,detected_platform:platform,parser_version:PARSER_VERSION,mapping:dataType==="performance"?mappingSummary(performanceMapping(rows[0]||{},platform)):dataType==="product_performance"?productMappingSummary(productPerformanceMapping(rows[0]||{},platform)):null});
+
+    return NextResponse.json({
+      ok:true,
+      import_id:importId,
+      stats,
+      complete,
+      persisted_rows:persistedRows,
+      detected_platform:platform,
+      parser_version:PARSER_VERSION,
+      mapping:dataType==="performance"?mappingSummary(performanceMapping(rows[0]||{},platform)):dataType==="product_performance"?productMappingSummary(productPerformanceMapping(rows[0]||{},platform)):null,
+      quality,
+      warning
+    });
   }catch(error:any){return NextResponse.json({ok:false,error:error?.message||"Import failed."},{status:400})}
 }
