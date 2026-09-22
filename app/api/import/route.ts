@@ -223,6 +223,14 @@ function detectedPlatform(rows: Row[], requested: string) {
   return requested || "Other";
 }
 
+function detectedProductPlatform(rows:Row[],requested:string){
+  const headers=Object.keys(rows[0]||{}).map(norm);
+  const has=(...terms:string[])=>terms.some(term=>headers.some(header=>header.includes(norm(term))));
+  if(has("Product ID","Product name","Items sold","Est. commission","LIVE streams","Refunded GMV","Refunded items sold","Est. flat fee"))return "TikTok";
+  if(has("Kode Item","Nama Item","Harga(Rp)","Omzet Penjualan(Rp)","Produk Terjual","Estimasi Komisi(Rp)"))return "Shopee";
+  return requested||"Other";
+}
+
 type PerformanceMapping = {
   creatorName:string; username:string; affiliateId:string;
   gmv:string; qty:string; orders:string; commission:string; refund:string; refundQty:string;
@@ -291,8 +299,52 @@ function performanceMapping(row:Row,platform:string):PerformanceMapping{
 
 function mappedRaw(row:Row,keyName:string){return keyName?row[keyName]:""}
 
-function mappingSummary(mapping:PerformanceMapping){
+function mappingSummary(mapping:Record<string,string>){
   return Object.fromEntries(Object.entries(mapping).filter(([,header])=>Boolean(header)));
+}
+
+type ProductPerformanceMapping={
+  sku:string;productName:string;price:string;gmv:string;qty:string;orders:string;clicks:string;commission:string;
+  roi:string;buyers:string;newBuyers:string;samples:string;salesCreator:string;liveCount:string;videoCount:string;
+  refund:string;refundQty:string;flatFee:string;
+};
+
+function productPerformanceMapping(row:Row,platform:string):ProductPerformanceMapping{
+  const common:ProductPerformanceMapping={
+    sku:findHeader(row,["Product ID","Kode Item","Item ID","Kode Produk","Product Code","SKU"]),
+    productName:findHeader(row,["Product name","Product Name","Nama Item","Nama Produk","Produk"]),
+    price:findHeader(row,["Harga(Rp)","Harga Rp","Price","Selling Price","Harga"]),
+    gmv:findHeader(row,["GMV","Omzet Penjualan(Rp)","Omzet Penjualan","Sales(Rp)","Sales","Revenue"]),
+    qty:findHeader(row,["Items sold","Item Sold","Produk Terjual","Qty","Quantity","Units Sold"]),
+    orders:findHeader(row,["Pesanan","Orders","Order Count"]),
+    clicks:findHeader(row,["Clicks","Klik"]),
+    commission:findHeader(row,["Est. commission","Est.Commission(Rp)","Estimasi Komisi(Rp)","Estimated Commission","Commission"],["rate","tingkat","persentase","percentage"]),
+    roi:findHeader(row,["ROI"]),
+    buyers:findHeader(row,["Total Pembeli","Total Buyers","Buyers"],["baru","new"]),
+    newBuyers:findHeader(row,["Pembeli Baru","New Buyers","New Buyer"]),
+    samples:findHeader(row,["Samples","Sampel","Sample Sent","Sampel terkirim"]),
+    salesCreator:findHeader(row,["Sales creator","Sales Creator","Creator Sales"]),
+    liveCount:findHeader(row,["LIVE streams","Live Streams","Siaran LIVE","LIVE"]),
+    videoCount:findHeader(row,["Videos","Video","Jumlah Video"],["gmv","view","tayangan"]),
+    refund:findHeader(row,["Refunded GMV","Pengembalian dana","Refund GMV","Refund"]),
+    refundQty:findHeader(row,["Refunded items sold","Refunded Items","Produk yang dikembalikan dananya","Refunded Qty"]),
+    flatFee:findHeader(row,["Est. flat fee","Estimated flat fee","Flat Fee"])
+  };
+  if(platform.toLowerCase()==="shopee"){
+    common.sku=common.sku||findHeader(row,["Kode Item"]);
+    common.productName=common.productName||findHeader(row,["Nama Item"]);
+    common.price=common.price||findHeader(row,["Harga(Rp)"]);
+    common.gmv=common.gmv||findHeader(row,["Omzet Penjualan(Rp)"]);
+    common.qty=common.qty||findHeader(row,["Produk Terjual"]);
+    common.commission=common.commission||findHeader(row,["Estimasi Komisi(Rp)"]);
+  }else if(platform.toLowerCase()==="tiktok"){
+    common.sku=common.sku||findHeader(row,["Product ID"]);
+    common.productName=common.productName||findHeader(row,["Product name"]);
+    common.gmv=common.gmv||findHeader(row,["GMV"]);
+    common.qty=common.qty||findHeader(row,["Items sold"]);
+    common.commission=common.commission||findHeader(row,["Est. commission"]);
+  }
+  return common;
 }
 
 function creatorKeys(row: Row) {
