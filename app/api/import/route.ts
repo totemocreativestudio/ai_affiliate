@@ -4,7 +4,7 @@ import { getServerContext } from "../../../lib/server-auth";
 
 export const runtime = "nodejs";
 type Row = Record<string, any>;
-const PARSER_VERSION = "universal-v3-20260921";
+const PARSER_VERSION = "universal-v4-20260922";
 
 const clean = (v: any) => (v === null || v === undefined ? "" : String(v).trim());
 type NumericKind = "money" | "count" | "percent" | "decimal";
@@ -219,7 +219,7 @@ function detectedPlatform(rows: Row[], requested: string) {
   const headers = Object.keys(rows[0] || {}).map(norm);
   const has = (...terms:string[]) => terms.some(term => headers.some(header => header.includes(norm(term))));
   if (has("GMV dari kreator","Pesanan teratribusi","Perkiraan komisi","GMV dari LIVE kreator","GMV dari video afiliasi")) return "TikTok";
-  if (has("Omzet Penjualan","Estimasi Komisi","ID Affiliates","Nama Affiliate","Total Pembeli")) return "Shopee";
+  if (has("Omzet Penjualan","Estimasi Komisi","ID Affiliates","Nama Affiliate","Affiliate ID","Affiliate Name","Affiliate Username","Sales(Rp)","Item Sold","Est.Commission(Rp)","Total Buyers")) return "Shopee";
   return requested || "Other";
 }
 
@@ -232,7 +232,7 @@ type PerformanceMapping = {
 
 function findHeader(row:Row,candidates:string[],exclude:string[]=[]){
   const headers=Object.keys(row||{});
-  const excluded=exclude.map(norm);
+  const excluded=exclude.map(norm).filter(Boolean);
   const allowed=(header:string)=>!excluded.some(token=>norm(header).includes(token));
   for(const candidate of candidates){
     const exact=headers.find(header=>allowed(header)&&norm(header)===norm(candidate));
@@ -256,10 +256,10 @@ function performanceMapping(row:Row,platform:string):PerformanceMapping{
     creatorName:findHeader(row,["Nama Affiliate","Nama Afiliasi","Affiliate Name","Creator Name","Nama Creator","Creator","Username Affiliate","Username"]),
     username:findHeader(row,["Username Affiliate","Username","Affiliate Username","Nama Pengguna","Creator Username"]),
     affiliateId:findHeader(row,["ID Affiliates","Affiliate ID","ID Affiliate","Creator ID"]),
-    gmv:findHeader(row,["GMV dari kreator","GMV Kreator","Creator GMV","Omzet Penjualan(Rp)","Omzet Penjualan","Total GMV","GMV","Total Penjualan","Nilai Penjualan","Sales Amount","Revenue"],["rate","persentase","growth"]),
-    qty:findHeader(row,["Produk yang terjual dari kreator","Produk Terjual","Jumlah Produk Terjual","Unit Terjual","Item Terjual","Items Sold","Qty Paid","Qty","Quantity","Units Sold"]),
+    gmv:findHeader(row,["GMV dari kreator","GMV Kreator","Creator GMV","Omzet Penjualan(Rp)","Omzet Penjualan","Sales(Rp)","Sales Rp","Sales","Total GMV","GMV","Total Penjualan","Nilai Penjualan","Sales Amount","Revenue"],["rate","persentase","growth"]),
+    qty:findHeader(row,["Produk yang terjual dari kreator","Produk Terjual","Jumlah Produk Terjual","Unit Terjual","Item Terjual","Item Sold","Items Sold","Qty Paid","Qty","Quantity","Units Sold"]),
     orders:findHeader(row,["Pesanan teratribusi","Pesanan","Jumlah Pesanan","Total Pesanan","Attributed Orders","Orders","Order Count"],["id","rate"]),
-    commission:findHeader(row,["Perkiraan komisi","Estimasi Komisi(Rp)","Estimasi Komisi","Komisi Affiliate","Komisi Afiliasi","Total Komisi","Estimated Commission","Commission","Komisi"],["rate","tingkat","persentase","%"]),
+    commission:findHeader(row,["Perkiraan komisi","Estimasi Komisi(Rp)","Estimasi Komisi","Est.Commission(Rp)","Est. Commission(Rp)","Est Commission(Rp)","Est.Commission","Estimated Commission(Rp)","Estimated Commission","Komisi Affiliate","Komisi Afiliasi","Total Komisi","Commission","Komisi"],["rate","tingkat","persentase","percentage"]),
     refund:findHeader(row,["Pengembalian dana","Refund","Refund Amount","Nilai Refund"]),
     clicks:findHeader(row,["Clicks","Klik Produk","Product Clicks","Klik"]),
     buyers:findHeader(row,["Total Pembeli","Pembeli","Buyers","Jumlah Pembeli"],["baru","new"]),
@@ -277,9 +277,13 @@ function performanceMapping(row:Row,platform:string):PerformanceMapping{
     videoViews:findHeader(row,["Tayangan video","Video Views","Views Video"])
   };
   if(platform.toLowerCase()==="shopee"){
-    common.gmv=common.gmv||findHeader(row,["Penjualan Affiliate","Penjualan Afiliasi","Sales"]);
-    common.orders=common.orders||findHeader(row,["Pesanan dari Affiliate","Pesanan Afiliasi"]);
-    common.qty=common.qty||findHeader(row,["Produk Terjual dari Affiliate","Produk dari Affiliate"]);
+    common.gmv=common.gmv||findHeader(row,["Sales(Rp)","Sales Rp","Penjualan Affiliate","Penjualan Afiliasi","Sales"]);
+    common.orders=common.orders||findHeader(row,["Orders","Pesanan dari Affiliate","Pesanan Afiliasi"]);
+    common.qty=common.qty||findHeader(row,["Item Sold","Items Sold","Produk Terjual dari Affiliate","Produk dari Affiliate"]);
+    common.commission=common.commission||findHeader(row,["Est.Commission(Rp)","Est. Commission(Rp)","Est Commission(Rp)","Estimated Commission(Rp)","Estimated Commission"]);
+    common.clicks=common.clicks||findHeader(row,["Clicks"]);
+    common.buyers=common.buyers||findHeader(row,["Total Buyers"]);
+    common.newBuyers=common.newBuyers||findHeader(row,["New Buyers"]);
   }
   return common;
 }
