@@ -488,6 +488,7 @@ export async function POST(req: NextRequest) {
         flatFee:inferMoneyStyle(rows,mapping.flatFee)
       };
       const payloads:Row[]=[];
+      const productMasterPayloads:Row[]=[];
       for(let i=0;i<rows.length;i++){
         const row=rows[i];
         const sku=clean(mappedRaw(row,mapping.sku));
@@ -513,14 +514,17 @@ export async function POST(req: NextRequest) {
         const recordKey=`product_performance|${workspaceId}|${platform}|${start||"all"}|${end||start||"all"}|${keySku.toLowerCase()}`;
         payloads.push({workspace_id:workspaceId,record_key:recordKey,data_type:"product_performance",data_date:dataDate,end_date:end||dataDate,creator_id:null,creator_name:null,username:null,platform,channel:"Product Performance",sku:keySku,product_name:productName||keySku,qty,orders,gmv,refund,refund_qty:refundQty,commission,clicks,buyers,new_buyers:newBuyers,live_count:liveCount,video_count:videoCount,sample_sent:sampleSent,sales_creator:salesCreator,flat_fee:flatFee,source_file:filename,imported_at:new Date().toISOString(),import_id:importId,updated_at:new Date().toISOString()});
         const skuNorm=keySku.toLowerCase();
-        const productPayload={workspace_id:workspaceId,sku:keySku,sku_normalized:skuNorm,product_name:productName||keySku,selling_price:sellingPrice,status:"Active",source_import_id:importId,updated_at:new Date().toISOString()};
-        const {data:existingProduct,error:productLookupError}=await admin.from("product_master").select("id").eq("workspace_id",workspaceId).eq("sku_normalized",skuNorm).maybeSingle();
-        if(productLookupError)throw productLookupError;
-        if(existingProduct?.id){const {error}=await admin.from("product_master").update(productPayload).eq("id",existingProduct.id);if(error)throw error}
-        else{const {error}=await admin.from("product_master").insert(productPayload);if(error)throw error}
+        productMasterPayloads.push({workspace_id:workspaceId,sku:keySku,sku_normalized:skuNorm,product_name:productName||keySku,selling_price:sellingPrice,status:"Active",source_import_id:importId,updated_at:new Date().toISOString()});
       }
       const byKey=new Map<string,Row>();for(const payload of payloads){if(byKey.has(payload.record_key))duplicates++;byKey.set(payload.record_key,payload)}
       const deduped=[...byKey.values()];
+      const productsBySku=new Map<string,Row>();for(const payload of productMasterPayloads)productsBySku.set(String(payload.sku_normalized),payload);
+      const productRows=[...productsBySku.values()];
+      for(let i=0;i<productRows.length;i+=500){
+        const part=productRows.slice(i,i+500);
+        const {error:productError}=await admin.from("product_master").upsert(part,{onConflict:"workspace_id,sku_normalized"});
+        if(productError)throw productError;
+      }
       if(deduped.length){const {data:saved,error}=await admin.from("sales").upsert(deduped,{onConflict:"record_key"}).select("id");if(error)throw error;inserted+=saved?.length||deduped.length}
     }else if(dataType==="performance"||dataType==="sales"){
       const payloads:Row[]=[];
