@@ -12,34 +12,39 @@ export default function DatabaseCenter({ workspaceId }: Props) {
   const [end, setEnd] = useState("");
   const [platform, setPlatform] = useState("");
   const [page, setPage] = useState(1);
-  const [data, setData] = useState<any>({ imports: [], sales: [], total: 0 });
+  const [productPage, setProductPage] = useState(1);
+  const [data, setData] = useState<any>({ imports: [], sales: [], total: 0, product_performance: [], product_total: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [importSort,setImportSort]=useState({key:"imported_at",asc:false});
   const [salesSort,setSalesSort]=useState({key:"data_date",asc:false});
+  const [productSort,setProductSort]=useState({key:"gmv",asc:false});
   const [deleteTarget,setDeleteTarget]=useState<Row|null>(null);
   const [verifyCode,setVerifyCode]=useState("");
   const [verifyInput,setVerifyInput]=useState("");
   const [deleteBusy,setDeleteBusy]=useState(false);
   const [deleteStep,setDeleteStep]=useState<"confirm"|"verify">("confirm");
 
-  async function load(targetPage = page) {
+  async function load(targetPage = page, targetProductPage = productPage) {
     setLoading(true); setError("");
     try {
-      const q = new URLSearchParams({ workspace_id: workspaceId, page: String(targetPage), page_size: "50" });
+      const q = new URLSearchParams({ workspace_id: workspaceId, page: String(targetPage), product_page: String(targetProductPage), page_size: "50" });
       if (start) q.set("start", start); if (end) q.set("end", end); if (platform) q.set("platform", platform);
       const r = await fetch(`/api/database?${q.toString()}`); const d = await r.json();
-      if (!r.ok || !d.ok) throw new Error(d.error || "Gagal memuat database."); setData(d); setPage(targetPage);
+      if (!r.ok || !d.ok) throw new Error(d.error || "Gagal memuat database."); setData(d); setPage(targetPage); setProductPage(targetProductPage);
     } catch (e: any) { setError(e?.message || "Gagal memuat database."); } finally { setLoading(false); }
   }
 
-  useEffect(() => { load(1); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [workspaceId]);
-  useEffect(()=>{const refresh=()=>void load(1);window.addEventListener("lumaway-database-updated",refresh as EventListener);return()=>window.removeEventListener("lumaway-database-updated",refresh as EventListener)},[workspaceId]);
+  useEffect(() => { load(1,1); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [workspaceId]);
+  useEffect(()=>{const refresh=()=>void load(1,1);window.addEventListener("lumaway-database-updated",refresh as EventListener);return()=>window.removeEventListener("lumaway-database-updated",refresh as EventListener)},[workspaceId]);
   const totalPages = Math.max(1, Math.ceil(Number(data.total || 0) / 50));
+  const productTotalPages = Math.max(1, Math.ceil(Number(data.product_total || 0) / 50));
   const sortedImports=useMemo(()=>sortRows(data.imports||[],importSort.key,importSort.asc),[data.imports,importSort]);
   const sortedSales=useMemo(()=>sortRows(data.sales||[],salesSort.key,salesSort.asc),[data.sales,salesSort]);
+  const sortedProducts=useMemo(()=>sortRows(data.product_performance||[],productSort.key,productSort.asc),[data.product_performance,productSort]);
   const toggleImportSort=(key:string)=>setImportSort(v=>({key,asc:v.key===key?!v.asc:true}));
   const toggleSalesSort=(key:string)=>setSalesSort(v=>({key,asc:v.key===key?!v.asc:true}));
+  const toggleProductSort=(key:string)=>setProductSort(v=>({key,asc:v.key===key?!v.asc:true}));
 
   function requestDelete(row:Row){
     setDeleteTarget(row);
@@ -62,24 +67,32 @@ export default function DatabaseCenter({ workspaceId }: Props) {
       const d=await r.json();
       if(!r.ok||!d.ok)throw new Error(d.error||"Gagal menghapus import.");
       setDeleteTarget(null);setDeleteStep("confirm");setVerifyInput("");setVerifyCode("");
-      await load(1);
+      await load(1,1);
       window.dispatchEvent(new CustomEvent("lumaway-database-updated",{detail:{deleted_import_id:d.import_id}}));
     }catch(e:any){setError(e?.message||"Gagal menghapus import.")}finally{setDeleteBusy(false)}
   }
 
   return <section id="database" className="legacy-page-anchor">
-    <div className="page-head"><div><div className="eyebrow">DATABASE</div><h1>Database</h1><p className="muted">Upload history dan Latest Sales / Performance dari workspace aktif.</p></div></div>
-    <div className="card"><div className="section-head"><div><h3>Upload / Import History</h3><p className="muted">50 import terbaru.</p></div><button className="secondary" onClick={() => load(1)}>Refresh</button></div><div className="scroll"><table><thead><tr>{[["import_id","Import ID"],["filename","File"],["data_type","Type"],["platform","Platform"],["start_date","Period"],["rows_imported","Rows"],["status","Status"],["imported_at","Imported"]].map(([key,label])=><th key={key}><button className="table-sort" onClick={()=>toggleImportSort(key)}>{label}<span>{importSort.key===key?(importSort.asc?"↑":"↓"):"↕"}</span></button></th>)}<th>Action</th></tr></thead><tbody>
+    <div className="page-head"><div><div className="eyebrow">DATABASE</div><h1>Database</h1><p className="muted">Upload history, Latest Sales / Performance affiliate, dan Latest Product Performance dipisahkan agar data creator dan produk tidak tercampur.</p></div></div>
+    <div className="card"><div className="section-head"><div><h3>Upload / Import History</h3><p className="muted">50 import terbaru.</p></div><button className="secondary" onClick={() => load(1,1)}>Refresh</button></div><div className="scroll"><table><thead><tr>{[["import_id","Import ID"],["filename","File"],["data_type","Type"],["platform","Platform"],["start_date","Period"],["rows_imported","Rows"],["status","Status"],["imported_at","Imported"]].map(([key,label])=><th key={key}><button className="table-sort" onClick={()=>toggleImportSort(key)}>{label}<span>{importSort.key===key?(importSort.asc?"↑":"↓"):"↕"}</span></button></th>)}<th>Action</th></tr></thead><tbody>
       {sortedImports.map((x: Row) => <tr key={x.id || x.import_id}><td>{x.import_id}</td><td>{x.filename}</td><td>{x.data_type}</td><td>{x.platform}</td><td>{x.start_date || "-"} → {x.end_date || "-"}</td><td>{Number(x.rows_imported || 0).toLocaleString("id-ID")}</td><td>{x.status}</td><td>{x.imported_at || "-"}</td><td><button className="danger-lite" onClick={()=>requestDelete(x)}>Hapus</button></td></tr>)}
       {!data.imports?.length && <tr><td colSpan={9}>Belum ada import.</td></tr>}
     </tbody></table></div></div>
-    <div className="card"><h3>Latest Sales / Performance</h3><div className="filters"><label>Start <span className="field-note">Opsional</span><input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></label><label>End <span className="field-note">Opsional</span><input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></label><label>Platform<select value={platform} onChange={(e) => setPlatform(e.target.value)}><option value="">All</option><option>TikTok</option><option>Shopee</option><option>Instagram</option></select></label><button onClick={() => load(1)} disabled={loading}>{loading ? "Loading..." : "Apply"}</button><button className="secondary" onClick={() => { setStart(""); setEnd(""); setPlatform(""); setTimeout(() => load(1), 0); }}>Reset</button></div>
+    <div className="card"><h3>Latest Sales / Performance</h3><div className="filters"><label>Start <span className="field-note">Opsional</span><input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></label><label>End <span className="field-note">Opsional</span><input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></label><label>Platform<select value={platform} onChange={(e) => setPlatform(e.target.value)}><option value="">All</option><option>TikTok</option><option>Shopee</option><option>Instagram</option></select></label><button onClick={() => load(1,1)} disabled={loading}>{loading ? "Loading..." : "Apply"}</button><button className="secondary" onClick={() => { setStart(""); setEnd(""); setPlatform(""); setPage(1); setProductPage(1); setTimeout(() => load(1,1), 0); }}>Reset</button></div>
       {error && <div className="flash error">{error}</div>}
       <div className="scroll"><table><thead><tr>{[["data_date","Date"],["creator_name","Creator"],["platform","Platform"],["channel","Channel"],["sku","SKU"],["product_name","Product"],["qty","Qty"],["orders","Orders"],["gmv","GMV"],["commission","Commission"]].map(([key,label])=><th key={key}><button className="table-sort" onClick={()=>toggleSalesSort(key)}>{label}<span>{salesSort.key===key?(salesSort.asc?"↑":"↓"):"↕"}</span></button></th>)}</tr></thead><tbody>
         {sortedSales.map((x: Row) => <tr key={x.id}><td>{x.data_date || "-"}</td><td>{x.creator_name || x.username || "-"}</td><td>{x.platform || "-"}</td><td>{x.channel || "-"}</td><td>{x.sku || "-"}</td><td>{x.product_name || "-"}</td><td>{Number(x.qty || 0).toLocaleString("id-ID")}</td><td>{Number(x.orders || 0).toLocaleString("id-ID")}</td><td>{money(x.gmv)}</td><td>{money(x.commission)}</td></tr>)}
         {!data.sales?.length && <tr><td colSpan={10}>Tidak ada data untuk filter ini.</td></tr>}
       </tbody></table></div>
-      <div className="pager"><span className="pager-info">Page {page} / {totalPages} · {Number(data.total || 0).toLocaleString("id-ID")} row</span><div className="button-row"><button className="secondary" disabled={page <= 1 || loading} onClick={() => load(page - 1)}>Previous</button><button className="secondary" disabled={page >= totalPages || loading} onClick={() => load(page + 1)}>Next</button></div></div>
+      <div className="pager"><span className="pager-info">Page {page} / {totalPages} · {Number(data.total || 0).toLocaleString("id-ID")} row</span><div className="button-row"><button className="secondary" disabled={page <= 1 || loading} onClick={() => load(page - 1,productPage)}>Previous</button><button className="secondary" disabled={page >= totalPages || loading} onClick={() => load(page + 1,productPage)}>Next</button></div></div>
+    </div>
+    <div className="card">
+      <div className="section-head"><div><h3>Latest Product Performance</h3><p className="muted">Data Product Performance ditampilkan terpisah dari data affiliate/creator. Filter Start, End, dan Platform mengikuti filter di atas.</p></div><span className="role-badge">{Number(data.product_total || 0).toLocaleString("id-ID")} row</span></div>
+      <div className="scroll"><table><thead><tr>{[["data_date","Date"],["platform","Platform"],["sku","SKU / Product ID"],["product_name","Product"],["qty","Qty"],["orders","Orders"],["gmv","GMV"],["commission","Commission"],["clicks","Clicks"],["buyers","Buyers"],["new_buyers","New Buyers"],["refund","Refund GMV"],["refund_qty","Item Refund"],["roi","ROI"]].map(([key,label])=><th key={key}><button className="table-sort" onClick={()=>toggleProductSort(key)}>{label}<span>{productSort.key===key?(productSort.asc?"↑":"↓"):"↕"}</span></button></th>)}</tr></thead><tbody>
+        {sortedProducts.map((x: Row) => <tr key={x.id}><td>{x.data_date || "-"}</td><td>{x.platform || "-"}</td><td>{x.sku || "-"}</td><td>{x.product_name || "-"}</td><td>{Number(x.qty || 0).toLocaleString("id-ID")}</td><td>{Number(x.orders || 0).toLocaleString("id-ID")}</td><td>{money(x.gmv)}</td><td>{money(x.commission)}</td><td>{Number(x.clicks || 0).toLocaleString("id-ID")}</td><td>{Number(x.buyers || 0).toLocaleString("id-ID")}</td><td>{Number(x.new_buyers || 0).toLocaleString("id-ID")}</td><td>{money(x.refund)}</td><td>{Number(x.refund_qty || 0).toLocaleString("id-ID")}</td><td>{Number(x.roi || 0).toFixed(2)}x</td></tr>)}
+        {!data.product_performance?.length && <tr><td colSpan={14}>Tidak ada Product Performance untuk filter ini.</td></tr>}
+      </tbody></table></div>
+      <div className="pager"><span className="pager-info">Page {productPage} / {productTotalPages} · {Number(data.product_total || 0).toLocaleString("id-ID")} row</span><div className="button-row"><button className="secondary" disabled={productPage <= 1 || loading} onClick={() => load(page,productPage - 1)}>Previous</button><button className="secondary" disabled={productPage >= productTotalPages || loading} onClick={() => load(page,productPage + 1)}>Next</button></div></div>
     </div>
     {deleteTarget&&<div className="confirm-overlay" onMouseDown={e=>{if(e.target===e.currentTarget&&!deleteBusy)setDeleteTarget(null)}}>
       <div className="confirm-card">
