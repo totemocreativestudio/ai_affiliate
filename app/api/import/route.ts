@@ -703,19 +703,19 @@ export async function POST(req: NextRequest) {
     const {data:existing}=await admin.from("imports").select("id,rows_imported,message").eq("workspace_id",workspaceId).eq("import_id",importId).maybeSingle();
     let prev:any={};try{prev=JSON.parse(existing?.message||"{}")}catch{}
     const stats={detected:Number(prev.detected||0)+rows.length,inserted:Number(prev.inserted||0)+inserted,updated:Number(prev.updated||0)+updated,skipped:Number(prev.skipped||0)+skipped,duplicates:Number(prev.duplicates||0)+duplicates,errors:Number(prev.errors||0)};
-    const currentMapping=dataType==="performance"?mappingSummary(performanceMapping(rows[0]||{},platform)):undefined;
+    const currentMapping=dataType==="performance"?mappingSummary(performanceMapping(rows[0]||{},platform)):dataType==="product_performance"?mappingSummary(productPerformanceMapping(rows[0]||{},platform)):undefined;
     const message={...stats,parser_version:PARSER_VERSION,mapping:currentMapping||prev.mapping||null};
     const meta={workspace_id:workspaceId,import_id:importId,filename,data_type:dataType,platform,start_date:start||null,end_date:end||null,rows_imported:Number(existing?.rows_imported||0)+inserted+updated,status:batchIndex+1>=totalBatches?"Success":"Processing",imported_at:new Date().toISOString(),message:JSON.stringify(message),file_hash:fileHash||null};
     if(existing?.id){const {error}=await admin.from("imports").update(meta).eq("id",existing.id);if(error)throw error}else{const {error}=await admin.from("imports").insert(meta);if(error)throw error}
     const complete=batchIndex+1>=totalBatches;
     let persistedRows:number|null=null;
-    if(complete&&(dataType==="performance"||dataType==="sales")){
+    if(complete&&(dataType==="performance"||dataType==="sales"||dataType==="product_performance")){
       const {count,error:countError}=await admin.from("sales").select("id",{count:"exact",head:true}).eq("workspace_id",workspaceId).eq("import_id",importId);
       if(countError)throw countError;
       persistedRows=Number(count||0);
       if(persistedRows<=0)throw new Error("Import selesai diproses tetapi tidak ada row yang tersimpan ke database.");
-      await notifyTopCreators(admin,workspaceId,ctx.user.id).catch(()=>undefined);
+      if(dataType==="performance"||dataType==="sales")await notifyTopCreators(admin,workspaceId,ctx.user.id).catch(()=>undefined);
     }
-    return NextResponse.json({ok:true,import_id:importId,stats,complete,persisted_rows:persistedRows,detected_platform:platform,parser_version:PARSER_VERSION,mapping:dataType==="performance"?mappingSummary(performanceMapping(rows[0]||{},platform)):null});
+    return NextResponse.json({ok:true,import_id:importId,stats,complete,persisted_rows:persistedRows,detected_platform:platform,parser_version:PARSER_VERSION,mapping:dataType==="performance"?mappingSummary(performanceMapping(rows[0]||{},platform)):dataType==="product_performance"?mappingSummary(productPerformanceMapping(rows[0]||{},platform)):null});
   }catch(error:any){return NextResponse.json({ok:false,error:error?.message||"Import failed."},{status:400})}
 }
