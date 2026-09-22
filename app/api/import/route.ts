@@ -420,7 +420,7 @@ async function ensureCreator(admin: any, workspaceId: string, row: Row, platform
 
 export async function POST(req: NextRequest) {
   try {
-    const b=await req.json(); const workspaceId=clean(b.workspace_id); const dataType=clean(b.data_type); const requestedPlatform=clean(b.platform)||"Other"; const start=clean(b.start_date); const end=clean(b.end_date); const filename=clean(b.filename)||"upload"; const fileHash=clean(b.file_hash); const importId=clean(b.import_id)||`IMP-${randomUUID().replace(/-/g,"").slice(0,8).toUpperCase()}`; const rows:Row[]=Array.isArray(b.rows)?b.rows:[]; const platform=dataType==="performance"?detectedPlatform(rows,requestedPlatform):requestedPlatform; const batchIndex=Number(b.batch_index||0); const totalBatches=Math.max(1,Number(b.total_batches||1)); const force=Boolean(b.force_reimport);
+    const b=await req.json(); const workspaceId=clean(b.workspace_id); const dataType=clean(b.data_type); const requestedPlatform=clean(b.platform)||"Other"; const start=clean(b.start_date); const end=clean(b.end_date); const filename=clean(b.filename)||"upload"; const fileHash=clean(b.file_hash); const importId=clean(b.import_id)||`IMP-${randomUUID().replace(/-/g,"").slice(0,8).toUpperCase()}`; const rows:Row[]=Array.isArray(b.rows)?b.rows:[]; const platform=dataType==="performance"?detectedPlatform(rows,requestedPlatform):dataType==="product_performance"?detectedProductPlatform(rows,requestedPlatform):requestedPlatform; const batchIndex=Number(b.batch_index||0); const totalBatches=Math.max(1,Number(b.total_batches||1)); const force=Boolean(b.force_reimport);
     if(!workspaceId||!dataType||!rows.length)return NextResponse.json({ok:false,error:"Workspace, jenis data, dan rows wajib diisi."},{status:400});
     const ctx=await getServerContext(workspaceId); if(!ctx.canManage)return NextResponse.json({ok:false,error:"Role Anda tidak dapat melakukan import."},{status:403}); const {admin}=ctx;
     if(batchIndex===0&&fileHash){
@@ -442,12 +442,12 @@ export async function POST(req: NextRequest) {
     }
     let inserted=0,updated=0,skipped=0,duplicates=0;
 
-    if(batchIndex===0&&dataType==="performance"){
+    if(batchIndex===0&&(dataType==="performance"||dataType==="product_performance")){
       // Affiliate Performance is a period snapshot. Keep exactly one snapshot
       // per workspace + platform + period, regardless of filename/hash.
       let cleanup=admin.from("sales").delete()
         .eq("workspace_id",workspaceId)
-        .eq("data_type","performance")
+        .eq("data_type",dataType)
         .ilike("platform",platform);
       if(start)cleanup=cleanup.eq("data_date",start);
       if(end)cleanup=cleanup.eq("end_date",end);
@@ -459,7 +459,7 @@ export async function POST(req: NextRequest) {
         message:JSON.stringify({parser_version:PARSER_VERSION,note:"Replaced by a newer upload for the same platform and period."})
       })
         .eq("workspace_id",workspaceId)
-        .eq("data_type","performance")
+        .eq("data_type",dataType)
         .ilike("platform",platform);
       if(start)supersede=supersede.eq("start_date",start);
       if(end)supersede=supersede.eq("end_date",end);
