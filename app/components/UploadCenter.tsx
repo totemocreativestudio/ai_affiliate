@@ -18,8 +18,8 @@ async function fileHash(buffer: ArrayBuffer) { const hash = await crypto.subtle.
 function normalizeHeader(value:any){return String(value||"").trim().toLowerCase().replace(/[^a-z0-9]+/g,"")}
 function detectPlatformFromRows(rows:any[],fallback:string){
  const headers=Object.keys(rows?.[0]||{}).map(normalizeHeader);const has=(...terms:string[])=>terms.some(term=>headers.some(header=>header.includes(normalizeHeader(term))));
- if(has("GMV dari kreator","Pesanan teratribusi","Perkiraan komisi","GMV dari LIVE kreator","GMV dari video afiliasi"))return "TikTok";
- if(has("Omzet Penjualan","Estimasi Komisi","ID Affiliates","Nama Affiliate","Affiliate ID","Affiliate Name","Affiliate Username","Sales(Rp)","Item Sold","Est.Commission(Rp)","Total Buyers"))return "Shopee";
+ if(has("GMV dari kreator","Pesanan teratribusi","Perkiraan komisi","GMV dari LIVE kreator","GMV dari video afiliasi","Product ID","LIVE streams","Refunded GMV","Refunded items sold"))return "TikTok";
+ if(has("Omzet Penjualan","Estimasi Komisi","ID Affiliates","Nama Affiliate","Affiliate ID","Affiliate Name","Affiliate Username","Sales(Rp)","Item Sold","Est.Commission(Rp)","Total Buyers","Kode Item","Nama Item","Produk Terjual"))return "Shopee";
  return fallback;
 }
 const MONTHS:Record<string,number>={januari:1,january:1,februari:2,february:2,maret:3,march:3,april:4,mei:5,may:5,juni:6,june:6,juli:7,july:7,agustus:8,august:8,september:9,oktober:10,october:10,november:11,desember:12,december:12};
