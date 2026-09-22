@@ -13,11 +13,18 @@ export default function DatabaseCenter({ workspaceId }: Props) {
   const [platform, setPlatform] = useState("");
   const [page, setPage] = useState(1);
   const [productPage, setProductPage] = useState(1);
-  const [data, setData] = useState<any>({ imports: [], sales: [], total: 0, product_performance: [], product_total: 0 });
+  const [data, setData] = useState<any>({
+    imports: [],
+    sales: [],
+    total: 0,
+    affiliate_summary: { total_rows:0, active_rows:0, zero_rows:0, total_qty:0, total_orders:0, total_gmv:0, total_commission:0 },
+    product_performance: [],
+    product_total: 0
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [importSort,setImportSort]=useState({key:"imported_at",asc:false});
-  const [salesSort,setSalesSort]=useState({key:"data_date",asc:false});
+  const [salesSort,setSalesSort]=useState({key:"",asc:false});
   const [productSort,setProductSort]=useState({key:"gmv",asc:false});
   const [deleteTarget,setDeleteTarget]=useState<Row|null>(null);
   const [verifyCode,setVerifyCode]=useState("");
@@ -40,7 +47,7 @@ export default function DatabaseCenter({ workspaceId }: Props) {
   const totalPages = Math.max(1, Math.ceil(Number(data.total || 0) / 50));
   const productTotalPages = Math.max(1, Math.ceil(Number(data.product_total || 0) / 50));
   const sortedImports=useMemo(()=>sortRows(data.imports||[],importSort.key,importSort.asc),[data.imports,importSort]);
-  const sortedSales=useMemo(()=>sortRows(data.sales||[],salesSort.key,salesSort.asc),[data.sales,salesSort]);
+  const sortedSales=useMemo(()=>salesSort.key?sortRows(data.sales||[],salesSort.key,salesSort.asc):[...(data.sales||[])],[data.sales,salesSort]);
   const sortedProducts=useMemo(()=>sortRows(data.product_performance||[],productSort.key,productSort.asc),[data.product_performance,productSort]);
   const toggleImportSort=(key:string)=>setImportSort(v=>({key,asc:v.key===key?!v.asc:true}));
   const toggleSalesSort=(key:string)=>setSalesSort(v=>({key,asc:v.key===key?!v.asc:true}));
@@ -78,8 +85,20 @@ export default function DatabaseCenter({ workspaceId }: Props) {
       {sortedImports.map((x: Row) => <tr key={x.id || x.import_id}><td>{x.import_id}</td><td>{x.filename}</td><td>{x.data_type}</td><td>{x.platform}</td><td>{x.start_date || "-"} → {x.end_date || "-"}</td><td>{Number(x.rows_imported || 0).toLocaleString("id-ID")}</td><td>{x.status}</td><td>{x.imported_at || "-"}</td><td><button className="danger-lite" onClick={()=>requestDelete(x)}>Hapus</button></td></tr>)}
       {!data.imports?.length && <tr><td colSpan={9}>Belum ada import.</td></tr>}
     </tbody></table></div></div>
-    <div className="card"><h3>Latest Sales / Performance</h3><div className="filters"><label>Start <span className="field-note">Opsional</span><input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></label><label>End <span className="field-note">Opsional</span><input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></label><label>Platform<select value={platform} onChange={(e) => setPlatform(e.target.value)}><option value="">All</option><option>TikTok</option><option>Shopee</option><option>Instagram</option></select></label><button onClick={() => load(1,1)} disabled={loading}>{loading ? "Loading..." : "Apply"}</button><button className="secondary" onClick={() => { setStart(""); setEnd(""); setPlatform(""); setPage(1); setProductPage(1); setTimeout(() => load(1,1), 0); }}>Reset</button></div>
+    <div className="card">
+      <div className="section-head"><div><h3>Latest Sales / Performance</h3><p className="muted">Default: tanggal terbaru lalu creator dengan aktivitas terbesar tampil lebih dulu. Creator tanpa transaksi tetap disimpan dan berada setelah row aktif pada tanggal yang sama.</p></div><span className="role-badge">{Number(data.affiliate_summary?.active_rows || 0).toLocaleString("id-ID")} row aktif</span></div>
+      <div className="filters"><label>Start <span className="field-note">Opsional</span><input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></label><label>End <span className="field-note">Opsional</span><input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></label><label>Platform<select value={platform} onChange={(e) => setPlatform(e.target.value)}><option value="">All</option><option>TikTok</option><option>Shopee</option><option>Instagram</option></select></label><button onClick={() => load(1,1)} disabled={loading}>{loading ? "Loading..." : "Apply"}</button><button className="secondary" onClick={() => { setStart(""); setEnd(""); setPlatform(""); setPage(1); setProductPage(1); setSalesSort({key:"",asc:false}); setTimeout(() => load(1,1), 0); }}>Reset</button></div>
       {error && <div className="flash error">{error}</div>}
+      <div className="kpis database-affiliate-summary">
+        <div className="kpi"><small>Total Row</small><b>{Number(data.affiliate_summary?.total_rows || 0).toLocaleString("id-ID")}</b></div>
+        <div className="kpi"><small>Row Aktif</small><b>{Number(data.affiliate_summary?.active_rows || 0).toLocaleString("id-ID")}</b></div>
+        <div className="kpi"><small>Qty</small><b>{Number(data.affiliate_summary?.total_qty || 0).toLocaleString("id-ID")}</b></div>
+        <div className="kpi"><small>Orders</small><b>{Number(data.affiliate_summary?.total_orders || 0).toLocaleString("id-ID")}</b></div>
+        <div className="kpi"><small>GMV</small><b>{money(data.affiliate_summary?.total_gmv)}</b></div>
+        <div className="kpi"><small>Commission</small><b>{money(data.affiliate_summary?.total_commission)}</b></div>
+      </div>
+      {Number(data.affiliate_summary?.total_rows || 0)>0 && Number(data.affiliate_summary?.active_rows || 0)===0 && <div className="owner-inline-note"><b>Perhatian:</b> data berhasil tersimpan, tetapi seluruh Qty, Orders, GMV, dan Commission pada filter ini bernilai 0. Periksa mapping file di Upload History atau upload ulang dengan parser terbaru.</div>}
+      {Number(data.affiliate_summary?.zero_rows || 0)>0 && Number(data.affiliate_summary?.active_rows || 0)>0 && <div className="owner-inline-note"><b>Data valid:</b> {Number(data.affiliate_summary.zero_rows).toLocaleString("id-ID")} row tanpa transaksi tetap tersimpan. Row dengan aktivitas ditampilkan lebih dulu agar nilai Qty, Orders, GMV, dan Commission langsung terlihat.</div>}
       <div className="scroll"><table><thead><tr>{[["data_date","Date"],["creator_name","Creator"],["platform","Platform"],["channel","Channel"],["sku","SKU"],["product_name","Product"],["qty","Qty"],["orders","Orders"],["gmv","GMV"],["commission","Commission"]].map(([key,label])=><th key={key}><button className="table-sort" onClick={()=>toggleSalesSort(key)}>{label}<span>{salesSort.key===key?(salesSort.asc?"↑":"↓"):"↕"}</span></button></th>)}</tr></thead><tbody>
         {sortedSales.map((x: Row) => <tr key={x.id}><td>{x.data_date || "-"}</td><td>{x.creator_name || x.username || "-"}</td><td>{x.platform || "-"}</td><td>{x.channel || "-"}</td><td>{x.sku || "-"}</td><td>{x.product_name || "-"}</td><td>{Number(x.qty || 0).toLocaleString("id-ID")}</td><td>{Number(x.orders || 0).toLocaleString("id-ID")}</td><td>{money(x.gmv)}</td><td>{money(x.commission)}</td></tr>)}
         {!data.sales?.length && <tr><td colSpan={10}>Tidak ada data untuk filter ini.</td></tr>}
