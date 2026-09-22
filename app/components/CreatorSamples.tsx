@@ -61,6 +61,7 @@ export default function CreatorSamples({workspaceId}:Props){
   }
 
   useEffect(()=>{void loadData();},[workspaceId]);
+  useEffect(()=>{const refresh=()=>void loadData();window.addEventListener("lumaway-database-updated",refresh as EventListener);return()=>window.removeEventListener("lumaway-database-updated",refresh as EventListener)},[workspaceId]);
 
   const filteredCreators=creators.filter(c=>{
     const q=creatorSearch.trim().toLowerCase();
