@@ -11,6 +11,7 @@ export async function GET(req: NextRequest) {
     const end = searchParams.get("end") || "";
     const platform = searchParams.get("platform") || "";
     const page = Math.max(1, Number(searchParams.get("page") || 1));
+    const productPage = Math.max(1, Number(searchParams.get("product_page") || 1));
     const pageSize = Math.min(
       100,
       Math.max(10, Number(searchParams.get("page_size") || 50))
@@ -39,26 +40,51 @@ export async function GET(req: NextRequest) {
     let salesQuery = admin
       .from("sales")
       .select(
-        "id,data_date,end_date,creator_name,username,platform,channel,sku,product_name,qty,orders,gmv,commission,refund,import_id",
+        "id,data_type,data_date,end_date,creator_name,username,platform,channel,sku,product_name,qty,orders,gmv,commission,refund,refund_qty,clicks,buyers,new_buyers,live_count,video_count,roi,import_id",
         { count: "exact" }
       )
       .eq("workspace_id", workspaceId)
+      .in("data_type", ["performance", "sales"])
       .order("data_date", { ascending: false })
       .range((page - 1) * pageSize, page * pageSize - 1);
 
-    if (start) salesQuery = salesQuery.gte("data_date", start);
-    if (end) salesQuery = salesQuery.lte("data_date", end);
-    if (platform) salesQuery = salesQuery.eq("platform", platform);
+    let productQuery = admin
+      .from("sales")
+      .select(
+        "id,data_type,data_date,end_date,platform,channel,sku,product_name,qty,orders,gmv,commission,refund,refund_qty,clicks,buyers,new_buyers,live_count,video_count,roi,import_id",
+        { count: "exact" }
+      )
+      .eq("workspace_id", workspaceId)
+      .eq("data_type", "product_performance")
+      .order("data_date", { ascending: false })
+      .range((productPage - 1) * pageSize, productPage * pageSize - 1);
 
-    const { data: sales, count, error: salesError } = await salesQuery;
-    if (salesError) throw salesError;
+    if (start) {
+      salesQuery = salesQuery.gte("data_date", start);
+      productQuery = productQuery.gte("data_date", start);
+    }
+    if (end) {
+      salesQuery = salesQuery.lte("data_date", end);
+      productQuery = productQuery.lte("data_date", end);
+    }
+    if (platform) {
+      salesQuery = salesQuery.eq("platform", platform);
+      productQuery = productQuery.eq("platform", platform);
+    }
+
+    const [salesResult, productResult] = await Promise.all([salesQuery, productQuery]);
+    if (salesResult.error) throw salesResult.error;
+    if (productResult.error) throw productResult.error;
 
     return NextResponse.json({
       ok: true,
       imports: imports || [],
-      sales: sales || [],
-      total: count || 0,
+      sales: salesResult.data || [],
+      total: salesResult.count || 0,
+      product_performance: productResult.data || [],
+      product_total: productResult.count || 0,
       page,
+      product_page: productPage,
       page_size: pageSize,
     });
   } catch (error: any) {
