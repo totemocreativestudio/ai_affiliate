@@ -274,3 +274,50 @@ html[data-theme="dark"] .lumaway-loading-screen{background:#080e1b!important;col
 @media(max-width:900px){
   .upload-period-grid{grid-template-columns:1fr!important}
 }
+
+
+/* PR34 shared autocomplete, ranking activity, and type scale hardening */
+.smart-autocomplete{position:relative;width:100%}
+.smart-autocomplete>input{width:100%;box-sizing:border-box}
+.smart-autocomplete-menu{
+  position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:1400;
+  max-height:230px;overflow:auto;background:#fff;border:1px solid #d7ddea;
+  border-radius:10px;box-shadow:0 14px 36px rgba(19,33,68,.14);padding:4px;
+}
+.smart-autocomplete-menu>button{
+  display:grid!important;width:100%!important;min-height:auto!important;text-align:left!important;
+  gap:2px;padding:8px 10px!important;border:0!important;border-radius:7px!important;
+  background:transparent!important;color:#172033!important;
+}
+.smart-autocomplete-menu>button:hover{background:#f3f5fb!important}
+.smart-autocomplete-menu strong{font-size:12px;line-height:1.35}
+.smart-autocomplete-menu span,.smart-autocomplete-empty{font-size:10px;line-height:1.4;color:#667085}
+.smart-autocomplete-empty{padding:9px 10px}
+.creator-count-badge{display:flex;align-items:center;gap:9px;padding:6px 9px;border:1px solid #e0e5ef;border-radius:999px;background:#fff}
+.creator-count-badge b{font-size:11px}
+.creator-count-badge span{font-size:10px;color:#4b5565;display:flex;align-items:center;gap:5px}
+.creator-count-badge i,.creator-active-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#1eaf68;box-shadow:0 0 0 3px rgba(30,175,104,.12)}
+.creator-link b{display:flex;align-items:center;gap:6px}
+.creator-active-dot{width:6px;height:6px;box-shadow:none;flex:0 0 auto}
+
+/* consistent typography hierarchy across user/admin workspaces */
+.legacy-page-anchor,.owner-console{
+  font-size:13px;line-height:1.55;
+}
+.legacy-page-anchor h1,.owner-console h1{font-size:28px!important;line-height:1.18!important;letter-spacing:-.025em!important}
+.legacy-page-anchor h2,.owner-console h2{font-size:20px!important;line-height:1.25!important;letter-spacing:-.015em!important}
+.legacy-page-anchor h3,.owner-console h3{font-size:15px!important;line-height:1.35!important}
+.legacy-page-anchor h4,.owner-console h4{font-size:13px!important;line-height:1.4!important}
+.legacy-page-anchor p,.owner-console p,.legacy-page-anchor label,.owner-console label{font-size:12px;line-height:1.5}
+.legacy-page-anchor small,.owner-console small,.field-note{font-size:10px!important;line-height:1.4!important}
+.legacy-page-anchor table,.owner-console table{font-size:11px}
+.legacy-page-anchor th,.owner-console th{font-size:10px}
+.legacy-page-anchor input,.legacy-page-anchor select,.legacy-page-anchor textarea,
+.owner-console input,.owner-console select,.owner-console textarea{font-size:12px}
+.c360-status-card label{display:grid;gap:5px;margin:8px 0}
+.c360-status-card .inline-check{display:flex;align-items:center;gap:7px}
+
+@media(max-width:760px){
+  .creator-count-badge{align-items:flex-start;flex-direction:column;gap:3px;border-radius:12px}
+  .legacy-page-anchor h1,.owner-console h1{font-size:24px!important}
+}
