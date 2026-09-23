@@ -119,16 +119,19 @@ async function createMayar(input:CheckoutInput){
   if(!customer.email)throw new Error("Email user belum tersedia untuk checkout Mayar.");
   if(!customer.mobile)throw new Error("Nomor HP/WhatsApp user belum tersedia untuk checkout Mayar.");
   const payload={
-    name:customer.name,email:customer.email,mobile:customer.mobile,
-    description:input.description,expiredAt:input.expiresAt,
-    items:[{quantity:1,rate:Math.round(input.amount),description:input.itemName}],
-    extraData:{orderCode:input.orderCode,workspaceId:input.workspaceId,userId:input.user.id,kind:input.kind,...(input.metadata||{})}
+    name:customer.name,
+    email:customer.email,
+    mobile:customer.mobile,
+    redirectUrl:input.origin.startsWith("https://")?`${input.origin}/#billing`:undefined,
+    description:`${input.description} · Order ${input.orderCode}`,
+    expiredAt:input.expiresAt,
+    items:[{quantity:1,rate:Math.round(input.amount),description:input.itemName}]
   };
   const r=await fetch("https://api.mayar.id/hl/v2/invoices/create",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify(payload)});
   const body=await r.json().catch(()=>({}));
   if(!r.ok||Number(body?.statusCode||r.status)>=400||!body?.data?.link)throw new Error(String(body?.messages||"Mayar checkout gagal."));
   const d=body.data;
-  return {provider:"mayar" as PaymentProvider,paymentUrl:String(d.link),paymentSessionId:String(d.id||"")||null,paymentReference:String(d.transactionId||"")||null,expiresAt:d.expiredAt?new Date(Number(d.expiredAt)).toISOString():input.expiresAt,providerPayload:{invoice_id:d.id,transaction_id:d.transactionId,status_code:body.statusCode,extraData:d.extraData||payload.extraData}};
+  return {provider:"mayar" as PaymentProvider,paymentUrl:String(d.link),paymentSessionId:String(d.id||"")||null,paymentReference:String(d.transactionId||"")||null,expiresAt:d.expiredAt?new Date(Number(d.expiredAt)).toISOString():input.expiresAt,providerPayload:{invoice_id:d.id,transaction_id:d.transactionId,status_code:body.statusCode,order_code:input.orderCode}};
 }
 
 async function createXendit(input:CheckoutInput){
@@ -179,7 +182,7 @@ export async function createPaymentCheckout(input:CheckoutInput):Promise<Checkou
       if(!msg.toLowerCase().includes("nomor hp")&&!msg.toLowerCase().includes("email user"))await markHealth(input.admin,provider,false,msg);
     }
   }
-  throw new Error(`Semua payment gateway gagal. ${errors.join(" | ")}`);
+  throw new Error("PAYMENT_GATEWAY_UNAVAILABLE");
 }
 
 export async function getPaymentProviderStatus(admin:any){
