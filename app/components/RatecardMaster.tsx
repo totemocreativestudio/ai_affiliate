@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../../lib/supabase-browser";
+import {CreatorAutocomplete,CreatorSearchResult} from "./SmartAutocomplete";
 
 type Creator = {
   id: number;
@@ -431,79 +432,17 @@ export default function RatecardMaster({ workspaceId }: { workspaceId: string })
           >
             <label style={labelStyle}>
               Creator Search
-
-              <input
+              <CreatorAutocomplete
+                workspaceId={workspaceId}
                 value={creatorSearch}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setCreatorSearch(value);
-                  setManualCreatorConfirmed(false);
-                  setForm((prev) => ({
-                    ...prev,
-                    creator_id: "",
-                    creator_name: value,
-                  }));
+                selectedId={form.creator_id}
+                onTextChange={(value)=>{setCreatorSearch(value);setManualCreatorConfirmed(false);setForm(prev=>({...prev,creator_id:"",creator_name:value}))}}
+                onSelect={(creator:CreatorSearchResult)=>{
+                  const item=creator as Creator;
+                  setCreators(prev=>prev.some(x=>x.id===item.id)?prev:[item,...prev]);
+                  chooseCreator(item);
                 }}
-                onKeyDown={(e) => {
-                  if (e.key !== "Enter") return;
-                  e.preventDefault();
-                  e.stopPropagation();
-                  commitCreatorSearch();
-                }}
-                placeholder="Nama / username / creator code"
-                style={inputStyle}
               />
-
-              {creatorMatches.length > 0 && (
-                <div
-                  style={{
-                    maxHeight: 150,
-                    overflowY: "auto",
-                    border: "1px solid #cfd5df",
-                    background: "white",
-                  }}
-                >
-                  {creatorMatches.map((c) => (
-                    <button
-                      type="button"
-                      key={c.id}
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        chooseCreator(c);
-                      }}
-                      style={{
-                        display: "block",
-                        width: "100%",
-                        textAlign: "left",
-                        border: 0,
-                        borderBottom: "1px solid #eee",
-                        background: "white",
-                        padding: 8,
-                        cursor: "pointer",
-                      }}
-                    >
-                      {creatorLabel(c)}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {manualCreatorConfirmed && !form.creator_id && (
-                <div
-                  style={{
-                    marginTop: 4,
-                    padding: 7,
-                    border: "1px solid #d1d5db",
-                    borderRadius: 6,
-                    background: "#f9fafb",
-                    fontSize: 12,
-                  }}
-                >
-                  Creator baru: <strong>{form.creator_name}</strong>
-                  <br />
-                  Akan dibuat otomatis saat Ratecard disimpan.
-                </div>
-              )}
             </label>
 
             <label style={labelStyle}>
