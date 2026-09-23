@@ -700,14 +700,58 @@ export async function POST(req: NextRequest) {
       }
 
       const payloads:Row[]=[];
+      const autoMasterCache=new Map<string,any>();
       for(let i=0;i<rows.length;i++){
         const row=rows[i];
         const productCode=clean(mappedRaw(row,mapping.sku));
         const productName=clean(mappedRaw(row,mapping.productName));
         if(!productCode&&!productName){skipped++;continue}
-        const mapped=productCode?platformMap.get(productCode.toLowerCase()):null;
-        const canonicalSku=clean(mapped?.sku)||productCode||`product-${norm(productName)}`;
-        const variantName=clean(mapped?.variant_name)||null;
+        let mapped=productCode?platformMap.get(productCode.toLowerCase()):null;
+        let canonicalSku=clean(mapped?.sku)||productCode||`product-${norm(productName)}`;
+        let variantName=clean(mapped?.variant_name)||null;
+
+        // PR34: every Product Performance row must be discoverable from Product Master.
+        // If the user has not uploaded a canonical Master SKU yet, create a temporary
+        // master using the marketplace product code. A later Master SKU upload can remap it.
+        if(!mapped&&productCode){
+          const cacheKey=`${platform.toLowerCase()}|${productCode.toLowerCase()}`;
+          let master=autoMasterCache.get(cacheKey);
+          if(!master){
+            const skuNorm=canonicalSku.toLowerCase();
+            const {data:existingMaster,error:masterFindError}=await admin.from("product_master")
+              .select("id,sku,product_name,cost_price,selling_price")
+              .eq("workspace_id",workspaceId).eq("sku_normalized",skuNorm).maybeSingle();
+            if(masterFindError)throw masterFindError;
+            if(existingMaster){
+              master=existingMaster;
+              if(productName&&(!existingMaster.product_name||existingMaster.product_name===existingMaster.sku)){
+                const {error:renameError}=await admin.from("product_master").update({product_name:productName,updated_at:new Date().toISOString()}).eq("workspace_id",workspaceId).eq("id",existingMaster.id);
+                if(renameError)throw renameError;
+                master={...existingMaster,product_name:productName};
+              }
+            }else{
+              const {data:newMaster,error:masterInsertError}=await admin.from("product_master").insert({
+                workspace_id:workspaceId,sku:canonicalSku,sku_normalized:skuNorm,
+                product_name:productName||canonicalSku,category:null,selling_price:0,cost_price:0,
+                point_per_unit:0,status:"Active",notes:"Auto-created from Product Performance",
+                source_import_id:importId,updated_at:new Date().toISOString()
+              }).select("id,sku,product_name,cost_price,selling_price").single();
+              if(masterInsertError)throw masterInsertError;
+              master=newMaster;
+            }
+            const {error:mappingError}=await admin.from("product_platform_items").upsert({
+              workspace_id:workspaceId,product_master_id:Number(master.id),sku:master.sku||canonicalSku,
+              platform,product_code:productCode,product_name:productName||master.product_name||canonicalSku,
+              variant_slot:null,variant_name:null,source_import_id:importId,updated_at:new Date().toISOString()
+            },{onConflict:"workspace_id,platform,product_code"});
+            if(mappingError)throw mappingError;
+            autoMasterCache.set(cacheKey,master);
+            mapped={product_code:productCode,sku:master.sku||canonicalSku,variant_name:null,product_master_id:master.id};
+            platformMap.set(productCode.toLowerCase(),mapped);
+          }
+          canonicalSku=clean(mapped?.sku)||canonicalSku;
+          variantName=clean(mapped?.variant_name)||null;
+        }
         const gmv=moneyValue(mappedRaw(row,mapping.gmv),styles.gmv);
         const qty=countNum(mappedRaw(row,mapping.qty));
         const orders=countNum(mappedRaw(row,mapping.orders));
