@@ -321,3 +321,53 @@ html[data-theme="dark"] .lumaway-loading-screen{background:#080e1b!important;col
   .creator-count-badge{align-items:flex-start;flex-direction:column;gap:3px;border-radius:12px}
   .legacy-page-anchor h1,.owner-console h1{font-size:24px!important}
 }
+
+
+/* PR35 payment orchestration */
+.payment-provider-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+  margin:14px 0;
+}
+.payment-provider-admin{
+  display:grid;
+  gap:9px;
+  padding:14px;
+  border:1px solid #e1e6ef;
+  border-radius:14px;
+  background:#fbfcfe;
+}
+.payment-provider-admin>div:first-child{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.payment-provider-admin label{
+  display:grid;
+  gap:5px;
+}
+.payment-provider-admin .inline-check{
+  display:flex;
+  align-items:center;
+  gap:7px;
+}
+.payment-provider-admin small{color:#667085}
+.payment-gateway-ready{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:7px;
+  margin-top:10px;
+  padding:10px 12px;
+  border:1px solid #d7e9df;
+  border-radius:10px;
+  background:#f5fbf7;
+  color:#275d3d;
+  font-size:11px;
+}
+.payment-gateway-ready small{color:#5d7166}
+@media(max-width:980px){
+  .payment-provider-grid{grid-template-columns:1fr}
+}
