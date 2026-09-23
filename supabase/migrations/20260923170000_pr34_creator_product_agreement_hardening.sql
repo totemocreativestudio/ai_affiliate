@@ -46,6 +46,12 @@ where s.data_type='performance' and coalesce(s.live_count,0)<>0
     where i.workspace_id=s.workspace_id and i.import_id=s.import_id
       and coalesce(i.message,'') like '%"liveCount":"Affiliate LIVE GMV"%');
 
+update public.sales s set live_count=0
+where s.data_type='performance' and coalesce(s.live_count,0)>1000
+  and exists(select 1 from public.imports i
+    where i.workspace_id=s.workspace_id and i.import_id=s.import_id
+      and coalesce(i.message,'') not like '%universal-v10-pr34%');
+
 update public.sales s set refund_qty=0
 where s.data_type='performance' and coalesce(s.refund_qty,0)<>0
   and exists(select 1 from public.imports i
