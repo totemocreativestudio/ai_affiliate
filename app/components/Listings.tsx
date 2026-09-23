@@ -150,6 +150,16 @@ export default function Listings({
 
   useEffect(() => {
     loadData();
+    void supabase.rpc("luma_sync_workspace_creator_master",{p_workspace_id:workspaceId}).then(async({error})=>{
+      if(error)return;
+      const {data}=await supabase
+        .from("creators")
+        .select("id,creator_code,name,username,platform,affiliate_id,phone,payment_type,ratecard,status")
+        .eq("workspace_id",workspaceId)
+        .order("name")
+        .limit(10000);
+      if(data)setCreators(data as Creator[]);
+    });
   }, [workspaceId]);
 
   useEffect(() => {
