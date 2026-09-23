@@ -10,15 +10,25 @@ export async function GET(req:NextRequest){
   try{
     const workspaceId=new URL(req.url).searchParams.get("workspace_id")||"";
     const ctx=await getServerContext(workspaceId);
-    const [apiConfigured,webhookConfigured]=await Promise.all([
+    const [apiConfigured,webhookConfigured,{data:providerState}]=await Promise.all([
       hasServerSecret(ctx.admin,API_KEY),
       hasServerSecret(ctx.admin,WEBHOOK_TOKEN),
+      ctx.admin.from("luma_payment_provider_settings").select("enabled,priority,health_status,last_success_at,last_error_at,last_error,webhook_registered_at").eq("provider","mayar").maybeSingle(),
     ]);
     return NextResponse.json({
       ok:true,
       configured:apiConfigured,
       webhook_configured:webhookConfigured,
+      webhook_registered:Boolean(providerState?.webhook_registered_at),
+      webhook_registered_at:providerState?.webhook_registered_at||null,
+      health_status:providerState?.health_status||"unknown",
+      last_success_at:providerState?.last_success_at||null,
+      last_error_at:providerState?.last_error_at||null,
+      last_error:providerState?.last_error||null,
+      enabled:providerState?.enabled!==false,
+      priority:Number(providerState?.priority||10),
       source:apiConfigured?getServerSecretSource(API_KEY):"none",
+      webhook_source:webhookConfigured?getServerSecretSource(WEBHOOK_TOKEN):"none",
       can_configure:ctx.platformAdmin,
       env_names:{api_key:"API_Key_Mayar_ID",webhook_token:"Webhook_Token_Mayar_ID"},
     });
@@ -36,6 +46,48 @@ export async function POST(req:NextRequest){
     const webhookToken=String(body.webhook_token||"").trim();
     const ctx=await getServerContext(workspaceId);
     if(!ctx.platformAdmin)return NextResponse.json({ok:false,error:"Hanya platform admin yang dapat mengubah Mayar.id credential."},{status:403});
+    if(action==="production_check"){
+      const [savedKey,savedToken]=await Promise.all([
+        getServerSecret(ctx.admin,API_KEY),
+        getServerSecret(ctx.admin,WEBHOOK_TOKEN)
+      ]);
+      if(!savedKey||!savedToken)return NextResponse.json({ok:false,error:"Token API dan Webhook Mayar.id belum lengkap."},{status:400});
+
+      const checkResponse=await fetch("https://api.mayar.id/hl/v2/invoices?limit=1",{method:"GET",headers:{Authorization:`Bearer ${savedKey}`,Accept:"application/json"},cache:"no-store"});
+      const checkBody=await checkResponse.json().catch(()=>({}));
+      if(!checkResponse.ok||Number(checkBody?.statusCode||checkResponse.status)>=400){
+        const msg=String(checkBody?.messages||checkBody?.message||"Token API Mayar.id ditolak.");
+        await ctx.admin.rpc("luma_payment_provider_health",{p_provider:"mayar",p_ok:false,p_error:msg});
+        return NextResponse.json({ok:false,error:msg,stage:"api"},{status:502});
+      }
+
+      const origin=String(process.env.NEXT_PUBLIC_APP_URL||new URL(req.url).origin).replace(/\/$/,"");
+      if(!origin.startsWith("https://"))return NextResponse.json({ok:false,error:"NEXT_PUBLIC_APP_URL production harus HTTPS.",stage:"app_url"},{status:500});
+      const hookUrl=`${origin}/api/payments/webhook/mayar?token=${encodeURIComponent(savedToken)}`;
+      const hookResponse=await fetch("https://api.mayar.id/hl/v2/webhooks/update",{method:"POST",headers:{Authorization:`Bearer ${savedKey}`,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({urlHook:hookUrl})});
+      const hookBody=await hookResponse.json().catch(()=>({}));
+      if(!hookResponse.ok||Number(hookBody?.statusCode||hookResponse.status)>=400){
+        const msg=String(hookBody?.messages||hookBody?.message||"Registrasi webhook Mayar.id gagal.");
+        await ctx.admin.rpc("luma_payment_provider_health",{p_provider:"mayar",p_ok:false,p_error:msg});
+        return NextResponse.json({ok:false,error:msg,stage:"webhook"},{status:502});
+      }
+
+      const now=new Date().toISOString();
+      await Promise.all([
+        ctx.admin.from("luma_payment_provider_settings").update({webhook_registered_at:now,health_status:"healthy",last_success_at:now,last_error:null,updated_at:now}).eq("provider","mayar"),
+        ctx.admin.from("luma_api_usage_events").insert({workspace_id:workspaceId,user_id:ctx.user.id,provider:"mayar",service:"production_check",request_type:"payment_gateway_health",status:"success",reference:"PR36-MAYAR",metadata:{api:true,webhook:true}})
+      ]);
+      return NextResponse.json({
+        ok:true,
+        ready:true,
+        api_connected:true,
+        webhook_registered:true,
+        health_status:"healthy",
+        checked_at:now,
+        source:getServerSecretSource(API_KEY),
+        webhook_source:getServerSecretSource(WEBHOOK_TOKEN)
+      });
+    }
     if(action==="register_webhook"){
       const [savedKey,savedToken]=await Promise.all([
         getServerSecret(ctx.admin,API_KEY),
