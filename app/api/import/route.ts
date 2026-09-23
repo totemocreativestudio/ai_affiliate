@@ -4,7 +4,7 @@ import { getServerContext } from "../../../lib/server-auth";
 
 export const runtime = "nodejs";
 type Row = Record<string, any>;
-const PARSER_VERSION = "universal-v9-pr33-20260922";
+const PARSER_VERSION = "universal-v10-pr34-20260923";
 
 const clean = (v: any) => (v === null || v === undefined ? "" : String(v).trim());
 type NumericKind = "money" | "count" | "percent" | "decimal";
@@ -269,13 +269,13 @@ function performanceMapping(row:Row,platform:string):PerformanceMapping{
     showcaseGmv:findHeader(row,["GMV dari kartu produk afiliasi","Showcase GMV","Product Card GMV"]),
     ctr:findHeader(row,["CTR","Click Through Rate"]),
     ctor:findHeader(row,["CTOR","Click To Order Rate"]),
-    liveCount:findHeader(row,["Siaran LIVE","Jumlah LIVE","Live Count","LIVE"]),
+    liveCount:findHeader(row,["Siaran LIVE","Jumlah LIVE","Live Count","LIVE sessions","LIVE streams","Total LIVE"],["gmv","revenue","sales","amount"]),
     videoCount:findHeader(row,["Jumlah Video","Video Count","Video"],["gmv","view","tayangan"]),
     sampleContent:findHeader(row,["Jumlah konten sampel","Sample Content","Konten Sampel"]),
     sampleSent:findHeader(row,["Sampel terkirim","Sample Sent","Samples Sent"]),
     impressions:findHeader(row,["Impresi produk","Product Impressions","Impressions","Impresi"]),
     videoViews:findHeader(row,["Tayangan video","Video Views","Views Video"]),
-    refundQty:findHeader(row,["Produk yang dikembalikan dananya","Refunded items sold","Refunded Items","Item Refund","Produk Refund"])
+    refundQty:findHeader(row,["Produk yang dikembalikan dananya","Affiliate refunded items sold","Refunded items sold","Refunded Items","Item Refund","Produk Refund"],["gmv","amount"])
   };
   if(platform.toLowerCase()==="shopee"){
     common.gmv=common.gmv||findHeader(row,["Sales(Rp)","Sales Rp","Penjualan Affiliate","Penjualan Afiliasi","Sales"]);
