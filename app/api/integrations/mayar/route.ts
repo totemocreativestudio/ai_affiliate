@@ -47,6 +47,7 @@ export async function POST(req:NextRequest){
       const response=await fetch("https://api.mayar.id/hl/v2/webhooks/update",{method:"POST",headers:{Authorization:`Bearer ${savedKey}`,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({urlHook:hookUrl})});
       const result=await response.json().catch(()=>({}));
       if(!response.ok||Number(result?.statusCode||response.status)>=400)throw new Error(result?.messages||"Registrasi webhook Mayar.id gagal.");
+      await ctx.admin.from("luma_payment_provider_settings").update({webhook_registered_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("provider","mayar");
       return NextResponse.json({ok:true,registered:true,webhook_url:hookUrl});
     }
     if(!apiKey||apiKey.length<10)return NextResponse.json({ok:false,error:"Token API Mayar.id tidak valid."},{status:400});
@@ -63,6 +64,7 @@ export async function POST(req:NextRequest){
         const hookUrl=`${origin}/api/payments/webhook/mayar?token=${encodeURIComponent(webhookToken)}`;
         const response=await fetch("https://api.mayar.id/hl/v2/webhooks/update",{method:"POST",headers:{Authorization:`Bearer ${apiKey}`,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({urlHook:hookUrl})});
         webhookRegistered=response.ok;
+        if(webhookRegistered)await ctx.admin.from("luma_payment_provider_settings").update({webhook_registered_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("provider","mayar");
       }catch{}
     }
     return NextResponse.json({ok:true,configured:true,webhook_configured:Boolean(webhookToken),webhook_registered:webhookRegistered});
