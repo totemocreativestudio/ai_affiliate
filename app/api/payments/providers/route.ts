@@ -10,7 +10,20 @@ export async function GET(req:NextRequest){
     const ctx=await getServerContext(workspaceId);
     const status=await getPaymentProviderStatus(ctx.admin);
     const midtransConfigured=await hasServerSecret(ctx.admin,"luma_midtrans_server_key");
-    return NextResponse.json({ok:true,...status,can_configure:ctx.platformAdmin,midtrans:{configured:midtransConfigured,source:midtransConfigured?getServerSecretSource("luma_midtrans_server_key"):"none"}});
+    if(!ctx.platformAdmin){
+      return NextResponse.json({
+        ok:true,
+        mode:status.mode,
+        available:status.available,
+        providers:(status.providers||[]).map((row:any)=>({
+          provider:row.provider,
+          enabled:Boolean(row.enabled),
+          configured:Boolean(row.configured),
+          priority:Number(row.priority||999)
+        }))
+      });
+    }
+    return NextResponse.json({ok:true,...status,can_configure:true,midtrans:{configured:midtransConfigured,source:midtransConfigured?getServerSecretSource("luma_midtrans_server_key"):"none"}});
   }catch(error:any){return NextResponse.json({ok:false,error:error?.message||"Gagal membaca payment gateway."},{status:400})}
 }
 
