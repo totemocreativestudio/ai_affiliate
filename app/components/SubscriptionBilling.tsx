@@ -139,7 +139,10 @@ export default function SubscriptionBilling({ workspaceId, userId }: { workspace
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ workspace_id: workspaceId, plan_id: plan.id, promo_code: applicable }),
       });
-      const d = await r.json();\n      if (!r.ok || !d.ok) throw new Error(d.error || "Checkout langganan gagal.");\n\n      const pricing = d.pricing;
+      const d = await r.json();
+      if (!r.ok || !d.ok) throw new Error(d.error || "Checkout langganan gagal.");
+
+      const pricing = d.pricing;
       if (d.free) {
         setMsg(
           pricing?.upgrade
