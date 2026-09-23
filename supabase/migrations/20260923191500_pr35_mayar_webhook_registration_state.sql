@@ -1,0 +1,1 @@
+alter table public.luma_payment_provider_settings\n  add column if not exists webhook_registered_at timestamptz;\n
