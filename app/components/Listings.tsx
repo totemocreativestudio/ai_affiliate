@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "../../lib/supabase-browser";
+import {CreatorAutocomplete,ProductAutocomplete,CreatorSearchResult,ProductSearchResult} from "./SmartAutocomplete";
 
 type Creator = {
   id: number;
@@ -21,6 +22,7 @@ type Product = {
   sku: string;
   product_name: string | null;
   category: string | null;
+  cost_price: number | null;
 };
 
 type Listing = {
@@ -48,6 +50,7 @@ type FormState = {
   creator_name: string;
   platform: string;
   product_master_id: string;
+  product_hpp: string;
   stage: string;
   payment_type: string;
   ratecard: string;
@@ -64,6 +67,7 @@ const EMPTY_FORM: FormState = {
   creator_name: "",
   platform: "",
   product_master_id: "",
+  product_hpp: "0",
   stage: "",
   payment_type: "",
   ratecard: "",
@@ -121,7 +125,7 @@ export default function Listings({
 
         supabase
           .from("product_master")
-          .select("id,sku,product_name,category")
+          .select("id,sku,product_name,category,cost_price")
           .eq("workspace_id", workspaceId)
           .order("sku")
           .limit(1000),
@@ -297,6 +301,8 @@ async function saveListing() {
       product_name: product?.product_name ?? null,
 
       sku: product?.sku ?? null,
+
+      product_hpp: product?.cost_price != null ? Number(product.cost_price) : Number(form.product_hpp || 0),
 
       stage: form.stage || null,
 
@@ -531,135 +537,19 @@ async function saveListing() {
             </label>
           <label>
             Creator Search
-
-            <input
+            <CreatorAutocomplete
+              workspaceId={workspaceId}
               value={creatorSearch}
-              onChange={(e) => {
-                const value = e.target.value;
-
-                setCreatorSearch(value);
-                setManualCreatorConfirmed(false);
-
-                setForm((prev) => ({
-                  ...prev,
-                  creator_id: "",
-                  creator_name: value,
-                }));
-              }}
-              onKeyDown={(e) => {
-                if (e.key !== "Enter") return;
-
-                e.preventDefault();
-                e.stopPropagation();
-
-                const value = creatorSearch.trim();
-                if (!value) return;
-
-                const keyword = value.toLowerCase();
-
-                const exactMatch = creators.find((creator) =>
-                  (creator.name ?? "").trim().toLowerCase() === keyword ||
-                  (creator.username ?? "").trim().toLowerCase() === keyword ||
-                  (creator.creator_code ?? "").trim().toLowerCase() === keyword
-                );
-
-                if (exactMatch) {
-                  const creatorName =
-                    exactMatch.name ??
-                    exactMatch.username ??
-                    exactMatch.creator_code ??
-                    value;
-
-                  setForm((prev) => ({
-                    ...prev,
-                    creator_id: exactMatch.id.toString(),
-                    creator_name: creatorName,
-                    platform: exactMatch.platform ?? prev.platform,
-                  }));
-
-                  setCreatorSearch(creatorName);
-                  setManualCreatorConfirmed(false);
-                } else {
-                  setForm((prev) => ({
-                    ...prev,
-                    creator_id: "",
-                    creator_name: value,
-                  }));
-
-                  setCreatorSearch(value);
-                  setManualCreatorConfirmed(true);
-                }
-              }}
-              placeholder="Nama / username / code"
-              style={{
-                width: "100%",
-                padding: 8,
-                boxSizing: "border-box",
+              selectedId={form.creator_id}
+              onTextChange={(value)=>{setCreatorSearch(value);setManualCreatorConfirmed(false);setForm(prev=>({...prev,creator_id:"",creator_name:value}))}}
+              onSelect={(creator:CreatorSearchResult)=>{
+                const creatorName=creator.name??creator.username??creator.creator_code??"";
+                setCreators(prev=>prev.some(x=>x.id===creator.id)?prev:[creator as Creator,...prev]);
+                setForm(prev=>({...prev,creator_id:String(creator.id),creator_name:creatorName,platform:creator.platform??prev.platform,ratecard:String(creator.ratecard??prev.ratecard??"")}));
+                setCreatorSearch(creatorName);setManualCreatorConfirmed(false);
               }}
             />
-
-            {creatorSearch.trim() &&
-              !form.creator_id &&
-              filteredCreators.length > 0 &&
-              !manualCreatorConfirmed && (
-                <select
-                  size={Math.min(6, filteredCreators.length)}
-                  value=""
-                  onChange={(e) => {
-                    const selected = creators.find(
-                      (creator) => creator.id === Number(e.target.value)
-                    );
-                    if (!selected) return;
-
-                    const creatorName =
-                      selected.name ??
-                      selected.username ??
-                      selected.creator_code ??
-                      "";
-
-                    setForm((prev) => ({
-                      ...prev,
-                      creator_id: selected.id.toString(),
-                      creator_name: creatorName,
-                      platform: selected.platform ?? prev.platform,
-                    }));
-
-                    setCreatorSearch(creatorName);
-                    setManualCreatorConfirmed(false);
-                  }}
-                  style={{ width: "100%", marginTop: 5 }}
-                >
-                  {filteredCreators.map((creator) => (
-                    <option key={creator.id} value={creator.id}>
-                      {creator.name ??
-                        creator.username ??
-                        creator.creator_code ??
-                        "-"}
-                      {creator.platform ? ` - ${creator.platform}` : ""}
-                    </option>
-                  ))}
-                </select>
-              )}
-
-            {manualCreatorConfirmed &&
-              !form.creator_id &&
-              form.creator_name.trim() && (
-                <div
-                  style={{
-                    marginTop: 6,
-                    padding: "7px 9px",
-                    border: "1px solid #d1d5db",
-                    borderRadius: 6,
-                    background: "#f9fafb",
-                    fontSize: 12,
-                  }}
-                >
-                  Creator baru / pending:{" "}
-                  <strong>{form.creator_name}</strong>
-                </div>
-              )}
           </label>
-
 
             <label>
               Platform
@@ -681,106 +571,18 @@ async function saveListing() {
 
             <label>
             Product / SKU Search
-
-            <input
+            <ProductAutocomplete
+              workspaceId={workspaceId}
               value={productSearch}
-              onChange={(e) => {
-                setProductSearch(e.target.value);
-
-                setForm((prev) => ({
-                  ...prev,
-                  product_master_id: "",
-                }));
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-
-                  const selected = filteredProducts[0];
-
-                  if (selected) {
-                    setForm((prev) => ({
-                      ...prev,
-                      product_master_id: selected.id.toString(),
-                    }));
-
-                    setProductSearch(
-                      selected.sku +
-                        (selected.product_name
-                          ? " - " + selected.product_name
-                          : "")
-                    );
-                  }
-                }
-
-                if (e.key === "Escape") {
-                  setProductSearch("");
-                  setForm((prev) => ({
-                    ...prev,
-                    product_master_id: "",
-                  }));
-                }
-              }}
-              placeholder="SKU / nama produk"
-              style={{
-                width: "100%",
-                padding: 8,
-                boxSizing: "border-box",
+              selectedId={form.product_master_id}
+              onTextChange={(value)=>{setProductSearch(value);setForm(prev=>({...prev,product_master_id:"",product_hpp:"0"}))}}
+              onSelect={(product:ProductSearchResult)=>{
+                setProducts(prev=>prev.some(x=>x.id===product.id)?prev:[product as Product,...prev]);
+                setForm(prev=>({...prev,product_master_id:String(product.id),product_hpp:String(product.cost_price??0)}));
+                setProductSearch(`${product.sku}${product.product_name?` - ${product.product_name}`:""}`);
               }}
             />
-
-            {productSearch && filteredProducts.length > 0 && (
-              <div
-                style={{
-                  position: "relative",
-                  width: "100%",
-                  marginTop: 4,
-                  border: "1px solid #999",
-                  background: "#fff",
-                  maxHeight: 180,
-                  overflowY: "auto",
-                  zIndex: 1000,
-                }}
-              >
-                {filteredProducts.map((product) => (
-                  <div
-                    key={product.id}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-
-                      setForm((prev) => ({
-                        ...prev,
-                        product_master_id: product.id.toString(),
-                      }));
-
-                      setProductSearch(
-                        product.sku +
-                          (product.product_name
-                            ? " - " + product.product_name
-                            : "")
-                      );
-                    }}
-                    style={{
-                      padding: "8px 10px",
-                      cursor: "pointer",
-                      borderBottom: "1px solid #eee",
-                      background: "#fff",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "#f1f5f9";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "#fff";
-                    }}
-                  >
-                    <strong>{product.sku}</strong>
-                    {product.product_name
-                      ? " - " + product.product_name
-                      : ""}
-                  </div>
-                ))}
-              </div>
-            )}
+            {form.product_master_id&&<small className="field-note">HPP terhubung otomatis: Rp {Number(form.product_hpp||0).toLocaleString("id-ID")}</small>}
           </label>
 
           <label>
