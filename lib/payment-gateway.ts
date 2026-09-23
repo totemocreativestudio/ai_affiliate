@@ -86,10 +86,16 @@ async function createMayar(input:CheckoutInput){
   if(!key)throw new Error("Mayar API key belum tersedia.");
   if(!webhookToken)throw new Error("Mayar webhook token belum tersedia.");
   if(input.origin.startsWith("https://")){
-    const hookUrl=`${input.origin}/api/payments/webhook/mayar?token=${encodeURIComponent(webhookToken)}`;
-    const hookRes=await fetch("https://api.mayar.id/hl/v2/webhooks/update",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({urlHook:hookUrl})});
-    const hookBody=await hookRes.json().catch(()=>({}));
-    if(!hookRes.ok||Number(hookBody?.statusCode||hookRes.status)>=400)throw new Error(String(hookBody?.messages||"Webhook Mayar gagal diregistrasikan."));
+    const {data:providerState}=await input.admin.from("luma_payment_provider_settings").select("webhook_registered_at").eq("provider","mayar").maybeSingle();
+    const registeredAt=providerState?.webhook_registered_at?new Date(providerState.webhook_registered_at).getTime():0;
+    const stale=!registeredAt||(Date.now()-registeredAt)>7*86400000;
+    if(stale){
+      const hookUrl=`${input.origin}/api/payments/webhook/mayar?token=${encodeURIComponent(webhookToken)}`;
+      const hookRes=await fetch("https://api.mayar.id/hl/v2/webhooks/update",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({urlHook:hookUrl})});
+      const hookBody=await hookRes.json().catch(()=>({}));
+      if(!hookRes.ok||Number(hookBody?.statusCode||hookRes.status)>=400)throw new Error(String(hookBody?.messages||"Webhook Mayar gagal diregistrasikan."));
+      await input.admin.from("luma_payment_provider_settings").update({webhook_registered_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("provider","mayar");
+    }
   }
   const customer=await customerInfo(input.admin,input.user);
   if(!customer.email)throw new Error("Email user belum tersedia untuk checkout Mayar.");
@@ -111,7 +117,7 @@ async function createXendit(input:CheckoutInput){
   const key=await getServerSecret(input.admin,"luma_xendit_secret_key");
   if(!key)throw new Error("Xendit secret key belum tersedia.");
   const customer=await customerInfo(input.admin,input.user);
-  const payload:any={reference_id:input.orderCode,session_type:"PAY",mode:"PAYMENT_LINK",amount:input.amount,currency:"IDR",country:"ID",locale:"id",expires_at:input.expiresAt,description:input.description,customer:{reference_id:`luma-${input.user.id}-${Date.now()}`,type:"INDIVIDUAL",email:customer.email||undefined,mobile_number:customer.mobile||undefined,individual_detail:{given_names:customer.name}},items:[{reference_id:input.itemId,name:input.itemName,description:input.description,type:"DIGITAL_SERVICE",category:"SOFTWARE",net_unit_amount:input.amount,quantity:1,currency:"IDR"}],metadata:{workspace_id:input.workspaceId,user_id:input.user.id,kind:input.kind,...(input.metadata||{})}};
+  const payload:any={reference_id:input.orderCode,session_type:"PAY",mode:"PAYMENT_LINK",amount:input.amount,currency:"IDR",country:"ID",locale:"id",expires_at:input.expiresAt,description:input.description,customer:{reference_id:`luma-${input.user.id}-${Date.now()}`,type:"INDIVIDUAL",email:customer.email||undefined},items:[{reference_id:input.itemId,name:input.itemName,description:input.description,type:"DIGITAL_SERVICE",category:"SOFTWARE",net_unit_amount:input.amount,quantity:1,currency:"IDR"}],metadata:{workspace_id:input.workspaceId,user_id:input.user.id,kind:input.kind,...(input.metadata||{})}};
   if(input.origin.startsWith("https://")){payload.success_return_url=`${input.origin}/#billing`;payload.cancel_return_url=`${input.origin}/#billing`}
   const r=await fetch("https://api.xendit.co/sessions",{method:"POST",headers:{Authorization:`Basic ${Buffer.from(`${key}:`).toString("base64")}`,"Content-Type":"application/json"},body:JSON.stringify(payload)});
   const x=await r.json().catch(()=>({}));
