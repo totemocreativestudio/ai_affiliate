@@ -161,8 +161,8 @@ export default function SubscriptionBilling({ workspaceId, userId }: { workspace
         setMsg(`Checkout langganan ${d.payment_provider || ""} dibuat. Selesaikan pembayaran sebelum masa checkout berakhir.`);
       }
       if (d.payment_url) window.location.href = d.payment_url;
-    } catch (e:any) {
-      setMsg(e?.message || "Checkout langganan gagal.");
+    } catch {
+      setMsg("Sistem error, mohon tunggu beberapa saat. Sedang dalam perbaikan.");
     } finally {
       setBusy(null);
     }
