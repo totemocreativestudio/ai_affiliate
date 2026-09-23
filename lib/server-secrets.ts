@@ -9,6 +9,8 @@ const ENV_MAP: Record<string,string[]> = {
   luma_resend_api_key: ["RESEND_API_KEY"],
   luma_mayar_api_key: ["MAYAR_API_KEY", "API_KEY_MAYAR_ID", "API_Key_Mayar_ID"],
   luma_mayar_webhook_token: ["MAYAR_WEBHOOK_TOKEN", "WEBHOOK_TOKEN_MAYAR_ID", "Webhook_Token_Mayar_ID"],
+  luma_midtrans_server_key: ["MIDTRANS_SERVER_KEY", "SERVER_KEY_MIDTRANS"],
+  luma_midtrans_client_key: ["MIDTRANS_CLIENT_KEY", "CLIENT_KEY_MIDTRANS"],
 };
 function getEnvironmentSecret(name: string) {const candidates = ENV_MAP[name] || [];for (const envName of candidates) {const value = process.env[envName];if (typeof value === "string" && value.trim()) return value.trim();}return "";}
 export function getServerSecretSource(name: string) {const candidates = ENV_MAP[name] || [];for (const envName of candidates) {const value = process.env[envName];if (typeof value === "string" && value.trim()) return `vercel:${envName}`;}return "secure-vault";}
