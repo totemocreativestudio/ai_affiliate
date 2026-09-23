@@ -4,9 +4,12 @@ import { getServerContext } from "../../../../../lib/server-auth";
 export const runtime = "nodejs";
 
 function clean(value:any){
-  return String(value ?? "").replace(/[^ -~]/g," ").replace(/s+/g," ").trim();
+  const raw=String(value ?? "").replaceAll("\n"," ").replaceAll("\r"," ").replaceAll("\t"," ");
+  return Array.from(raw).map(ch=>{const code=ch.charCodeAt(0);return code>=32&&code<=126?ch:" "}).join("").split(" ").filter(Boolean).join(" ").trim();
 }
-function esc(value:string){return value.replace(/\\/g,"\\\\").replace(/(/g,"\\(").replace(/)/g,"\\)");}
+function esc(value:string){
+  return value.split("\\").join("\\\\").split("(").join("\\(").split(")").join("\\)");
+}
 function wrap(text:string,max=88){
   const words=clean(text).split(" ").filter(Boolean);const lines:string[]=[];let line="";
   for(const word of words){const next=line?line+" "+word:word;if(next.length>max){if(line)lines.push(line);line=word}else line=next}
