@@ -7,7 +7,7 @@ export default function AdminDashboardV3({workspaceId}:{workspaceId:string}){con
  {tab==="support"&&<OwnerSupportDesk workspaceId={workspaceId}/>}
  {tab==="finance"&&<div className="owner-section-stack"><OwnerSubscriptionPromo/><OwnerFinanceControl/></div>}
  {tab==="referral"&&<OwnerFinanceControl/>}
- {tab==="ai"&&<OwnerPlatformHealth mode="api"/>}
+ {tab==="ai"&&<div className="owner-section-stack"><section className="owner-panel"><div className="owner-panel-head"><div><span className="owner-kicker">API KEY</span><h3>Environment Variables</h3><p>Credential server-side untuk provider API. Secret tidak pernah ditampilkan kembali ke browser.</p></div></div><MayarIntegration workspaceId={workspaceId}/></section><OwnerPlatformHealth mode="api"/></div>}
  {tab==="broadcast"&&<AdminBroadcast workspaceId={workspaceId}/>}
  {tab==="content"&&<div className="owner-section-stack"><AdminBlog workspaceId={workspaceId}/><OwnerTutorialControl workspaceId={workspaceId}/></div>}
  {tab==="social"&&<AdminSocialModeration/>}
