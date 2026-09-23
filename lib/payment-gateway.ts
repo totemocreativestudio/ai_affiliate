@@ -73,8 +73,18 @@ async function customerInfo(admin:any,user:any){
 }
 
 async function createMayar(input:CheckoutInput){
-  const key=await getServerSecret(input.admin,"luma_mayar_api_key");
+  const [key,webhookToken]=await Promise.all([
+    getServerSecret(input.admin,"luma_mayar_api_key"),
+    getServerSecret(input.admin,"luma_mayar_webhook_token")
+  ]);
   if(!key)throw new Error("Mayar API key belum tersedia.");
+  if(!webhookToken)throw new Error("Mayar webhook token belum tersedia.");
+  if(input.origin.startsWith("https://")){
+    const hookUrl=`${input.origin}/api/payments/webhook/mayar?token=${encodeURIComponent(webhookToken)}`;
+    const hookRes=await fetch("https://api.mayar.id/hl/v2/webhooks/update",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({urlHook:hookUrl})});
+    const hookBody=await hookRes.json().catch(()=>({}));
+    if(!hookRes.ok||Number(hookBody?.statusCode||hookRes.status)>=400)throw new Error(String(hookBody?.messages||"Webhook Mayar gagal diregistrasikan."));
+  }
   const customer=await customerInfo(input.admin,input.user);
   if(!customer.email)throw new Error("Email user belum tersedia untuk checkout Mayar.");
   if(!customer.mobile)throw new Error("Nomor HP/WhatsApp user belum tersedia untuk checkout Mayar.");
