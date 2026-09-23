@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../../lib/supabase-browser";
+import {CreatorAutocomplete,ProductAutocomplete,CreatorSearchResult,ProductSearchResult} from "./SmartAutocomplete";
 
 type Creator = { id:number; creator_code:string|null; name:string|null; username:string|null; platform:string|null; };
-type Product = { id:number; sku:string; product_name:string|null; selling_price:number|null; };
+type Product = { id:number; sku:string; product_name:string|null; selling_price:number|null; cost_price:number|null; };
 type SampleRow = {
   id:number; creator_id:number|null; creator_name:string|null; platform:string|null;
   product_master_id:number|null; sku:string|null; product_name:string|null;
@@ -51,7 +52,7 @@ export default function CreatorSamples({workspaceId}:Props){
         .eq("workspace_id",workspaceId).order("id",{ascending:false}),
       supabase.from("creators").select("id,creator_code,name,username,platform")
         .eq("workspace_id",workspaceId).order("name").limit(7770),
-      supabase.from("product_master").select("id,sku,product_name,selling_price")
+      supabase.from("product_master").select("id,sku,product_name,selling_price,cost_price")
         .eq("workspace_id",workspaceId).order("sku").limit(1000),
     ]);
     if(sampleRes.error)setError(sampleRes.error.message); else setRows((sampleRes.data??[]) as SampleRow[]);
@@ -118,7 +119,7 @@ export default function CreatorSamples({workspaceId}:Props){
       sent_date:form.sent_date||null,
       return_date:form.return_date||null,
       qty:form.qty?Number(form.qty):1,
-      product_value:form.product_value?Number(form.product_value):0,
+      product_value:product?.cost_price!=null?Number(product.cost_price):form.product_value?Number(form.product_value):0,
       tracking:form.tracking.trim()||null,
       notes:form.notes.trim()||null,
       source:"web",
@@ -155,39 +156,18 @@ export default function CreatorSamples({workspaceId}:Props){
           <h3 style={{marginTop:0}}>{editingId?"Edit Sample":"Tambah Sample"}</h3>
           <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:12}}>
             <label>Creator Search
-              <input value={creatorSearch}
-                onChange={(e)=>{
-                  const value=e.target.value; setCreatorSearch(value); setManualCreatorConfirmed(false);
-                  setForm(p=>({...p,creator_id:"",creator_name:value}));
+              <CreatorAutocomplete
+                workspaceId={workspaceId}
+                value={creatorSearch}
+                selectedId={form.creator_id}
+                onTextChange={(value)=>{setCreatorSearch(value);setManualCreatorConfirmed(false);setForm(p=>({...p,creator_id:"",creator_name:value}))}}
+                onSelect={(creator:CreatorSearchResult)=>{
+                  const name=creator.name??creator.username??creator.creator_code??"";
+                  setCreators(prev=>prev.some(x=>x.id===creator.id)?prev:[creator as Creator,...prev]);
+                  setForm(p=>({...p,creator_id:String(creator.id),creator_name:name,platform:creator.platform??p.platform}));
+                  setCreatorSearch(name);setManualCreatorConfirmed(false);
                 }}
-                onKeyDown={(e)=>{
-                  if(e.key!=="Enter")return; e.preventDefault();
-                  const value=creatorSearch.trim(); if(!value)return;
-                  const key=value.toLowerCase();
-                  const exact=creators.find(c=>(c.name??"").trim().toLowerCase()===key||(c.username??"").trim().toLowerCase()===key||(c.creator_code??"").trim().toLowerCase()===key);
-                  if(exact){
-                    const name=exact.name??exact.username??exact.creator_code??value;
-                    setForm(p=>({...p,creator_id:String(exact.id),creator_name:name,platform:exact.platform??p.platform}));
-                    setCreatorSearch(name); setManualCreatorConfirmed(false);
-                  }else{
-                    setForm(p=>({...p,creator_id:"",creator_name:value})); setManualCreatorConfirmed(true);
-                  }
-                }} style={{width:"100%",padding:8}} />
-              {creatorSearch.trim()&&!form.creator_id&&filteredCreators.length>0&&!manualCreatorConfirmed&&(
-                <select size={Math.min(5,filteredCreators.length)} value="" onChange={(e)=>{
-                  const c=creators.find(x=>x.id===Number(e.target.value)); if(!c)return;
-                  const name=c.name??c.username??c.creator_code??"";
-                  setForm(p=>({...p,creator_id:String(c.id),creator_name:name,platform:c.platform??p.platform}));
-                  setCreatorSearch(name);
-                }} style={{width:"100%",marginTop:5}}>
-                  {filteredCreators.map(c=><option key={c.id} value={c.id}>{c.name??c.username??c.creator_code??"-"}{c.platform?` - ${c.platform}`:""}</option>)}
-                </select>
-              )}
-              {manualCreatorConfirmed&&!form.creator_id&&form.creator_name.trim()&&(
-                <div style={{marginTop:6,padding:7,background:"#f9fafb",border:"1px solid #d1d5db",borderRadius:6,fontSize:12}}>
-                  Creator baru / pending: <strong>{form.creator_name}</strong>
-                </div>
-              )}
+              />
             </label>
 
             <label>Platform
@@ -197,27 +177,18 @@ export default function CreatorSamples({workspaceId}:Props){
             </label>
 
             <label>Product / SKU Search
-              <input value={productSearch}
-                onChange={(e)=>{setProductSearch(e.target.value);setForm(p=>({...p,product_master_id:""}));}}
-                onKeyDown={(e)=>{
-                  if(e.key!=="Enter")return; e.preventDefault();
-                  const p=filteredProducts[0]; if(!p)return;
-                  setForm(f=>({...f,product_master_id:String(p.id),product_value:String(p.selling_price??f.product_value)}));
-                  setProductSearch(`${p.sku}${p.product_name?` - ${p.product_name}`:""}`);
-                }} style={{width:"100%",padding:8}} />
-              {productSearch.trim()&&!form.product_master_id&&filteredProducts.length>0&&(
-                <div style={{marginTop:5,border:"1px solid #ccc",maxHeight:160,overflowY:"auto",background:"#fff"}}>
-                  {filteredProducts.map(p=>(
-                    <div key={p.id} onMouseDown={(e)=>{
-                      e.preventDefault();
-                      setForm(f=>({...f,product_master_id:String(p.id),product_value:String(p.selling_price??f.product_value)}));
-                      setProductSearch(`${p.sku}${p.product_name?` - ${p.product_name}`:""}`);
-                    }} style={{padding:8,cursor:"pointer",borderBottom:"1px solid #eee"}}>
-                      <strong>{p.sku}</strong>{p.product_name?` - ${p.product_name}`:""}
-                    </div>
-                  ))}
-                </div>
-              )}
+              <ProductAutocomplete
+                workspaceId={workspaceId}
+                value={productSearch}
+                selectedId={form.product_master_id}
+                onTextChange={(value)=>{setProductSearch(value);setForm(p=>({...p,product_master_id:""}))}}
+                onSelect={(product:ProductSearchResult)=>{
+                  setProducts(prev=>prev.some(x=>x.id===product.id)?prev:[product as Product,...prev]);
+                  setForm(p=>({...p,product_master_id:String(product.id),product_value:String(product.cost_price??0)}));
+                  setProductSearch(`${product.sku}${product.product_name?` - ${product.product_name}`:""}`);
+                }}
+              />
+              {form.product_master_id&&<small className="field-note">HPP produk otomatis: Rp {Number(products.find(p=>p.id===Number(form.product_master_id))?.cost_price||form.product_value||0).toLocaleString("id-ID")}</small>}
             </label>
 
             <label>Sample Status
