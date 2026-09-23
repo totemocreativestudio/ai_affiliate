@@ -78,6 +78,6 @@ export async function POST(req:NextRequest){
     return NextResponse.json({ok:true,order_code:orderCode,payment_url:checkout.paymentUrl,expires_at:checkout.expiresAt,payment_provider:providerName,attempted:checkout.attempted,pricing:{base_amount:baseAmount,upgrade_credit_amount:upgradeCredit,promo_discount_amount:promoDiscount,amount,upgrade}});
   }catch(error:any){
     if(ctx){try{await ctx.admin.from("luma_api_usage_events").insert({workspace_id:null,user_id:ctx.user.id,provider:"payment-router",service:"payment_session",request_type:"subscription_checkout",status:"error",reference:orderCode||null,metadata:{error:error?.message||"unknown"}})}catch{}}
-    return NextResponse.json({ok:false,error:error?.message||"Pembayaran langganan belum dapat dibuat."},{status:400});
+    return NextResponse.json({ok:false,error:"Sistem error, mohon tunggu beberapa saat. Sedang dalam perbaikan.",code:"PAYMENT_SYSTEM_ERROR"},{status:503});
   }
 }
