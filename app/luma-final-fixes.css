@@ -371,3 +371,34 @@ html[data-theme="dark"] .lumaway-loading-screen{background:#080e1b!important;col
 @media(max-width:980px){
   .payment-provider-grid{grid-template-columns:1fr}
 }
+
+
+/* PR37 payment methods visual logos */
+.visual-payment-methods{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  align-items:center;
+}
+.visual-payment-methods>span{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-width:96px;
+  height:42px;
+  padding:4px 8px;
+  border:1px solid #e1e6ef;
+  border-radius:10px;
+  background:#fff;
+}
+.visual-payment-methods img{
+  display:block;
+  width:auto;
+  max-width:130px;
+  height:30px;
+  object-fit:contain;
+}
+@media(max-width:700px){
+  .visual-payment-methods>span{min-width:88px;flex:1 1 42%}
+  .visual-payment-methods img{max-width:115px}
+}
