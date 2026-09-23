@@ -169,7 +169,7 @@ async function createMidtrans(input:CheckoutInput){
 export async function createPaymentCheckout(input:CheckoutInput):Promise<CheckoutResult>{
   const providers=await routingOrder(input.admin,input.orderCode);
   if(!providers.length)throw new Error("Belum ada payment gateway yang terkonfigurasi.");
-  const attempted:PaymentProvider[]=[];const errors:string[]=[];
+  const attempted:PaymentProvider[]=[];
   for(const provider of providers){
     attempted.push(provider);
     try{
@@ -177,7 +177,7 @@ export async function createPaymentCheckout(input:CheckoutInput):Promise<Checkou
       await markHealth(input.admin,provider,true);
       return {...result,attempted};
     }catch(e:any){
-      const msg=String(e?.message||"payment provider error");errors.push(`${provider}: ${msg}`);
+      const msg=String(e?.message||"payment provider error");
       // Missing user phone is not a gateway outage, but fallback should continue.
       if(!msg.toLowerCase().includes("nomor hp")&&!msg.toLowerCase().includes("email user"))await markHealth(input.admin,provider,false,msg);
     }
