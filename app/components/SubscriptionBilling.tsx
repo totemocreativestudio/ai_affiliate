@@ -92,7 +92,7 @@ export default function SubscriptionBilling({ workspaceId, userId }: { workspace
         body: JSON.stringify({ workspace_id: workspaceId, code: promo, target_type: "generic" }),
       });
       const d = await r.json();
-      if (!r.ok || !d.ok) throw new Error();
+      if (!r.ok || !d.ok) throw new Error(d.error || "Checkout langganan gagal.");
       setPromoInfo(d);
       localStorage.setItem("lumaway_promo_code", promo.trim().toUpperCase());
       window.dispatchEvent(
@@ -158,11 +158,11 @@ export default function SubscriptionBilling({ workspaceId, userId }: { workspace
           `Upgrade dibuat: ${pricing.upgrade.remaining_days.toFixed(1)} hari tersisa dikonversi menjadi kredit ${money(pricing.upgrade_credit_amount)}. Total bayar ${money(pricing.amount)}.`,
         );
       } else {
-        setMsg("Checkout langganan dibuat dan berlaku 3 hari.");
+        setMsg(`Checkout langganan ${d.payment_provider || ""} dibuat. Selesaikan pembayaran sebelum masa checkout berakhir.`);
       }
       if (d.payment_url) window.location.href = d.payment_url;
-    } catch {
-      setMsg("error, terjadi kesalahan.");
+    } catch (e:any) {
+      setMsg(e?.message || "Checkout langganan gagal.");
     } finally {
       setBusy(null);
     }
