@@ -9,6 +9,7 @@ import KanbanBoard from "./KanbanBoard";
 import InternalExcelGrid from "./InternalExcelGrid";
 import UserProfile from "./UserProfile";
 import AdminDashboard from "./AdminDashboard";
+import {CreatorAutocomplete,ProductAutocomplete,CreatorSearchResult,ProductSearchResult} from "./SmartAutocomplete";
 
 type Row=Record<string,any>;
 const fmt=(v:any)=>new Intl.NumberFormat("id-ID").format(Number(v||0));
@@ -38,13 +39,79 @@ function Table({rows,columns}:{rows:Row[];columns?:string[]}){
 
 function Agreements({workspaceId}:{workspaceId:string}){
   const supabase=createClient();
+  const empty:Row={creator_id:"",creator_name:"",platform:"TikTok",brand:"",category:"",product_master_id:"",product_name:"",product_hpp:0,deal_type:"",ratecard:"",support_type:"",support_value:"",start_date:"",end_date:"",document_status:"Approved",support_status:"Pending",bonus_eligible:"No",notes:"",signed_by_name:""};
   const [rows,setRows]=useState<Row[]>([]),[msg,setMsg]=useState("");
-  const [form,setForm]=useState<Row>({creator_name:"",platform:"TikTok",brand:"",category:"",product_name:"",deal_type:"",ratecard:"",support_type:"",support_value:"",start_date:"",end_date:"",document_status:"Pending",support_status:"Pending",bonus_eligible:"No",notes:""});
-  async function load(){const {data,error}=await supabase.from("agreements").select("*").eq("workspace_id",workspaceId).order("id",{ascending:false}).limit(100);if(error)setMsg(error.message);else setRows((data||[]) as Row[])}
+  const [form,setForm]=useState<Row>(empty);
+  const [creatorSearch,setCreatorSearch]=useState("");
+  const [productSearch,setProductSearch]=useState("");
+
+  async function load(){
+    const {data,error}=await supabase.from("agreements").select("*").eq("workspace_id",workspaceId).order("id",{ascending:false}).limit(300);
+    if(error)setMsg(error.message);else setRows((data||[]) as Row[]);
+  }
   useEffect(()=>{void load()},[workspaceId]);
-  async function save(){if(!form.creator_name)return setMsg("Creator wajib diisi.");const payload={...form,workspace_id:workspaceId,agreement_id:`AGR-${Date.now()}`,ratecard:Number(form.ratecard||0),support_value:Number(form.support_value||0)};const {error}=await supabase.from("agreements").insert(payload);setMsg(error?error.message:"Agreement tersimpan.");if(!error){await load();setForm({...form,creator_name:"",brand:"",product_name:"",notes:""})}}
+
+  function sealId(){
+    const chars="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+    const bytes=new Uint8Array(22);crypto.getRandomValues(bytes);
+    return Array.from(bytes,b=>chars[b%chars.length]).join("");
+  }
+  function chooseCreator(x:CreatorSearchResult){
+    const label=x.name||x.username||x.creator_code||"";
+    setCreatorSearch(label);
+    setForm(p=>({...p,creator_id:String(x.id),creator_name:label,platform:x.platform||p.platform,ratecard:Number(x.ratecard||p.ratecard||0)}));
+  }
+  function chooseProduct(x:ProductSearchResult){
+    setProductSearch(`${x.sku} - ${x.product_name||""}`);
+    setForm(p=>({...p,product_master_id:String(x.id),product_name:x.product_name||x.sku,product_hpp:Number(x.cost_price||0)}));
+  }
+  async function save(){
+    if(!form.creator_id)return setMsg("Pilih creator dari hasil pencarian.");
+    if(!String(form.signed_by_name||"").trim())return setMsg("Nama tanda tangan wajib diisi.");
+    const payload={
+      ...form,workspace_id:workspaceId,agreement_id:`AGR-${Date.now()}`,
+      creator_id:Number(form.creator_id),product_master_id:form.product_master_id?Number(form.product_master_id):null,
+      product_hpp:Number(form.product_hpp||0),ratecard:Number(form.ratecard||0),support_value:Number(form.support_value||0),
+      e_stamp_id:sealId(),signed_by_name:String(form.signed_by_name).trim(),signed_at:new Date().toISOString(),
+      updated_at:new Date().toISOString()
+    };
+    const {error}=await supabase.from("agreements").insert(payload);
+    setMsg(error?error.message:"Agreement tersimpan. Program creator otomatis Active dan PDF siap dibuat.");
+    if(!error){await load();setForm({...empty});setCreatorSearch("");setProductSearch("")}
+  }
   const f=(k:string,l:string,type="text")=><label>{l}<input type={type} value={form[k]||""} onChange={e=>setForm({...form,[k]:e.target.value})}/></label>;
-  return <section id="agreements" className="legacy-page-anchor"><div className="eyebrow">CREATOR MANAGEMENT</div><h1>Agreement</h1><div className="card"><div className="grid">{f("creator_name","Creator")}{f("platform","Platform")}{f("brand","Brand")}{f("category","Category")}{f("product_name","Product")}{f("deal_type","Deal Type")}{f("ratecard","Ratecard","number")}{f("support_type","Support Type")}{f("support_value","Support Value","number")}{f("start_date","Start","date")}{f("end_date","End","date")}<label>Document Status<select value={form.document_status} onChange={e=>setForm({...form,document_status:e.target.value})}><option>Pending</option><option>Approved</option><option>Rejected</option></select></label><label>Support Status<select value={form.support_status} onChange={e=>setForm({...form,support_status:e.target.value})}><option>Pending</option><option>Approved</option><option>Completed</option></select></label><label>Bonus Eligible<select value={form.bonus_eligible} onChange={e=>setForm({...form,bonus_eligible:e.target.value})}><option>No</option><option>Yes</option></select></label></div><label>Notes<textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></label><button className="primary" onClick={save}>Simpan Agreement</button>{msg&&<p className="muted">{msg}</p>}</div><div className="card"><h3>Agreement aktif</h3><Table rows={rows} columns={["agreement_id","creator_name","platform","brand","product_name","document_status","support_status","bonus_eligible","start_date","end_date"]}/></div></section>
+
+  return <section id="agreements" className="legacy-page-anchor">
+    <div className="eyebrow">CREATOR MANAGEMENT</div><h1>Agreement</h1>
+    <div className="card">
+      <div className="grid">
+        <label>Creator Search<CreatorAutocomplete workspaceId={workspaceId} value={creatorSearch} selectedId={form.creator_id} onTextChange={value=>{setCreatorSearch(value);setForm(p=>({...p,creator_id:"",creator_name:value}))}} onSelect={chooseCreator}/></label>
+        {f("platform","Platform")}
+        {f("brand","Brand")}
+        {f("category","Category")}
+        <label>Product / SKU Search<ProductAutocomplete workspaceId={workspaceId} value={productSearch} selectedId={form.product_master_id} onTextChange={value=>{setProductSearch(value);setForm(p=>({...p,product_master_id:"",product_name:"",product_hpp:0}))}} onSelect={chooseProduct}/><small className="field-note">HPP terhubung otomatis: Rp {Number(form.product_hpp||0).toLocaleString("id-ID")}</small></label>
+        {f("deal_type","Deal Type")}
+        {f("ratecard","Ratecard","number")}
+        {f("support_type","Support Type")}
+        {f("support_value","Support Value","number")}
+        {f("start_date","Start","date")}
+        {f("end_date","End","date")}
+        <label>Document Status<select value={form.document_status} onChange={e=>setForm({...form,document_status:e.target.value})}><option>Pending</option><option>Approved</option><option>Rejected</option></select></label>
+        <label>Support Status<select value={form.support_status} onChange={e=>setForm({...form,support_status:e.target.value})}><option>Pending</option><option>Approved</option><option>Completed</option></select></label>
+        <label>Bonus Eligible<select value={form.bonus_eligible} onChange={e=>setForm({...form,bonus_eligible:e.target.value})}><option>No</option><option>Yes</option></select></label>
+        {f("signed_by_name","Nama Tanda Tangan")}
+      </div>
+      <label>Notes<textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></label>
+      <div className="owner-inline-note"><b>Digital Seal ID:</b> dibuat otomatis 22 karakter unik saat Agreement disimpan. PDF akan memuat nama tanda tangan sebagai watermark. Untuk e-Meterai dengan status hukum resmi, tetap gunakan penyedia e-Meterai resmi/berizin.</div>
+      <button className="primary" onClick={()=>void save()}>Simpan Agreement</button>{msg&&<p className="muted">{msg}</p>}
+    </div>
+    <div className="card"><h3>Agreement aktif</h3>
+      <div className="scroll"><table><thead><tr>{["Agreement","Creator","Platform","Product","Status","Program","Digital Seal","Signed By","PDF"].map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>
+        {rows.map(row=><tr key={row.id}><td>{row.agreement_id||"-"}</td><td>{row.creator_name||"-"}</td><td>{row.platform||"-"}</td><td>{row.product_name||"-"}</td><td>{row.document_status||"-"}</td><td><span className="status-pill s-paid">Active</span></td><td><code>{row.e_stamp_id||"-"}</code></td><td>{row.signed_by_name||"-"}</td><td>{row.e_stamp_id?<a className="secondary compact" href={`/api/agreements/${row.id}/pdf?workspace_id=${encodeURIComponent(workspaceId)}`} target="_blank" rel="noreferrer">PDF</a>:"-"}</td></tr>)}
+        {!rows.length&&<tr><td colSpan={9}>Belum ada Agreement.</td></tr>}
+      </tbody></table></div>
+    </div>
+  </section>
 }
 
 function AffiliateSupport({workspaceId}:{workspaceId:string}){
