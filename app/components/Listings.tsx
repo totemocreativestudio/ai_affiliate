@@ -34,6 +34,7 @@ type Listing = {
   product_master_id: number | null;
   product_name: string | null;
   sku: string | null;
+  product_hpp: number | null;
   stage: string | null;
   payment_type: string | null;
   ratecard: number;
@@ -111,7 +112,7 @@ export default function Listings({
         supabase
           .from("listings")
           .select(
-            "id,data_date,creator_id,creator_name,platform,product_master_id,product_name,sku,stage,payment_type,ratecard,posting_date,post_link,next_action,agreement_id,notes"
+            "id,data_date,creator_id,creator_name,platform,product_master_id,product_name,sku,product_hpp,stage,payment_type,ratecard,posting_date,post_link,next_action,agreement_id,notes"
           )
           .eq("workspace_id", workspaceId)
           .order("id", { ascending: false }),
@@ -201,6 +202,7 @@ export default function Listings({
       platform: row.platform ?? "",
       product_master_id:
         row.product_master_id?.toString() ?? "",
+      product_hpp: String(row.product_hpp ?? 0),
       stage: row.stage ?? "",
       payment_type: row.payment_type ?? "",
       ratecard: row.ratecard?.toString() ?? "",
