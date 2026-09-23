@@ -115,7 +115,7 @@ async function createMidtrans(input:CheckoutInput){
     page_expiry:{duration:3,unit:"days"}
   };
   if(input.origin.startsWith("https://"))payload.callbacks={finish:`${input.origin}/#billing`};
-  const r=await fetch("https://app.midtrans.com/snap/v1/transactions",{method:"POST",headers:{Authorization:`Basic ${Buffer.from(`${key}:`).toString("base64")}`,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify(payload)});
+  const midHeaders:Record<string,string>={Authorization:`Basic ${Buffer.from(`${key}:`).toString("base64")}`,"Content-Type":"application/json",Accept:"application/json"};\n  if(input.origin.startsWith("https://"))midHeaders["X-Override-Notification"]=`${input.origin}/api/payments/webhook/midtrans`;\n  const r=await fetch("https://app.midtrans.com/snap/v1/transactions",{method:"POST",headers:midHeaders,body:JSON.stringify(payload)});
   const m=await r.json().catch(()=>({}));
   if(!r.ok||!m?.redirect_url)throw new Error(String(m?.error_messages?.[0]||m?.status_message||"Midtrans checkout gagal."));
   return {provider:"midtrans" as PaymentProvider,paymentUrl:String(m.redirect_url),paymentSessionId:String(m.token||"")||null,paymentReference:null,expiresAt:input.expiresAt,providerPayload:{token:m.token}};
