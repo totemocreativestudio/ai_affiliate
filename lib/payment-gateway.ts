@@ -38,8 +38,14 @@ function hashInt(value:string){
   return parseInt(createHash("sha256").update(value).digest("hex").slice(0,8),16)>>>0;
 }
 async function providerConfigured(admin:any,provider:PaymentProvider){
-  if(provider==="mayar")return hasServerSecret(admin,"luma_mayar_api_key");
-  if(provider==="xendit")return hasServerSecret(admin,"luma_xendit_secret_key");
+  if(provider==="mayar"){
+    const [key,hook]=await Promise.all([hasServerSecret(admin,"luma_mayar_api_key"),hasServerSecret(admin,"luma_mayar_webhook_token")]);
+    return key&&hook;
+  }
+  if(provider==="xendit"){
+    const [key,hook]=await Promise.all([hasServerSecret(admin,"luma_xendit_secret_key"),hasServerSecret(admin,"luma_xendit_webhook_token")]);
+    return key&&hook;
+  }
   return hasServerSecret(admin,"luma_midtrans_server_key");
 }
 async function markHealth(admin:any,provider:PaymentProvider,ok:boolean,error?:string){
