@@ -365,7 +365,7 @@ export default function LumawayWorkspaceApp() {
     const { error: resendError } = await supabase.auth.resend({
       type: "signup",
       email: email.trim(),
-      options: { emailRedirectTo: `${window.location.origin}${routeForSection("dashboard")}` },
+      options: { emailRedirectTo: `${window.location.origin}${routeForSection("dashboard")}${captureReferralCode()?`?ref=${encodeURIComponent(captureReferralCode())}`:""}` },
     });
     setLoading(false);
     if (resendError) {
@@ -385,7 +385,7 @@ export default function LumawayWorkspaceApp() {
     const { data, error: signupError } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: `${window.location.origin}${routeForSection("dashboard")}` },
+      options: { emailRedirectTo: `${window.location.origin}${routeForSection("dashboard")}${captureReferralCode()?`?ref=${encodeURIComponent(captureReferralCode())}`:""}` },
     });
     if (signupError) {
       const message = String(signupError.message || "").toLowerCase();
