@@ -344,27 +344,52 @@ function creatorKeys(row: Row) {
 }
 
 async function resolveCreatorIds(admin:any,workspaceId:string,rows:Row[],platform:string,importId:string){
-  const {data:existing,error}=await admin.from("creators").select("id,name,username,affiliate_id").eq("workspace_id",workspaceId).ilike("platform",platform).limit(10000);
-  if(error)throw error;
+  const identityKey=(name:string,username:string)=>`${String(username||name||"").trim().toLowerCase()}|${platform.trim().toLowerCase()||"other"}`;
   const map=new Map<string,number>();
   const register=(row:any)=>{
     const id=Number(row.id);
-    const keys=[
-      row.username?`u:${String(row.username).toLowerCase()}`:"",
-      row.affiliate_id?`a:${String(row.affiliate_id).toLowerCase()}`:"",
-      row.name?`n:${String(row.name).toLowerCase()}`:"",
-    ].filter(Boolean);
-    for(const k of keys)map.set(k,id);
+    const key=String(row.identity_key||identityKey(String(row.name||""),String(row.username||"")));
+    if(key)map.set(`i:${key}`,id);
+    if(row.affiliate_id)map.set(`a:${String(row.affiliate_id).trim().toLowerCase()}`,id);
   };
-  for(const row of existing||[])register(row);
 
-  const missing=new Map<string,any>();
+  const identities=new Map<string,{name:string;username:string;affiliateId:string}>();
   for(const row of rows){
     const identity=creatorKeys(row);
-    if(!identity.keys.length)continue;
-    if(identity.keys.some((k)=>map.has(k)))continue;
-    const canonical=identity.keys[0];
-    if(!missing.has(canonical))missing.set(canonical,{
+    if(!identity.name&&!identity.username&&!identity.affiliateId)continue;
+    const key=identityKey(identity.name,identity.username);
+    identities.set(key,{name:identity.name,username:identity.username,affiliateId:identity.affiliateId});
+  }
+
+  const identityKeys=[...identities.keys()];
+  for(let i=0;i<identityKeys.length;i+=400){
+    const part=identityKeys.slice(i,i+400);
+    const {data,error}=await admin.from("creators")
+      .select("id,name,username,affiliate_id,identity_key")
+      .eq("workspace_id",workspaceId)
+      .in("identity_key",part);
+    if(error)throw error;
+    for(const row of data||[])register(row);
+  }
+
+  const affiliateIds=[...new Set([...identities.values()].map(x=>x.affiliateId.trim().toLowerCase()).filter(Boolean))];
+  for(let i=0;i<affiliateIds.length;i+=400){
+    const part=affiliateIds.slice(i,i+400);
+    const {data,error}=await admin.from("creators")
+      .select("id,name,username,affiliate_id,identity_key")
+      .eq("workspace_id",workspaceId)
+      .ilike("platform",platform)
+      .in("affiliate_id",part);
+    if(error)throw error;
+    for(const row of data||[])register(row);
+  }
+
+  const missing=new Map<string,any>();
+  for(const identity of identities.values()){
+    const ikey=identityKey(identity.name,identity.username);
+    const affiliateKey=identity.affiliateId?`a:${identity.affiliateId.trim().toLowerCase()}`:"";
+    if(map.has(`i:${ikey}`)||(affiliateKey&&map.has(affiliateKey)))continue;
+    if(!missing.has(ikey))missing.set(ikey,{
       workspace_id:workspaceId,creator_code:creatorCode(),name:identity.name||identity.username,
       username:identity.username||identity.name,platform,affiliate_id:identity.affiliateId||null,
       status:"Active",source_import_id:importId,updated_at:new Date().toISOString()
@@ -372,17 +397,21 @@ async function resolveCreatorIds(admin:any,workspaceId:string,rows:Row[],platfor
   }
 
   const pending=[...missing.values()];
-  for(let i=0;i<pending.length;i+=500){
-    const part=pending.slice(i,i+500);
-    const {data:created,error:createError}=await admin.from("creators").insert(part).select("id,name,username,affiliate_id");
+  for(let i=0;i<pending.length;i+=400){
+    const part=pending.slice(i,i+400);
+    const {data:created,error:createError}=await admin.from("creators").insert(part).select("id,name,username,affiliate_id,identity_key");
     if(createError)throw createError;
     for(const row of created||[])register(row);
   }
 
   return (row:Row)=>{
     const identity=creatorKeys(row);
-    for(const k of identity.keys){const id=map.get(k);if(id)return id}
-    return null;
+    if(identity.affiliateId){
+      const affiliateHit=map.get(`a:${identity.affiliateId.trim().toLowerCase()}`);
+      if(affiliateHit)return affiliateHit;
+    }
+    const key=identityKey(identity.name,identity.username);
+    return map.get(`i:${key}`)||null;
   };
 }
 
