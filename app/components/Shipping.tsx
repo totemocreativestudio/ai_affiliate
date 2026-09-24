@@ -246,6 +246,7 @@ export default function Shipping({ workspaceId }: Props) {
                 workspaceId={workspaceId}
                 value={creatorSearch}
                 selectedId={form.creator_id}
+                placeholder="Ketik username atau nama creator"
                 onTextChange={(value)=>{setCreatorSearch(value);setManualCreatorConfirmed(false);setForm(p=>({...p,creator_id:"",creator_name:value}))}}
                 onSelect={(creator:CreatorSearchResult)=>{
                   const name=creator.name??creator.username??creator.creator_code??"";
@@ -269,6 +270,7 @@ export default function Shipping({ workspaceId }: Props) {
                 workspaceId={workspaceId}
                 value={productSearch}
                 selectedId={form.product_master_id}
+                placeholder="Ketik SKU produk atau nama produk"
                 onTextChange={(value)=>{setProductSearch(value);setForm(p=>({...p,product_master_id:""}))}}
                 onSelect={(product:ProductSearchResult)=>{
                   setProducts(prev=>prev.some(x=>x.id===product.id)?prev:[product as Product,...prev]);
@@ -279,9 +281,9 @@ export default function Shipping({ workspaceId }: Props) {
               {form.product_master_id&&<small className="field-note">HPP produk: Rp {Number(products.find(p=>p.id===Number(form.product_master_id))?.cost_price||form.product_cost||0).toLocaleString("id-ID")}</small>}
             </label>
 
-            <label>Qty<input type="number" min="0" value={form.qty} onChange={(e)=>setForm(p=>({...p,qty:e.target.value}))} style={{ width:"100%", padding:8 }} /></label>
-            <label>Product Cost<input type="number" min="0" value={form.product_cost} onChange={(e)=>setForm(p=>({...p,product_cost:e.target.value}))} style={{ width:"100%", padding:8 }} /></label>
-            <label>Shipping Cost<input type="number" min="0" value={form.shipping_cost} onChange={(e)=>setForm(p=>({...p,shipping_cost:e.target.value}))} style={{ width:"100%", padding:8 }} /></label>
+            <label>Qty<input type="number" min="0" placeholder="Jumlah produk dikirim" value={form.qty} onChange={(e)=>setForm(p=>({...p,qty:e.target.value}))} style={{ width:"100%", padding:8 }} /></label>
+            <label>Product Cost<input type="number" min="0" placeholder="HPP per produk" value={form.product_cost} onChange={(e)=>setForm(p=>({...p,product_cost:e.target.value}))} style={{ width:"100%", padding:8 }} /></label>
+            <label>Shipping Cost<input type="number" min="0" placeholder="Biaya ongkir" value={form.shipping_cost} onChange={(e)=>setForm(p=>({...p,shipping_cost:e.target.value}))} style={{ width:"100%", padding:8 }} /></label>
             <label>Courier<input value={form.courier} onChange={(e)=>setForm(p=>({...p,courier:e.target.value}))} placeholder="JNE / J&T / SiCepat..." style={{ width:"100%", padding:8 }} /></label>
             <label>Tracking<input value={form.tracking} onChange={(e)=>setForm(p=>({...p,tracking:e.target.value}))} placeholder="Nomor resi" style={{ width:"100%", padding:8 }} /></label>
             <label>Status
