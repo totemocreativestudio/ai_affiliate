@@ -96,6 +96,40 @@ async function customerInfo(admin:any,user:any){
   return {name,email,mobile};
 }
 
+async function recoverMayarDuplicate(key:string,input:CheckoutInput,customer:{name:string;email:string;mobile:string}){
+  try{
+    const params=new URLSearchParams({email:customer.email,limit:"12"});
+    const listRes=await fetch(`https://api.mayar.id/hl/v2/invoices/filter?${params.toString()}`,{headers:{Authorization:`Bearer ${key}`,Accept:"application/json"},cache:"no-store"});
+    const listBody=await listRes.json().catch(()=>({}));
+    if(!listRes.ok||!Array.isArray(listBody?.data))return null;
+    const cutoff=Date.now()-5*60*1000;
+    const candidates=listBody.data.filter((row:any)=>{
+      const created=typeof row?.createdAt==="number"?Number(row.createdAt):new Date(row?.createdAt||0).getTime();
+      return Math.abs(Number(row?.amount||0)-Number(input.amount||0))<1 && created>=cutoff;
+    }).slice(0,8);
+    for(const row of candidates){
+      if(!row?.id)continue;
+      const detailRes=await fetch(`https://api.mayar.id/hl/v2/invoices/${encodeURIComponent(String(row.id))}`,{headers:{Authorization:`Bearer ${key}`,Accept:"application/json"},cache:"no-store"});
+      const detailBody=await detailRes.json().catch(()=>({}));
+      const d=detailBody?.data;
+      if(!detailRes.ok||!d)continue;
+      const description=String(d?.description||"");
+      if(!description.includes(input.orderCode))continue;
+      const link=String(d?.link||d?.url||"");
+      if(!link)continue;
+      return {
+        provider:"mayar" as PaymentProvider,
+        paymentUrl:link,
+        paymentSessionId:String(d.id||row.id)||null,
+        paymentReference:String(d.transactionId||"")||null,
+        expiresAt:d.expiredAt?new Date(Number(d.expiredAt)).toISOString():input.expiresAt,
+        providerPayload:{invoice_id:d.id||row.id,transaction_id:d.transactionId||null,recovered_duplicate:true,order_code:input.orderCode}
+      };
+    }
+  }catch{}
+  return null;
+}
+
 async function createMayar(input:CheckoutInput){
   const [key,webhookToken]=await Promise.all([
     getServerSecret(input.admin,"luma_mayar_api_key"),
@@ -129,7 +163,15 @@ async function createMayar(input:CheckoutInput){
   };
   const r=await fetch("https://api.mayar.id/hl/v2/invoices/create",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify(payload)});
   const body=await r.json().catch(()=>({}));
-  if(!r.ok||Number(body?.statusCode||r.status)>=400||!body?.data?.link)throw new Error(String(body?.messages||"Mayar checkout gagal."));
+  const mayarMessage=String(body?.messages||body?.message||"Mayar checkout gagal.");
+  if(!r.ok||Number(body?.statusCode||r.status)>=400||!body?.data?.link){
+    if(/duplicate request/i.test(mayarMessage)){
+      const recovered=await recoverMayarDuplicate(key,input,customer);
+      if(recovered)return recovered;
+      throw new Error("MAYAR_DUPLICATE_REQUEST");
+    }
+    throw new Error(mayarMessage);
+  }
   const d=body.data;
   return {provider:"mayar" as PaymentProvider,paymentUrl:String(d.link),paymentSessionId:String(d.id||"")||null,paymentReference:String(d.transactionId||"")||null,expiresAt:d.expiredAt?new Date(Number(d.expiredAt)).toISOString():input.expiresAt,providerPayload:{invoice_id:d.id,transaction_id:d.transactionId,status_code:body.statusCode,order_code:input.orderCode}};
 }
@@ -178,8 +220,14 @@ export async function createPaymentCheckout(input:CheckoutInput):Promise<Checkou
       return {...result,attempted};
     }catch(e:any){
       const msg=String(e?.message||"payment provider error");
-      // Missing user phone is not a gateway outage, but fallback should continue.
-      if(!msg.toLowerCase().includes("nomor hp")&&!msg.toLowerCase().includes("email user"))await markHealth(input.admin,provider,false,msg);
+      const lower=msg.toLowerCase();
+      const duplicate=provider==="mayar"&&(msg==="MAYAR_DUPLICATE_REQUEST"||lower.includes("duplicate request"));
+      // Duplicate protection, missing profile data, and validation responses are not gateway outages.
+      if(duplicate){
+        await markHealth(input.admin,provider,true);
+      }else if(!lower.includes("nomor hp")&&!lower.includes("email user")){
+        await markHealth(input.admin,provider,false,msg);
+      }
     }
   }
   throw new Error("PAYMENT_GATEWAY_UNAVAILABLE");
