@@ -402,3 +402,54 @@ html[data-theme="dark"] .lumaway-loading-screen{background:#080e1b!important;col
   .visual-payment-methods>span{min-width:88px;flex:1 1 42%}
   .visual-payment-methods img{max-width:115px}
 }
+
+
+/* PR38 payment reference logos + Community Profile editor */
+.payment-methods-ref{
+  display:grid!important;
+  grid-template-columns:repeat(auto-fit,minmax(118px,1fr))!important;
+  gap:10px!important;
+}
+.payment-methods-ref>span{
+  min-width:0!important;
+  width:100%!important;
+  height:54px!important;
+  padding:6px 10px!important;
+  overflow:hidden;
+}
+.payment-methods-ref>span.wide{grid-column:span 2}
+.payment-methods-ref img{
+  width:auto!important;
+  max-width:100%!important;
+  height:40px!important;
+  object-fit:contain!important;
+}
+.community-profile-card{margin-top:16px!important}
+.community-profile-editor{
+  display:grid;
+  grid-template-columns:96px minmax(0,1fr);
+  align-items:center;
+  gap:18px;
+}
+.community-avatar-preview{
+  width:88px;
+  height:88px;
+  border-radius:50%;
+  overflow:hidden;
+  display:grid;
+  place-items:center;
+  border:1px solid #e4e7ec;
+  background:linear-gradient(145deg,#f8f7ff,#eef4ff);
+  color:#5147e5;
+  font-size:28px;
+  font-weight:850;
+}
+.community-avatar-preview img{width:100%;height:100%;object-fit:cover}
+.community-profile-fields{display:grid;gap:9px}
+.community-profile-fields>small{font-size:9px;color:#98a2b3;line-height:1.45}
+.community-profile-fields .button-row{align-items:center;flex-wrap:wrap}
+@media(max-width:720px){
+  .payment-methods-ref{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .payment-methods-ref>span.wide{grid-column:span 2}
+  .community-profile-editor{grid-template-columns:1fr}
+}
