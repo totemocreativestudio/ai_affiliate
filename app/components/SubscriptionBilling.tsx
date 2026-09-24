@@ -92,6 +92,7 @@ export default function SubscriptionBilling({ workspaceId, userId }: { workspace
         body: JSON.stringify({ workspace_id: workspaceId, code: promo, target_type: "generic" }),
       });
       const d = await r.json();
+      if ((!r.ok || !d.ok) && d.code === "PAYMENT_PENDING") { setMsg("Pembayaran sedang diproses. Mohon tunggu beberapa detik, lalu klik kembali jika halaman pembayaran belum terbuka."); return; }
       if (!r.ok || !d.ok) throw new Error(d.error || "Checkout langganan gagal.");
       setPromoInfo(d);
       localStorage.setItem("lumaway_promo_code", promo.trim().toUpperCase());
