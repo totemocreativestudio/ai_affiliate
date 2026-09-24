@@ -436,6 +436,7 @@ export default function RatecardMaster({ workspaceId }: { workspaceId: string })
                 workspaceId={workspaceId}
                 value={creatorSearch}
                 selectedId={form.creator_id}
+                placeholder="Ketik username atau nama creator"
                 onTextChange={(value)=>{setCreatorSearch(value);setManualCreatorConfirmed(false);setForm(prev=>({...prev,creator_id:"",creator_name:value}))}}
                 onSelect={(creator:CreatorSearchResult)=>{
                   const item=creator as Creator;
@@ -472,6 +473,7 @@ export default function RatecardMaster({ workspaceId }: { workspaceId: string })
                 type="number"
                 min="0"
                 step="1"
+                placeholder="Nominal ratecard creator"
                 value={form.ratecard}
                 onChange={(e) =>
                   setForm((p) => ({
@@ -538,6 +540,7 @@ export default function RatecardMaster({ workspaceId }: { workspaceId: string })
             >
               Notes
               <input
+                placeholder="Catatan ratecard (opsional)"
                 value={form.notes}
                 onChange={(e) =>
                   setForm((p) => ({
@@ -545,7 +548,6 @@ export default function RatecardMaster({ workspaceId }: { workspaceId: string })
                     notes: e.target.value,
                   }))
                 }
-                placeholder="Catatan ratecard"
                 style={inputStyle}
               />
             </label>

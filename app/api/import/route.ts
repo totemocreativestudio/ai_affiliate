@@ -4,7 +4,7 @@ import { getServerContext } from "../../../lib/server-auth";
 
 export const runtime = "nodejs";
 type Row = Record<string, any>;
-const PARSER_VERSION = "universal-v10-pr34-20260923";
+const PARSER_VERSION = "universal-v11-pr40-20260924";
 
 const clean = (v: any) => (v === null || v === undefined ? "" : String(v).trim());
 type NumericKind = "money" | "count" | "percent" | "decimal";
@@ -296,7 +296,7 @@ function mappingSummary(mapping:PerformanceMapping){
 }
 
 type ProductPerformanceMapping={
-  sku:string; productName:string; price:string; gmv:string; qty:string; orders:string; clicks:string;
+  sku:string; productName:string; category:string; price:string; gmv:string; qty:string; orders:string; clicks:string;
   commission:string; buyers:string; newBuyers:string; samples:string; salesCreator:string; liveCount:string;
   videoCount:string; refund:string; refundQty:string; flatFee:string; roi:string;
 };
@@ -304,6 +304,7 @@ function productPerformanceMapping(row:Row,platform:string):ProductPerformanceMa
   const common={
     sku:findHeader(row,["Kode Item","Product ID","Item ID","Kode Produk","SKU"]),
     productName:findHeader(row,["Nama Item","Item Name","Product name","Product Name","Nama Produk","Produk"]),
+    category:findHeader(row,["Kategori","Category","Kategori Produk","Product Category","Main Category","Kategori Utama"]),
     price:findHeader(row,["Harga(Rp)","Harga","Price(Rp)","Price"]),
     gmv:findHeader(row,["Omzet Penjualan(Rp)","Omzet Penjualan","GMV","Sales(Rp)","Sales"]),
     qty:findHeader(row,["Produk Terjual","Items sold","Item Sold","Qty","Quantity"]),
@@ -344,27 +345,52 @@ function creatorKeys(row: Row) {
 }
 
 async function resolveCreatorIds(admin:any,workspaceId:string,rows:Row[],platform:string,importId:string){
-  const {data:existing,error}=await admin.from("creators").select("id,name,username,affiliate_id").eq("workspace_id",workspaceId).ilike("platform",platform).limit(10000);
-  if(error)throw error;
+  const identityKey=(name:string,username:string)=>`${String(username||name||"").trim().toLowerCase()}|${platform.trim().toLowerCase()||"other"}`;
   const map=new Map<string,number>();
   const register=(row:any)=>{
     const id=Number(row.id);
-    const keys=[
-      row.username?`u:${String(row.username).toLowerCase()}`:"",
-      row.affiliate_id?`a:${String(row.affiliate_id).toLowerCase()}`:"",
-      row.name?`n:${String(row.name).toLowerCase()}`:"",
-    ].filter(Boolean);
-    for(const k of keys)map.set(k,id);
+    const key=String(row.identity_key||identityKey(String(row.name||""),String(row.username||"")));
+    if(key)map.set(`i:${key}`,id);
+    if(row.affiliate_id)map.set(`a:${String(row.affiliate_id).trim().toLowerCase()}`,id);
   };
-  for(const row of existing||[])register(row);
 
-  const missing=new Map<string,any>();
+  const identities=new Map<string,{name:string;username:string;affiliateId:string}>();
   for(const row of rows){
     const identity=creatorKeys(row);
-    if(!identity.keys.length)continue;
-    if(identity.keys.some((k)=>map.has(k)))continue;
-    const canonical=identity.keys[0];
-    if(!missing.has(canonical))missing.set(canonical,{
+    if(!identity.name&&!identity.username&&!identity.affiliateId)continue;
+    const key=identityKey(identity.name,identity.username);
+    identities.set(key,{name:identity.name,username:identity.username,affiliateId:identity.affiliateId});
+  }
+
+  const identityKeys=[...identities.keys()];
+  for(let i=0;i<identityKeys.length;i+=400){
+    const part=identityKeys.slice(i,i+400);
+    const {data,error}=await admin.from("creators")
+      .select("id,name,username,affiliate_id,identity_key")
+      .eq("workspace_id",workspaceId)
+      .in("identity_key",part);
+    if(error)throw error;
+    for(const row of data||[])register(row);
+  }
+
+  const affiliateIds=[...new Set([...identities.values()].map(x=>x.affiliateId.trim().toLowerCase()).filter(Boolean))];
+  for(let i=0;i<affiliateIds.length;i+=400){
+    const part=affiliateIds.slice(i,i+400);
+    const {data,error}=await admin.from("creators")
+      .select("id,name,username,affiliate_id,identity_key")
+      .eq("workspace_id",workspaceId)
+      .ilike("platform",platform)
+      .in("affiliate_id",part);
+    if(error)throw error;
+    for(const row of data||[])register(row);
+  }
+
+  const missing=new Map<string,any>();
+  for(const identity of identities.values()){
+    const ikey=identityKey(identity.name,identity.username);
+    const affiliateKey=identity.affiliateId?`a:${identity.affiliateId.trim().toLowerCase()}`:"";
+    if(map.has(`i:${ikey}`)||(affiliateKey&&map.has(affiliateKey)))continue;
+    if(!missing.has(ikey))missing.set(ikey,{
       workspace_id:workspaceId,creator_code:creatorCode(),name:identity.name||identity.username,
       username:identity.username||identity.name,platform,affiliate_id:identity.affiliateId||null,
       status:"Active",source_import_id:importId,updated_at:new Date().toISOString()
@@ -372,17 +398,21 @@ async function resolveCreatorIds(admin:any,workspaceId:string,rows:Row[],platfor
   }
 
   const pending=[...missing.values()];
-  for(let i=0;i<pending.length;i+=500){
-    const part=pending.slice(i,i+500);
-    const {data:created,error:createError}=await admin.from("creators").insert(part).select("id,name,username,affiliate_id");
+  for(let i=0;i<pending.length;i+=400){
+    const part=pending.slice(i,i+400);
+    const {data:created,error:createError}=await admin.from("creators").insert(part).select("id,name,username,affiliate_id,identity_key");
     if(createError)throw createError;
     for(const row of created||[])register(row);
   }
 
   return (row:Row)=>{
     const identity=creatorKeys(row);
-    for(const k of identity.keys){const id=map.get(k);if(id)return id}
-    return null;
+    if(identity.affiliateId){
+      const affiliateHit=map.get(`a:${identity.affiliateId.trim().toLowerCase()}`);
+      if(affiliateHit)return affiliateHit;
+    }
+    const key=identityKey(identity.name,identity.username);
+    return map.get(`i:${key}`)||null;
   };
 }
 
@@ -705,6 +735,7 @@ export async function POST(req: NextRequest) {
         const row=rows[i];
         const productCode=clean(mappedRaw(row,mapping.sku));
         const productName=clean(mappedRaw(row,mapping.productName));
+        const marketplaceCategory=clean(mappedRaw(row,mapping.category))||null;
         if(!productCode&&!productName){skipped++;continue}
         let mapped=productCode?platformMap.get(productCode.toLowerCase()):null;
         let canonicalSku=clean(mapped?.sku)||productCode||`product-${norm(productName)}`;
@@ -719,20 +750,23 @@ export async function POST(req: NextRequest) {
           if(!master){
             const skuNorm=canonicalSku.toLowerCase();
             const {data:existingMaster,error:masterFindError}=await admin.from("product_master")
-              .select("id,sku,product_name,cost_price,selling_price")
+              .select("id,sku,product_name,category,cost_price,selling_price")
               .eq("workspace_id",workspaceId).eq("sku_normalized",skuNorm).maybeSingle();
             if(masterFindError)throw masterFindError;
             if(existingMaster){
               master=existingMaster;
-              if(productName&&(!existingMaster.product_name||existingMaster.product_name===existingMaster.sku)){
-                const {error:renameError}=await admin.from("product_master").update({product_name:productName,updated_at:new Date().toISOString()}).eq("workspace_id",workspaceId).eq("id",existingMaster.id);
+              const masterPatch:Row={updated_at:new Date().toISOString()};
+              if(productName&&(!existingMaster.product_name||existingMaster.product_name===existingMaster.sku))masterPatch.product_name=productName;
+              if(marketplaceCategory)masterPatch.category=marketplaceCategory;
+              if(Object.keys(masterPatch).length>1){
+                const {error:renameError}=await admin.from("product_master").update(masterPatch).eq("workspace_id",workspaceId).eq("id",existingMaster.id);
                 if(renameError)throw renameError;
-                master={...existingMaster,product_name:productName};
+                master={...existingMaster,...masterPatch};
               }
             }else{
               const {data:newMaster,error:masterInsertError}=await admin.from("product_master").insert({
                 workspace_id:workspaceId,sku:canonicalSku,sku_normalized:skuNorm,
-                product_name:productName||canonicalSku,category:null,selling_price:0,cost_price:0,
+                product_name:productName||canonicalSku,category:marketplaceCategory,selling_price:0,cost_price:0,
                 point_per_unit:0,status:"Active",notes:"Auto-created from Product Performance",
                 source_import_id:importId,updated_at:new Date().toISOString()
               }).select("id,sku,product_name,cost_price,selling_price").single();
@@ -742,7 +776,7 @@ export async function POST(req: NextRequest) {
             const {error:mappingError}=await admin.from("product_platform_items").upsert({
               workspace_id:workspaceId,product_master_id:Number(master.id),sku:master.sku||canonicalSku,
               platform,product_code:productCode,product_name:productName||master.product_name||canonicalSku,
-              variant_slot:null,variant_name:null,source_import_id:importId,updated_at:new Date().toISOString()
+              category:marketplaceCategory,variant_slot:null,variant_name:null,source_import_id:importId,updated_at:new Date().toISOString()
             },{onConflict:"workspace_id,platform,product_code"});
             if(mappingError)throw mappingError;
             autoMasterCache.set(cacheKey,master);
@@ -774,7 +808,7 @@ export async function POST(req: NextRequest) {
           workspace_id:workspaceId,record_key:recordKey,data_type:"product_performance",
           data_date:dataDate,end_date:end||dataDate,creator_id:null,creator_name:null,username:null,
           platform,channel:"Product Performance",sku:canonicalSku,product_code:productCode||null,
-          variant_name:variantName,product_name:productName||canonicalSku,qty,orders,gmv,refund,
+          variant_name:variantName,product_name:productName||canonicalSku,category:marketplaceCategory,qty,orders,gmv,refund,
           refund_qty:refundQty,commission,clicks,buyers,new_buyers:newBuyers,live_count:liveCount,
           video_count:videoCount,sample_sent:sampleSent,sales_creator:salesCreator,flat_fee:flatFee,roi,
           source_file:filename,imported_at:new Date().toISOString(),import_id:importId,updated_at:new Date().toISOString()

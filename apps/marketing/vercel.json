@@ -3,6 +3,11 @@
   "ignoreCommand": "git diff --quiet HEAD^ HEAD ./",
   "git": {
     "deploymentEnabled": {
+      "pr*": false,
+      "fix/*": false,
+      "feat/*": false,
+      "feature/*": false,
+      "chore/*": false,
       "fix/vercel-monorepo-deployments": false,
       "fix/lumaway-marketing-public-rewrite": false,
       "fix/lumaway-web-proxy-origin": false

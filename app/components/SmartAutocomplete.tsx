@@ -34,24 +34,29 @@ function useDebouncedSearch(endpoint:string,workspaceId:string,query:string,enab
 }
 
 export function CreatorAutocomplete({
-  workspaceId,value,selectedId,onTextChange,onSelect,placeholder="Ketik nama / username / creator code",disabled=false
+  workspaceId,value,selectedId,onTextChange,onSelect,placeholder="Ketik username atau nama creator",disabled=false
 }:{workspaceId:string;value:string;selectedId?:string|number|null;onTextChange:(value:string)=>void;onSelect:(creator:CreatorSearchResult)=>void;placeholder?:string;disabled?:boolean}){
   const {results,loading,setResults}=useDebouncedSearch("/api/search/creators",workspaceId,value,!disabled&&!selectedId);
   return <div className="smart-autocomplete">
     <input disabled={disabled} value={value} onChange={e=>onTextChange(e.target.value)} placeholder={placeholder} autoComplete="off"/>
     {!disabled&&!selectedId&&value.trim()&&<div className="smart-autocomplete-menu" role="listbox">
       {loading&&<div className="smart-autocomplete-empty">Mencari creator...</div>}
-      {!loading&&results.map((c:CreatorSearchResult)=><button type="button" key={c.id} onMouseDown={e=>{e.preventDefault();onSelect(c);setResults([])}}>
-        <strong>{c.name||c.username||c.creator_code||"-"}</strong>
-        <span>{[c.username&&`@${c.username}`,c.creator_code,c.platform].filter(Boolean).join(" · ")}</span>
-      </button>)}
+      {!loading&&results.map((c:CreatorSearchResult)=>{
+        const name=String(c.name||"").trim();
+        const username=String(c.username||"").trim();
+        const label=name&&username&&name.toLowerCase()!==username.toLowerCase()?`${name} · @${username}`:username?`@${username}`:name||"-";
+        return <button type="button" key={c.id} onMouseDown={e=>{e.preventDefault();onSelect(c);setResults([])}}>
+          <strong>{label}</strong>
+          {c.platform&&<span>{c.platform}</span>}
+        </button>
+      })}
       {!loading&&!results.length&&<div className="smart-autocomplete-empty">Tidak ada creator yang cocok.</div>}
     </div>}
   </div>;
 }
 
 export function ProductAutocomplete({
-  workspaceId,value,selectedId,onTextChange,onSelect,placeholder="Ketik SKU / nama produk",disabled=false
+  workspaceId,value,selectedId,onTextChange,onSelect,placeholder="Ketik SKU produk atau nama produk",disabled=false
 }:{workspaceId:string;value:string;selectedId?:string|number|null;onTextChange:(value:string)=>void;onSelect:(product:ProductSearchResult)=>void;placeholder?:string;disabled?:boolean}){
   const {results,loading,setResults}=useDebouncedSearch("/api/search/products",workspaceId,value,!disabled&&!selectedId);
   return <div className="smart-autocomplete">

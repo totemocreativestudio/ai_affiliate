@@ -37,6 +37,20 @@ import TableSortEnhancer from "./components/TableSortEnhancer";
 type Profile = { id: string; email: string | null; full_name: string | null; nickname: string | null; role: string; active: boolean; phone: string | null; phone_verified_at: string | null; email_verified_at: string | null; education: string | null; birth_date: string | null; bio: string | null; position_title: string | null; profile_completed: boolean };
 type Workspace = { id: string; name: string; slug: string; status: string };
 type AuthMode = "signin" | "signup";
+const REFERRAL_STORAGE_KEY="lumaway_referral_code";
+
+function captureReferralCode(){
+  if(typeof window==="undefined")return "";
+  const params=new URLSearchParams(window.location.search);
+  const incoming=String(params.get("ref")||"").trim().toUpperCase();
+  if(incoming&&/^[A-Z0-9]{12}$/.test(incoming))window.localStorage.setItem(REFERRAL_STORAGE_KEY,incoming);
+  return incoming||String(window.localStorage.getItem(REFERRAL_STORAGE_KEY)||"").trim().toUpperCase();
+}
+
+function authUrlWithReferral(path:string){
+  const code=captureReferralCode();
+  return code&&/^[A-Z0-9]{12}$/.test(code)?`${path}?ref=${encodeURIComponent(code)}`:path;
+}
 
 function BrandLockup({ light = false }: { light?: boolean }) {
   return (
@@ -126,6 +140,7 @@ export default function LumawayWorkspaceApp() {
     if (typeof window === "undefined") return;
     if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual";
     cleanAuthErrorQuery();
+    captureReferralCode();
 
     const initialAuthMode = new URLSearchParams(window.location.search).get("auth");
     if (initialAuthMode === "signup" || window.location.pathname === `${APP_BASE}/register`) setAuthMode("signup");
@@ -236,14 +251,14 @@ export default function LumawayWorkspaceApp() {
           ? `${APP_BASE}/register`
           : `${APP_BASE}/login`;
         setAuthMode(authPath === `${APP_BASE}/register` ? "signup" : "signin");
-        window.history.replaceState(null, "", authPath);
+        window.history.replaceState(null, "", authUrlWithReferral(authPath));
       }
     } catch {
       setError("Sesi tidak dapat dimuat. Silakan login kembali.");
       await supabase.auth.signOut().catch(() => undefined);
       setProfile(null);
       setWorkspace(null);
-      window.history.replaceState(null, "", `${APP_BASE}/login`);
+      window.history.replaceState(null, "", authUrlWithReferral(`${APP_BASE}/login`));
     } finally {
       setLoading(false);
     }
@@ -287,6 +302,12 @@ export default function LumawayWorkspaceApp() {
     setProfile(typedProfile);
     setWorkspace(workspaceData as Workspace);
     window.localStorage.setItem("luma_active_workspace", workspaceData.id);
+
+    const referralCode=captureReferralCode();
+    if(referralCode&&/^[A-Z0-9]{12}$/.test(referralCode)){
+      const {data:referralApplied,error:referralError}=await supabase.rpc("luma_apply_my_referral",{p_code:referralCode});
+      if(!referralError&&referralApplied)window.localStorage.removeItem(REFERRAL_STORAGE_KEY);
+    }
 
     const { data: subscriptionRows } = await supabase
       .from("luma_user_subscriptions")
@@ -344,7 +365,7 @@ export default function LumawayWorkspaceApp() {
     const { error: resendError } = await supabase.auth.resend({
       type: "signup",
       email: email.trim(),
-      options: { emailRedirectTo: `${window.location.origin}${routeForSection("dashboard")}` },
+      options: { emailRedirectTo: `${window.location.origin}${routeForSection("dashboard")}${captureReferralCode()?`?ref=${encodeURIComponent(captureReferralCode())}`:""}` },
     });
     setLoading(false);
     if (resendError) {
@@ -364,7 +385,7 @@ export default function LumawayWorkspaceApp() {
     const { data, error: signupError } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: `${window.location.origin}${routeForSection("dashboard")}` },
+      options: { emailRedirectTo: `${window.location.origin}${routeForSection("dashboard")}${captureReferralCode()?`?ref=${encodeURIComponent(captureReferralCode())}`:""}` },
     });
     if (signupError) {
       const message = String(signupError.message || "").toLowerCase();
@@ -379,18 +400,18 @@ export default function LumawayWorkspaceApp() {
     setNeedsEmailVerification(true);
     setAuthMessage("Akun berhasil dibuat. Link verifikasi sudah diminta. Cek Inbox, Spam, Promotions, atau Junk, lalu verifikasi email sebelum login.");
     setAuthMode("signin"); setPassword(""); setTermsAccepted(false); setLoading(false);
-    window.history.replaceState(null, "", `${APP_BASE}/login`);
+    window.history.replaceState(null, "", authUrlWithReferral(`${APP_BASE}/login`));
   }
 
   async function logout() {
     await supabase.auth.signOut();
     setProfile(null); setWorkspace(null); setPassword(""); setError("");
-    window.history.replaceState(null, "", `${APP_BASE}/login`);
+    window.history.replaceState(null, "", authUrlWithReferral(`${APP_BASE}/login`));
   }
 
   function switchAuthMode(mode: AuthMode) {
     setAuthMode(mode); setError(""); setAuthMessage(""); setNeedsEmailVerification(false);
-    window.history.replaceState(null, "", mode === "signup" ? `${APP_BASE}/register` : `${APP_BASE}/login`);
+    window.history.replaceState(null, "", authUrlWithReferral(mode === "signup" ? `${APP_BASE}/register` : `${APP_BASE}/login`));
   }
 
   if (loading || (profile && !workspace)) {

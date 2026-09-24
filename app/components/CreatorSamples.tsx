@@ -160,6 +160,7 @@ export default function CreatorSamples({workspaceId}:Props){
                 workspaceId={workspaceId}
                 value={creatorSearch}
                 selectedId={form.creator_id}
+                placeholder="Ketik username atau nama creator"
                 onTextChange={(value)=>{setCreatorSearch(value);setManualCreatorConfirmed(false);setForm(p=>({...p,creator_id:"",creator_name:value}))}}
                 onSelect={(creator:CreatorSearchResult)=>{
                   const name=creator.name??creator.username??creator.creator_code??"";
@@ -181,6 +182,7 @@ export default function CreatorSamples({workspaceId}:Props){
                 workspaceId={workspaceId}
                 value={productSearch}
                 selectedId={form.product_master_id}
+                placeholder="Ketik SKU produk atau nama produk"
                 onTextChange={(value)=>{setProductSearch(value);setForm(p=>({...p,product_master_id:""}))}}
                 onSelect={(product:ProductSearchResult)=>{
                   setProducts(prev=>prev.some(x=>x.id===product.id)?prev:[product as Product,...prev]);
@@ -199,13 +201,13 @@ export default function CreatorSamples({workspaceId}:Props){
 
             <label>Sent Date<input type="date" value={form.sent_date} onChange={(e)=>setForm(p=>({...p,sent_date:e.target.value}))} style={{width:"100%",padding:8}} /></label>
             <label>Return Date<input type="date" value={form.return_date} onChange={(e)=>setForm(p=>({...p,return_date:e.target.value}))} style={{width:"100%",padding:8}} /></label>
-            <label>Qty<input type="number" min="1" value={form.qty} onChange={(e)=>setForm(p=>({...p,qty:e.target.value}))} style={{width:"100%",padding:8}} /></label>
-            <label>Product Value<input type="number" min="0" value={form.product_value} onChange={(e)=>setForm(p=>({...p,product_value:e.target.value}))} style={{width:"100%",padding:8}} /></label>
+            <label>Qty<input type="number" min="1" placeholder="Jumlah sample" value={form.qty} onChange={(e)=>setForm(p=>({...p,qty:e.target.value}))} style={{width:"100%",padding:8}} /></label>
+            <label>Product Value<input type="number" min="0" placeholder="Nilai / HPP sample" value={form.product_value} onChange={(e)=>setForm(p=>({...p,product_value:e.target.value}))} style={{width:"100%",padding:8}} /></label>
             <label>Tracking<input value={form.tracking} onChange={(e)=>setForm(p=>({...p,tracking:e.target.value}))} placeholder="Nomor resi" style={{width:"100%",padding:8}} /></label>
           </div>
 
           <label style={{display:"block",marginTop:12}}>Notes
-            <textarea value={form.notes} onChange={(e)=>setForm(p=>({...p,notes:e.target.value}))} rows={3} style={{width:"100%",boxSizing:"border-box",padding:8}} />
+            <textarea placeholder="Catatan sample creator (opsional)" value={form.notes} onChange={(e)=>setForm(p=>({...p,notes:e.target.value}))} rows={3} style={{width:"100%",boxSizing:"border-box",padding:8}} />
           </label>
 
           <div style={{marginTop:15}}>
