@@ -548,7 +548,6 @@ export default function RatecardMaster({ workspaceId }: { workspaceId: string })
                     notes: e.target.value,
                   }))
                 }
-                placeholder="Catatan ratecard"
                 style={inputStyle}
               />
             </label>
