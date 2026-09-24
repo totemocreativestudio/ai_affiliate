@@ -296,7 +296,7 @@ function mappingSummary(mapping:PerformanceMapping){
 }
 
 type ProductPerformanceMapping={
-  sku:string; productName:string; price:string; gmv:string; qty:string; orders:string; clicks:string;
+  sku:string; productName:string; category:string; price:string; gmv:string; qty:string; orders:string; clicks:string;
   commission:string; buyers:string; newBuyers:string; samples:string; salesCreator:string; liveCount:string;
   videoCount:string; refund:string; refundQty:string; flatFee:string; roi:string;
 };
@@ -304,6 +304,7 @@ function productPerformanceMapping(row:Row,platform:string):ProductPerformanceMa
   const common={
     sku:findHeader(row,["Kode Item","Product ID","Item ID","Kode Produk","SKU"]),
     productName:findHeader(row,["Nama Item","Item Name","Product name","Product Name","Nama Produk","Produk"]),
+    category:findHeader(row,["Kategori","Category","Kategori Produk","Product Category","Main Category","Kategori Utama"]),
     price:findHeader(row,["Harga(Rp)","Harga","Price(Rp)","Price"]),
     gmv:findHeader(row,["Omzet Penjualan(Rp)","Omzet Penjualan","GMV","Sales(Rp)","Sales"]),
     qty:findHeader(row,["Produk Terjual","Items sold","Item Sold","Qty","Quantity"]),
@@ -734,6 +735,7 @@ export async function POST(req: NextRequest) {
         const row=rows[i];
         const productCode=clean(mappedRaw(row,mapping.sku));
         const productName=clean(mappedRaw(row,mapping.productName));
+        const marketplaceCategory=clean(mappedRaw(row,mapping.category))||null;
         if(!productCode&&!productName){skipped++;continue}
         let mapped=productCode?platformMap.get(productCode.toLowerCase()):null;
         let canonicalSku=clean(mapped?.sku)||productCode||`product-${norm(productName)}`;
@@ -748,20 +750,23 @@ export async function POST(req: NextRequest) {
           if(!master){
             const skuNorm=canonicalSku.toLowerCase();
             const {data:existingMaster,error:masterFindError}=await admin.from("product_master")
-              .select("id,sku,product_name,cost_price,selling_price")
+              .select("id,sku,product_name,category,cost_price,selling_price")
               .eq("workspace_id",workspaceId).eq("sku_normalized",skuNorm).maybeSingle();
             if(masterFindError)throw masterFindError;
             if(existingMaster){
               master=existingMaster;
-              if(productName&&(!existingMaster.product_name||existingMaster.product_name===existingMaster.sku)){
-                const {error:renameError}=await admin.from("product_master").update({product_name:productName,updated_at:new Date().toISOString()}).eq("workspace_id",workspaceId).eq("id",existingMaster.id);
+              const masterPatch:Row={updated_at:new Date().toISOString()};
+              if(productName&&(!existingMaster.product_name||existingMaster.product_name===existingMaster.sku))masterPatch.product_name=productName;
+              if(marketplaceCategory)masterPatch.category=marketplaceCategory;
+              if(Object.keys(masterPatch).length>1){
+                const {error:renameError}=await admin.from("product_master").update(masterPatch).eq("workspace_id",workspaceId).eq("id",existingMaster.id);
                 if(renameError)throw renameError;
-                master={...existingMaster,product_name:productName};
+                master={...existingMaster,...masterPatch};
               }
             }else{
               const {data:newMaster,error:masterInsertError}=await admin.from("product_master").insert({
                 workspace_id:workspaceId,sku:canonicalSku,sku_normalized:skuNorm,
-                product_name:productName||canonicalSku,category:null,selling_price:0,cost_price:0,
+                product_name:productName||canonicalSku,category:marketplaceCategory,selling_price:0,cost_price:0,
                 point_per_unit:0,status:"Active",notes:"Auto-created from Product Performance",
                 source_import_id:importId,updated_at:new Date().toISOString()
               }).select("id,sku,product_name,cost_price,selling_price").single();
@@ -771,7 +776,7 @@ export async function POST(req: NextRequest) {
             const {error:mappingError}=await admin.from("product_platform_items").upsert({
               workspace_id:workspaceId,product_master_id:Number(master.id),sku:master.sku||canonicalSku,
               platform,product_code:productCode,product_name:productName||master.product_name||canonicalSku,
-              variant_slot:null,variant_name:null,source_import_id:importId,updated_at:new Date().toISOString()
+              category:marketplaceCategory,variant_slot:null,variant_name:null,source_import_id:importId,updated_at:new Date().toISOString()
             },{onConflict:"workspace_id,platform,product_code"});
             if(mappingError)throw mappingError;
             autoMasterCache.set(cacheKey,master);
@@ -803,7 +808,7 @@ export async function POST(req: NextRequest) {
           workspace_id:workspaceId,record_key:recordKey,data_type:"product_performance",
           data_date:dataDate,end_date:end||dataDate,creator_id:null,creator_name:null,username:null,
           platform,channel:"Product Performance",sku:canonicalSku,product_code:productCode||null,
-          variant_name:variantName,product_name:productName||canonicalSku,qty,orders,gmv,refund,
+          variant_name:variantName,product_name:productName||canonicalSku,category:marketplaceCategory,qty,orders,gmv,refund,
           refund_qty:refundQty,commission,clicks,buyers,new_buyers:newBuyers,live_count:liveCount,
           video_count:videoCount,sample_sent:sampleSent,sales_creator:salesCreator,flat_fee:flatFee,roi,
           source_file:filename,imported_at:new Date().toISOString(),import_id:importId,updated_at:new Date().toISOString()
