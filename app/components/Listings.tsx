@@ -513,11 +513,11 @@ async function saveListing() {
       <div style={{border:"1px solid #e5e7eb",borderRadius:8,padding:14,marginBottom:18,background:"#fff"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:10}}><div><h3 style={{margin:0}}>Master Creator</h3><p style={{margin:"5px 0 0",color:"#777",fontSize:12}}>Seluruh creator database workspace tersedia secara paginated. Creator dari Affiliate Performance otomatis terhubung ke master data.</p></div><span style={{fontSize:12,color:"#667085"}}>{masterCreatorTotal.toLocaleString("id-ID")} creator</span></div>
         <div className="button-row" style={{marginBottom:10}}>
-          <input value={masterCreatorSearch} onChange={e=>setMasterCreatorSearch(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();void loadMasterCreators(1,masterCreatorSearch)}}} placeholder="Cari nama / username / creator code / platform..." style={{flex:1,minWidth:240}}/>
+          <input value={masterCreatorSearch} onChange={e=>setMasterCreatorSearch(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();void loadMasterCreators(1,masterCreatorSearch)}}} placeholder="Cari username / nama creator / platform..." style={{flex:1,minWidth:240}}/>
           <button className="secondary" type="button" onClick={()=>void loadMasterCreators(1,masterCreatorSearch)}>Cari</button>
           {masterCreatorSearch&&<button className="secondary" type="button" onClick={()=>{setMasterCreatorSearch("");void loadMasterCreators(1,"")}}>Reset</button>}
         </div>
-        {masterCreators.length===0?<p style={{color:"#777"}}>Belum ada Master Creator.</p>:<div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr>{["Code","Creator","Username","Platform","Affiliate ID","Phone","Payment","Ratecard","Status"].map(h=><th key={h} style={{textAlign:"left",padding:8,borderBottom:"1px solid #e5e7eb",whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead><tbody>{masterCreators.map(creator=><tr key={creator.id}><td style={{padding:8}}>{creator.creator_code||"-"}</td><td style={{padding:8}}><b>{creator.name||"-"}</b></td><td style={{padding:8}}>{creator.username||"-"}</td><td style={{padding:8}}>{creator.platform||"-"}</td><td style={{padding:8}}>{creator.affiliate_id||"-"}</td><td style={{padding:8}}>{creator.phone||"-"}</td><td style={{padding:8}}>{creator.payment_type||"-"}</td><td style={{padding:8}}>Rp {Number(creator.ratecard||0).toLocaleString("id-ID")}</td><td style={{padding:8}}>{creator.status||"-"}</td></tr>)}</tbody></table></div>}
+        {masterCreators.length===0?<p style={{color:"#777"}}>Belum ada Master Creator.</p>:<div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr>{["Creator / Username","Platform","Affiliate ID","Phone","Payment","Ratecard","Status"].map(h=><th key={h} style={{textAlign:"left",padding:8,borderBottom:"1px solid #e5e7eb",whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead><tbody>{masterCreators.map(creator=>{const name=String(creator.name||"").trim();const username=String(creator.username||"").trim();return <tr key={creator.id}><td style={{padding:8}}><b>{name||username||"-"}</b>{username&&username.toLowerCase()!==name.toLowerCase()&&<small style={{display:"block",color:"#667085"}}>@{username}</small>}</td><td style={{padding:8}}><b>{creator.platform||"-"}</b></td><td style={{padding:8}}>{creator.affiliate_id||"-"}</td><td style={{padding:8}}>{creator.phone||"-"}</td><td style={{padding:8}}>{creator.payment_type||"-"}</td><td style={{padding:8}}>Rp {Number(creator.ratecard||0).toLocaleString("id-ID")}</td><td style={{padding:8}}>{creator.status||"-"}</td></tr>})}</tbody></table></div>}
         <div className="pager"><span className="pager-info">Page {masterCreatorPage} / {masterCreatorPages} · {masterCreatorTotal.toLocaleString("id-ID")} creator</span><div className="button-row"><button className="secondary" disabled={masterCreatorPage<=1} onClick={()=>void loadMasterCreators(masterCreatorPage-1,masterCreatorSearch)}>Previous</button><button className="secondary" disabled={masterCreatorPage>=masterCreatorPages} onClick={()=>void loadMasterCreators(masterCreatorPage+1,masterCreatorSearch)}>Next</button></div></div>
       </div>
       {showForm && (
@@ -560,6 +560,7 @@ async function saveListing() {
               value={creatorSearch}
               selectedId={form.creator_id}
               onTextChange={(value)=>{setCreatorSearch(value);setManualCreatorConfirmed(false);setForm(prev=>({...prev,creator_id:"",creator_name:value}))}}
+              placeholder="Ketik username atau nama creator"
               onSelect={(creator:CreatorSearchResult)=>{
                 const creatorName=creator.name??creator.username??creator.creator_code??"";
                 setCreators(prev=>prev.some(x=>x.id===creator.id)?prev:[creator as Creator,...prev]);
@@ -594,6 +595,7 @@ async function saveListing() {
               value={productSearch}
               selectedId={form.product_master_id}
               onTextChange={(value)=>{setProductSearch(value);setForm(prev=>({...prev,product_master_id:"",product_hpp:"0"}))}}
+              placeholder="Ketik SKU produk atau nama produk"
               onSelect={(product:ProductSearchResult)=>{
                 setProducts(prev=>prev.some(x=>x.id===product.id)?prev:[product as Product,...prev]);
                 setForm(prev=>({...prev,product_master_id:String(product.id),product_hpp:String(product.cost_price??0)}));
@@ -638,6 +640,7 @@ async function saveListing() {
                 onChange={(e) =>
                   updateField("ratecard", e.target.value)
                 }
+                placeholder="Nominal ratecard creator"
                 style={{ width: "100%", padding: 8 }}
               />
             </label>
@@ -682,6 +685,7 @@ async function saveListing() {
                     e.target.value
                   )
                 }
+                placeholder="Contoh: Follow up konten / kirim brief"
                 style={{ width: "100%", padding: 8 }}
               />
             </label>
@@ -696,6 +700,7 @@ async function saveListing() {
                     e.target.value
                   )
                 }
+                placeholder="ID agreement jika sudah ada"
                 style={{ width: "100%", padding: 8 }}
               />
             </label>
@@ -714,6 +719,7 @@ async function saveListing() {
                 updateField("notes", e.target.value)
               }
               rows={3}
+              placeholder="Catatan listing creator (opsional)"
               style={{
                 width: "100%",
                 boxSizing: "border-box",
