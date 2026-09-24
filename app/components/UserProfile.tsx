@@ -9,7 +9,9 @@ const LUMAWAY_COMMUNITY_URL="https://chat.whatsapp.com/L5UA1dmP7BYFNgQfwwXg8C";
 export default function UserProfile({workspaceId,userId}:{workspaceId:string;userId:string}){
   const supabase=createClient();
   const [profile,setProfile]=useState<Row|null>(null);
-  const [form,setForm]=useState<Row>({full_name:"",nickname:"",position_title:"",bio:"",education:"",birth_date:""});\n  const [socialAlias,setSocialAlias]=useState("");\n  const [socialBusy,setSocialBusy]=useState(false);
+  const [form,setForm]=useState<Row>({full_name:"",nickname:"",position_title:"",bio:"",education:"",birth_date:""});
+  const [socialAlias,setSocialAlias]=useState("");
+  const [socialBusy,setSocialBusy]=useState(false);
   const [newEmail,setNewEmail]=useState("");
   const [newPhone,setNewPhone]=useState("");
   const [otp,setOtp]=useState("");
