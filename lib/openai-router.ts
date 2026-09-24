@@ -9,9 +9,9 @@ const PRICE:Record<string,{input:number;output:number}>={
 export async function getOpenAIRouting(admin:any,preferred?:string){
   const {data}=await admin.from("luma_platform_settings").select("setting_key,setting_value").in("setting_key",["openai_primary_model","openai_fallback_model","usd_idr_rate"]);
   const settings=Object.fromEntries((data||[]).map((x:any)=>[x.setting_key,x.setting_value||""]));
-  const primary=String(preferred||settings.openai_primary_model||process.env.OPENAI_MODEL||"gpt-5.6-sol");
+  const configuredPrimary=String(settings.openai_primary_model||process.env.OPENAI_MODEL||"gpt-5.6-sol");
   const fallback=String(settings.openai_fallback_model||"gpt-5.6-luna");
-  const models=[primary,fallback].filter((x,i,a)=>x&&a.indexOf(x)===i);
+  const models=[preferred,configuredPrimary,fallback].map(x=>String(x||"").trim()).filter((x,i,a)=>x&&a.indexOf(x)===i);
   const fx=Math.max(1,Number(settings.usd_idr_rate||17745));
   return {models,fx};
 }
@@ -32,24 +32,29 @@ async function markHealth(admin:any,ok:boolean,error?:string){
   await admin.from("luma_provider_accounts").update(update).eq("provider","openai").eq("service","responses");
 }
 
-export async function openAIResponsesWithFailover(admin:any,apiKey:string,payload:any,preferred?:string){
+export async function openAIResponsesWithFailover(admin:any,apiKey:string,payload:any,preferred?:string,timeoutMs=45000){
   const routing=await getOpenAIRouting(admin,preferred);
   const errors:string[]=[];
   for(const model of routing.models){
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),Math.max(8000,timeoutMs));
     try{
       const response=await fetch("https://api.openai.com/v1/responses",{
         method:"POST",
         headers:{Authorization:`Bearer ${apiKey}`,"Content-Type":"application/json"},
-        body:JSON.stringify({...payload,model})
+        body:JSON.stringify({...payload,model}),
+        signal:controller.signal
       });
       const raw=await response.json().catch(()=>({}));
       if(!response.ok) throw new Error(raw?.error?.message||`OpenAI request failed (${response.status})`);
       await markHealth(admin,true).catch(()=>undefined);
       return {raw,model,fx:routing.fx,cost:openAICost(model,raw?.usage||{},routing.fx),fallback_used:model!==routing.models[0]};
     }catch(error:any){
-      const message=String(error?.message||"unknown");
+      const message=error?.name==="AbortError"?`OpenAI timeout after ${timeoutMs}ms`:String(error?.message||"unknown");
       errors.push(`${model}: ${message}`);
       await markHealth(admin,false,message).catch(()=>undefined);
+    }finally{
+      clearTimeout(timer);
     }
   }
   throw new Error(`Semua model OpenAI gagal. ${errors.join(" | ")}`);
