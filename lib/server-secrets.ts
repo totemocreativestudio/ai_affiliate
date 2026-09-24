@@ -1,6 +1,6 @@
 const ENV_MAP: Record<string,string[]> = {
   // Canonical names first, then backward-compatible aliases already used in Vercel.
-  luma_openai_api_key: ["OPENAI_API_KEY"],
+  luma_openai_api_key: ["OPENAI_API_KEY", "OPENAI_API", "API_KEY_OPENAI", "API_KEY_OPENAI_ID", "API_Key_OpenAI_ID", "OpenAI_API_Key"],
   luma_xendit_secret_key: ["XENDIT_SECRET_KEY", "XENDIT"],
   luma_xendit_public_key: ["XENDIT_PUBLIC_KEY"],
   luma_xendit_webhook_token: ["XENDIT_WEBHOOK_TOKEN", "XENDIT_WEBHOOK_TOKEN_API"],
