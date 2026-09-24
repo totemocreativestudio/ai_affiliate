@@ -26,7 +26,7 @@
 .social-lemon-tabs button.active{background:#101828!important;color:#fff!important}
 .social-lemon-tabs>span{margin-left:auto;font-size:9px;color:#98a2b3}
 .social-lemon-masonry{columns:4 220px;column-gap:13px}
-.social-lemon-card{break-inside:avoid;margin:0 0 13px;background:#fff;border:1px solid #e4e7ec;border-radius:14px;overflow:hidden;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease;border-color .16s ease}
+.social-lemon-card{break-inside:avoid;margin:0 0 13px;background:#fff;border:1px solid #e4e7ec;border-radius:14px;overflow:hidden;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
 .social-lemon-card:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(16,24,40,.10);border-color:#d0d5dd}
 .social-lemon-cover{position:relative;background:#f2f4f7;overflow:hidden}
 .social-lemon-cover img{display:block;width:100%;height:auto;max-height:520px;object-fit:cover}
