@@ -23,7 +23,7 @@ export default function AIAnalytics({ workspaceId }: { workspaceId: string }) {
   const [type, setType] = useState("performance");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [runningCount, setRunningCount] = useState(0);
   const [status, setStatus] = useState("Siap menganalisis database workspace.");
   const [result, setResult] = useState<any>(null);
   const [runId, setRunId] = useState("");
@@ -92,68 +92,40 @@ export default function AIAnalytics({ workspaceId }: { workspaceId: string }) {
     setHistory((runs || []).map((x: any) => ({ ...x, insight: insightMap[x.run_id] || null, report: reportMap[x.run_id] || null })));
   }
 
-  async function buildContext() {
-    const { data: kpi, error: kpiError } = await supabase.rpc("get_dashboard_kpi", {
-      p_workspace_id: workspaceId, p_start_date: start || null, p_end_date: end || null, p_platform: null, p_creator_id: null,
-    });
-    if (kpiError) throw kpiError;
-    const { data: ranking, error: rankingError } = await supabase.rpc("get_creator_ranking", {
-      p_workspace_id: workspaceId, p_start_date: start || null, p_end_date: end || null, p_platform: null, p_creator_id: null,
-      p_search: null, p_page: 1, p_page_size: 50,
-    });
-    if (rankingError) throw rankingError;
-
-    let query = supabase
-      .from("sales")
-      .select("data_date,creator_name,username,platform,sku,product_name,category,qty,orders,gmv,commission,refund,clicks,buyers,live_gmv,video_gmv,showcase_gmv")
-      .eq("workspace_id", workspaceId)
-      .order("data_date", { ascending: true })
-      .limit(10000);
-    if (start) query = query.gte("data_date", start);
-    if (end) query = query.lte("data_date", end);
-    const { data: sales, error: salesError } = await query;
-    if (salesError) throw salesError;
-
-    const rows = sales || [];
-    const monthly: Record<string, any> = {}, products: Record<string, any> = {}, platforms: Record<string, any> = {};
-    for (const row of rows as any[]) {
-      const month = row.data_date ? String(row.data_date).slice(0, 7) : "undated";
-      monthly[month] ??= { gmv: 0, qty: 0, orders: 0, commission: 0, refund: 0, rows: 0 };
-      for (const key of ["gmv", "qty", "orders", "commission", "refund"]) monthly[month][key] += Number(row[key] || 0);
-      monthly[month].rows++;
-
-      const productKey = row.sku || row.product_name;
-      if (productKey) {
-        products[productKey] ??= { sku: row.sku || null, product: row.product_name || null, category: row.category || null, gmv: 0, qty: 0, orders: 0, commission: 0, refund: 0 };
-        for (const key of ["gmv", "qty", "orders", "commission", "refund"]) products[productKey][key] += Number(row[key] || 0);
-      }
-      const platform = row.platform || "Unknown";
-      platforms[platform] ??= { gmv: 0, qty: 0, orders: 0, commission: 0, refund: 0 };
-      for (const key of ["gmv", "qty", "orders", "commission", "refund"]) platforms[platform][key] += Number(row[key] || 0);
-    }
-
-    return {
-      analysis_focus: active[2],
-      period: { start: start || "ALL DATA", end: end || "ALL DATA" },
-      kpi: kpi?.[0] || {},
-      platforms,
-      top_creators: (ranking || []).slice(0, 50).map((x: any) => ({ rank: x.rank, creator: x.creator_name || x.username, platform: x.platform, qty: x.qty, orders: x.orders, gmv: x.gmv, commission: x.commission })),
-      top_products: Object.values(products).sort((a: any, b: any) => b.gmv - a.gmv).slice(0, 50),
-      monthly_trend: Object.entries(monthly).map(([period, value]) => ({ period, ...(value as any) })),
-      sampled_rows: rows.length,
-    };
-  }
-
   async function run() {
-    setBusy(true); setResult(null); setTaskAdded({});
+    if(runningCount>=3)return setStatus("Maksimal 3 analisis AI dapat berjalan bersamaan.");
+    const requestedType=type;
+    const requestedStart=start;
+    const requestedEnd=end;
+    if(requestedStart&&requestedEnd&&requestedStart>requestedEnd)return setStatus("Start Date tidak boleh melewati End Date.");
+
+    setRunningCount(value=>value+1);
+    setTaskAdded({});
+    setStatus(`Menjalankan ${TYPES.find(x=>x[0]===requestedType)?.[1]||"AI Analysis"} · proses dapat berjalan bersamaan maksimal 3.`);
     try {
-      if (start && end && start > end) { setStatus("Start Date tidak boleh melewati End Date."); return; }
-      const context = await buildContext();
-      const response = await fetch("/api/ai/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspace_id: workspaceId, analysis_type: type, start_date: start || null, end_date: end || null, context }) });
-      const data = await response.json();
-      if (!response.ok || !data.ok) throw new Error();
-      setResult(data.result); setRunId(data.run_id || ""); setStatus("Selesai. Output disimpan ke history."); await loadHistory();
-    } catch { setStatus("error, terjadi kesalahan."); } finally { setBusy(false); }
+      const response=await fetch("/api/ai/analyze",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          workspace_id:workspaceId,
+          analysis_type:requestedType,
+          start_date:requestedStart||null,
+          end_date:requestedEnd||null
+        })
+      });
+      const data=await response.json();
+      if(!response.ok||!data.ok)throw new Error(data.error||"AI sementara tidak dapat memproses analisis.");
+      if(type===requestedType){
+        setResult(data.result);
+        setRunId(data.run_id||"");
+      }
+      setStatus(`${TYPES.find(x=>x[0]===requestedType)?.[1]||"Analisis"} selesai dan disimpan ke history.`);
+      await loadHistory();
+    } catch(error:any) {
+      setStatus(error?.message||"AI sementara tidak dapat memproses analisis. Silakan coba kembali.");
+    } finally {
+      setRunningCount(value=>Math.max(0,value-1));
+    }
   }
 
   async function addTask(text: string, index: number) {
@@ -237,9 +209,9 @@ export default function AIAnalytics({ workspaceId }: { workspaceId: string }) {
   return <section id="ai-analytics" className="legacy-page-anchor ai-page ai-v2">
     <div className="ai-page-head"><div><div className="eyebrow">LUMA AFFILIATE INTELLIGENCE · AI ANALYTICS</div><h1>{active[1]}</h1><p className="muted">{active[2]}. Analisis mengacu pada database workspace dari file yang diupload dan dapat mengaitkan enam mode analisis.</p></div></div>
     <div className="ai-type-grid">{TYPES.map(([key, label, description]) => <button key={key} className={`ai-type-card ${type === key ? "active" : ""}`} onClick={() => { setType(key); setResult(null); setRunId(""); }}><strong>{label}</strong><span>{description}</span></button>)}</div>
-    <div className="card ai-control-card"><div className="filters"><label>Start <span className="field-note">Opsional</span><input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></label><label>End <span className="field-note">Opsional</span><input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></label><button className="primary" onClick={run} disabled={busy}>{busy ? "Menganalisis..." : "✦ Analisis dengan AI"}</button><button className="secondary" onClick={() => { setStart(""); setEnd(""); }}>Reset Date</button></div><div className="ai-status">{status}</div></div>
+    <div className="card ai-control-card"><div className="filters"><label>Start <span className="field-note">Opsional</span><input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></label><label>End <span className="field-note">Opsional</span><input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></label><button className="primary" onClick={run} disabled={runningCount>=3}>{runningCount>=3 ? "3/3 AI berjalan" : runningCount>0 ? `✦ Generate AI · ${runningCount}/3 berjalan` : "✦ Analisis dengan AI"}</button><button className="secondary" onClick={() => { setStart(""); setEnd(""); }}>Reset Date</button></div><div className="ai-status">{status}</div></div>
 
-    {(busy||generatingReport)&&<div className="ai-generation-loading"><LumaLoadingMotion compact label={generatingReport?"Menyusun dokumen AI":"Lumaway AI sedang menganalisis"} detail={generatingReport?"Menyiapkan struktur, insight, dan dokumen laporan.":"Menghubungkan data workspace, menghitung KPI, lalu menyusun insight."}/></div>}
+    {(runningCount>0||generatingReport)&&<div className="ai-generation-loading"><LumaLoadingMotion compact label={generatingReport?"Menyusun dokumen AI":`Lumaway AI sedang menganalisis · ${runningCount}/3 proses`} detail={generatingReport?"Menyiapkan struktur, insight, dan dokumen laporan.":"Data dihitung di server agar lebih cepat dan stabil. Anda dapat menjalankan hingga 3 analisis bersamaan."}/></div>}
 
     {result && <div className="ai-result-grid">
       <div className="card ai-summary-card"><div className="eyebrow">EXECUTIVE SUMMARY</div><p>{result.executive_summary}</p><div className="button-row"><button className="primary" disabled={generatingReport === runId} onClick={() => generateDocument()}>{generatingReport === runId ? "Generating..." : "Generate Dokumen"}</button>{currentHistory?.report && <><button className="secondary" onClick={() => previewReport(currentHistory.report.id)}>Preview Document · 5 token*</button><button className="secondary" onClick={() => downloadReport(currentHistory.report.id)}>Download PDF · 10 token</button></>}</div><small className="muted">*Preview pertama menggunakan 5 token. Preview berikutnya gratis.</small></div>
