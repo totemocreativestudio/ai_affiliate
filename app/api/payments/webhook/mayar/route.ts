@@ -67,7 +67,7 @@ export async function POST(req:NextRequest){
     if(status!=="paid"){
       if(["closed","expired","cancelled","canceled"].includes(status)){
         const table=orders.sub?"luma_subscription_orders":"luma_topup_orders";
-        await admin.from(table).update({status:status==="closed"?"expired":status,provider_payload:{webhook:body,verified_invoice:invoice}}).eq("id",order.id).neq("status","paid");
+        const nextStatus=status==="closed"?"expired":status;await admin.from(table).update({status:nextStatus,provider_payload:{webhook:body,verified_invoice:invoice}}).eq("id",order.id).neq("status","paid");if(order.checkout_intent_id)await admin.from("luma_payment_checkout_intents").update({status:"expired",updated_at:new Date().toISOString()}).eq("id",order.checkout_intent_id);
       }
       return NextResponse.json({ok:true,ignored:true,verified_status:status||"unknown"});
     }
@@ -77,12 +77,12 @@ export async function POST(req:NextRequest){
     if(orders.sub){
       const {data:result,error}=await admin.rpc("luma_complete_subscription",{p_order_code:order.order_code,p_payment_reference:paymentRef||null,p_provider_payload:{webhook:body,verified_invoice:invoice}});
       if(error)throw error;
-      if(!result?.already_paid)await sendExternalCustomerNotice(admin,{userId:order.user_id,workspaceId:order.workspace_id,kind:"subscription_paid",title:"Langganan Lumaway aktif",message:`Pembayaran ${order.order_code} via Mayar.id berhasil. Paket ${order.luma_subscription_plans?.name||"Lumaway"} senilai ${money(order.amount)} telah aktif.`,actionUrl:app});
+      if(order.checkout_intent_id)await admin.from("luma_payment_checkout_intents").update({status:"paid",payment_reference:paymentRef||null,updated_at:new Date().toISOString()}).eq("id",order.checkout_intent_id);if(!result?.already_paid)await sendExternalCustomerNotice(admin,{userId:order.user_id,workspaceId:order.workspace_id,kind:"subscription_paid",title:"Langganan Lumaway aktif",message:`Pembayaran ${order.order_code} via Mayar.id berhasil. Paket ${order.luma_subscription_plans?.name||"Lumaway"} senilai ${money(order.amount)} telah aktif.`,actionUrl:app});
       return NextResponse.json({ok:true,type:"subscription",result,verified:true});
     }
     const {data:result,error}=await admin.rpc("luma_complete_topup",{p_order_code:order.order_code,p_payment_reference:paymentRef||null,p_provider_payload:{webhook:body,verified_invoice:invoice}});
     if(error)throw error;
-    if(!result?.already_paid)await sendExternalCustomerNotice(admin,{userId:order.user_id,workspaceId:order.workspace_id,kind:"token_paid",title:"Top up token berhasil",message:`Pembayaran ${order.order_code} via Mayar.id berhasil. ${Number(order.package_tokens||0)} token senilai ${money(order.amount)} telah ditambahkan.`,actionUrl:app});
+    if(order.checkout_intent_id)await admin.from("luma_payment_checkout_intents").update({status:"paid",payment_reference:paymentRef||null,updated_at:new Date().toISOString()}).eq("id",order.checkout_intent_id);if(!result?.already_paid)await sendExternalCustomerNotice(admin,{userId:order.user_id,workspaceId:order.workspace_id,kind:"token_paid",title:"Top up token berhasil",message:`Pembayaran ${order.order_code} via Mayar.id berhasil. ${Number(order.package_tokens||0)} token senilai ${money(order.amount)} telah ditambahkan.`,actionUrl:app});
     return NextResponse.json({ok:true,type:"token",result,verified:true});
   }catch(error:any){return NextResponse.json({ok:false,error:error?.message||"Mayar webhook gagal diproses."},{status:400})}
 }
