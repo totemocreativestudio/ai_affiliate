@@ -51,3 +51,24 @@ Remaining advisor items are intentionally deferred because they require broader 
 - 78 unindexed foreign keys; current production row counts are generally small, so indexes should be added selectively based on query growth rather than blindly.
 - 65 `auth_rls_initplan` warnings and 50 overlapping permissive policy warnings; these need a dedicated RLS optimization pass.
 - Auth leaked-password protection is an Auth configuration setting, not a schema migration.
+
+
+## PR44 RLS performance optimization result
+
+After PR44 production migrations:
+
+- `auth_rls_initplan` warnings: **65 → 0** by converting RLS calls from `auth.uid()` to the initPlan form `(select auth.uid())`.
+- Missing leading indexes on `workspace_id` / `user_id` columns referenced by RLS: **30 → 0**.
+- Unindexed foreign-key findings: **78 → 49** because 29 of the new RLS indexes also cover foreign-key access paths.
+- Multiple permissive policy warnings: **50 → 40**.
+- Ten `FOR ALL` policies were split into INSERT / UPDATE / DELETE only where the existing SELECT policy had the **exact same predicate and role set**, so SELECT access semantics remain unchanged.
+- The remaining 40 overlapping-policy warnings are intentionally retained for now. Several of those `FOR ALL` policies also provide broader admin/manager read paths, so removing their SELECT participation without an explicit equivalent combined policy could change authorization behavior.
+- Freshly created RLS indexes may initially appear in the `unused_index` advisor because usage statistics have not accumulated yet; they should not be removed based only on the immediate post-migration snapshot.
+
+Current PR44 performance advisor state:
+- `auth_rls_initplan`: **0**
+- `multiple_permissive_policies`: **40**
+- `unindexed_foreign_keys`: **49**
+- RLS tenant/user leading-index gaps: **0**
+
+Further consolidation of the remaining overlapping policies should be done only with per-role/per-action access equivalence tests.
