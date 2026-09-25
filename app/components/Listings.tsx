@@ -510,16 +510,6 @@ async function saveListing() {
         </div>
       )}
 
-      <div style={{border:"1px solid #e5e7eb",borderRadius:8,padding:14,marginBottom:18,background:"#fff"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:10}}><div><h3 style={{margin:0}}>Master Creator</h3><p style={{margin:"5px 0 0",color:"#777",fontSize:12}}>Seluruh creator database workspace tersedia secara paginated. Creator dari Affiliate Performance otomatis terhubung ke master data.</p></div><span style={{fontSize:12,color:"#667085"}}>{masterCreatorTotal.toLocaleString("id-ID")} creator</span></div>
-        <div className="button-row" style={{marginBottom:10}}>
-          <input value={masterCreatorSearch} onChange={e=>setMasterCreatorSearch(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();void loadMasterCreators(1,masterCreatorSearch)}}} placeholder="Cari username / nama creator / platform..." style={{flex:1,minWidth:240}}/>
-          <button className="secondary" type="button" onClick={()=>void loadMasterCreators(1,masterCreatorSearch)}>Cari</button>
-          {masterCreatorSearch&&<button className="secondary" type="button" onClick={()=>{setMasterCreatorSearch("");void loadMasterCreators(1,"")}}>Reset</button>}
-        </div>
-        {masterCreators.length===0?<p style={{color:"#777"}}>Belum ada Master Creator.</p>:<div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr>{["Creator / Username","Platform","Affiliate ID","Phone","Payment","Ratecard","Status"].map(h=><th key={h} style={{textAlign:"left",padding:8,borderBottom:"1px solid #e5e7eb",whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead><tbody>{masterCreators.map(creator=>{const name=String(creator.name||"").trim();const username=String(creator.username||"").trim();return <tr key={creator.id}><td style={{padding:8}}><b>{name||username||"-"}</b>{username&&username.toLowerCase()!==name.toLowerCase()&&<small style={{display:"block",color:"#667085"}}>@{username}</small>}</td><td style={{padding:8}}><b>{creator.platform||"-"}</b></td><td style={{padding:8}}>{creator.affiliate_id||"-"}</td><td style={{padding:8}}>{creator.phone||"-"}</td><td style={{padding:8}}>{creator.payment_type||"-"}</td><td style={{padding:8}}>Rp {Number(creator.ratecard||0).toLocaleString("id-ID")}</td><td style={{padding:8}}>{creator.status||"-"}</td></tr>})}</tbody></table></div>}
-        <div className="pager"><span className="pager-info">Page {masterCreatorPage} / {masterCreatorPages} · {masterCreatorTotal.toLocaleString("id-ID")} creator</span><div className="button-row"><button className="secondary" disabled={masterCreatorPage<=1} onClick={()=>void loadMasterCreators(masterCreatorPage-1,masterCreatorSearch)}>Previous</button><button className="secondary" disabled={masterCreatorPage>=masterCreatorPages} onClick={()=>void loadMasterCreators(masterCreatorPage+1,masterCreatorSearch)}>Next</button></div></div>
-      </div>
       {showForm && (
         <div
           style={{
@@ -527,12 +517,13 @@ async function saveListing() {
             borderRadius: 8,
             padding: 18,
             marginBottom: 20,
-            background: "#fafbfc",
+            background: "#fff",
+            boxShadow: "0 12px 32px rgba(15,23,42,.08)",
           }}
         >
-          <h3 style={{ marginTop: 0 }}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}><h3 style={{ margin: 0 }}>
             {editingId ? "Edit Listing" : "Tambah Listing"}
-          </h3>
+          </h3><button type="button" aria-label="Tutup form listing" onClick={()=>{setShowForm(false);setEditingId(null);setError("");}} style={{width:36,height:36,borderRadius:"50%"}}>×</button></div><p style={{margin:"6px 0 16px",fontSize:12,color:"#667085"}}>Isi creator, platform, dan produk. HPP produk akan mengikuti Product Master.</p>
 
           <div
             style={{
@@ -763,6 +754,18 @@ async function saveListing() {
           </div>
         </div>
       )}
+
+      <div style={{border:"1px solid #e5e7eb",borderRadius:8,padding:14,marginBottom:18,background:"#fff"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:10}}><div><h3 style={{margin:0}}>Master Creator</h3><p style={{margin:"5px 0 0",color:"#777",fontSize:12}}>Seluruh creator database workspace tersedia secara paginated. Creator dari Affiliate Performance otomatis terhubung ke master data.</p></div><span style={{fontSize:12,color:"#667085"}}>{masterCreatorTotal.toLocaleString("id-ID")} creator</span></div>
+        <div className="button-row" style={{marginBottom:10}}>
+          <input value={masterCreatorSearch} onChange={e=>setMasterCreatorSearch(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();void loadMasterCreators(1,masterCreatorSearch)}}} placeholder="Cari username / nama creator / platform..." style={{flex:1,minWidth:240}}/>
+          <button className="secondary" type="button" onClick={()=>void loadMasterCreators(1,masterCreatorSearch)}>Cari</button>
+          {masterCreatorSearch&&<button className="secondary" type="button" onClick={()=>{setMasterCreatorSearch("");void loadMasterCreators(1,"")}}>Reset</button>}
+        </div>
+        {masterCreators.length===0?<p style={{color:"#777"}}>Belum ada Master Creator.</p>:<div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr>{["Creator / Username","Platform","Affiliate ID","Phone","Payment","Ratecard","Status"].map(h=><th key={h} style={{textAlign:"left",padding:8,borderBottom:"1px solid #e5e7eb",whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead><tbody>{masterCreators.map(creator=>{const name=String(creator.name||"").trim();const username=String(creator.username||"").trim();return <tr key={creator.id}><td style={{padding:8}}><b>{name||username||"-"}</b>{username&&username.toLowerCase()!==name.toLowerCase()&&<small style={{display:"block",color:"#667085"}}>@{username}</small>}</td><td style={{padding:8}}><b>{creator.platform||"-"}</b></td><td style={{padding:8}}>{creator.affiliate_id||"-"}</td><td style={{padding:8}}>{creator.phone||"-"}</td><td style={{padding:8}}>{creator.payment_type||"-"}</td><td style={{padding:8}}>Rp {Number(creator.ratecard||0).toLocaleString("id-ID")}</td><td style={{padding:8}}>{creator.status||"-"}</td></tr>})}</tbody></table></div>}
+        <div className="pager"><span className="pager-info">Page {masterCreatorPage} / {masterCreatorPages} · {masterCreatorTotal.toLocaleString("id-ID")} creator</span><div className="button-row"><button className="secondary" disabled={masterCreatorPage<=1} onClick={()=>void loadMasterCreators(masterCreatorPage-1,masterCreatorSearch)}>Previous</button><button className="secondary" disabled={masterCreatorPage>=masterCreatorPages} onClick={()=>void loadMasterCreators(masterCreatorPage+1,masterCreatorSearch)}>Next</button></div></div>
+      </div>
+
 
       {loading ? (
         <p>Loading Listings...</p>
