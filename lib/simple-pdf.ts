@@ -9,13 +9,14 @@ type PdfPage = {
   sections?: PdfSection[];
   bullets?: string[];
   callout?: string;
+  visual_key?: string;
 };
 
 type PdfReport = {
   title?: string;
   period_start?: string | null;
   period_end?: string | null;
-  document_json?: { document_title?: string; pages?: PdfPage[] } | null;
+  document_json?: { document_title?: string; pages?: PdfPage[]; data_visuals?: Record<string, any> } | null;
   watermark_removed_at?: string | null;
 };
 
@@ -73,6 +74,64 @@ function logoCommand() {
   return "q 29 0 0 31 44 787 cm /Logo Do Q\n";
 }
 
+function compactNumber(value: unknown) {
+  const n = Number(value || 0);
+  if (!Number.isFinite(n)) return "0";
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000_000) return (n / 1_000_000_000).toFixed(abs >= 10_000_000_000 ? 0 : 1) + "B";
+  if (abs >= 1_000_000) return (n / 1_000_000).toFixed(abs >= 10_000_000 ? 0 : 1) + "M";
+  if (abs >= 1_000) return (n / 1_000).toFixed(abs >= 10_000 ? 0 : 1) + "K";
+  return Math.round(n).toLocaleString("en-US");
+}
+
+function visualRows(report: PdfReport, key?: string) {
+  const visuals = report.document_json?.data_visuals || {};
+  if (!key || key === "none") return [] as Array<{label:string;value:number;display:string}>;
+  if (key === "kpi") {
+    const k = visuals.kpi || {};
+    return [
+      { label: "GMV", value: Number(k.gmv || 0), display: "Rp " + compactNumber(k.gmv) },
+      { label: "Orders", value: Number(k.orders || 0), display: compactNumber(k.orders) },
+      { label: "Qty", value: Number(k.qty || 0), display: compactNumber(k.qty) },
+      { label: "Commission", value: Number(k.commission || 0), display: "Rp " + compactNumber(k.commission) },
+      { label: "Refund", value: Number(k.refund || 0), display: "Rp " + compactNumber(k.refund) },
+      { label: "Active Creators", value: Number(k.active_creators || 0), display: compactNumber(k.active_creators) },
+    ];
+  }
+  const rows = Array.isArray(visuals[key]) ? visuals[key] : [];
+  return rows.slice(0, 7).map((row: any) => {
+    const label = key === "monthly_trend" ? row.period
+      : key === "top_creators" ? (row.creator || row.username || "Creator")
+      : key === "top_products" ? (row.product || row.sku || "Product")
+      : key === "platforms" ? (row.platform || "Platform")
+      : key === "stores" ? (row.store_name || "Store")
+      : "Data";
+    const value = Number(row.gmv ?? row.orders ?? row.qty ?? 0);
+    return { label: String(label || "-"), value, display: row.gmv != null ? "Rp " + compactNumber(row.gmv) : compactNumber(value) };
+  });
+}
+
+function drawVisual(report: PdfReport, page: PdfPage, startY: number) {
+  const rows = visualRows(report, page.visual_key);
+  if (!rows.length) return { commands: "", y: startY };
+  const maxValue = Math.max(1, ...rows.map(row => Math.abs(row.value)));
+  const commands: string[] = [];
+  let y = startY - 12;
+  commands.push(textLine("DATA VISUAL", 48, y, 9, true));
+  y -= 18;
+  for (const row of rows) {
+    if (y < 330) break;
+    const label = ascii(row.label).slice(0, 24);
+    const width = Math.max(2, Math.min(238, Math.round(Math.abs(row.value) / maxValue * 238)));
+    commands.push(textLine(label, 50, y, 8, false));
+    commands.push("0.93 0.93 0.96 rg 183 " + (y - 2) + " 240 9 re f\n");
+    commands.push("0.39 0.36 1 rg 183 " + (y - 2) + " " + width + " 9 re f\n0 0 0 rg\n");
+    commands.push(textLine(row.display, 432, y, 8, true));
+    y -= 19;
+  }
+  return { commands: commands.join(""), y: y - 4 };
+}
+
 function buildPageContent(page: PdfPage, index: number, report: PdfReport) {
   const commands: string[] = [];
   const title = page.title || report.document_json?.document_title || report.title || "Lumaway AI Analytics Report";
@@ -120,6 +179,9 @@ function buildPageContent(page: PdfPage, index: number, report: PdfReport) {
         y -= 14;
       }
     }
+
+    const visual = drawVisual(report, page, y);
+    if (visual.commands) { commands.push(visual.commands); y = visual.y; }
 
     for (const section of page.sections || []) {
       if (y < 145) break;
@@ -186,7 +248,7 @@ function asBuffer(object: PdfObject) {
 
 export function generateReportPdf(report: PdfReport) {
   const sourcePages = report.document_json?.pages || [];
-  const pages = sourcePages.length ? sourcePages.slice(0, 20) : [{ title: report.title || "Lumaway Report" }];
+  const pages = sourcePages.length ? sourcePages.slice(0, 12) : [{ title: report.title || "Lumaway Report" }];
 
   const objects: PdfObject[] = [];
   // 1: catalog, 2: pages tree, 3/4 fonts, 5: official Lumaway logo image.
