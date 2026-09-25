@@ -6,8 +6,8 @@ This manifest is the source-of-truth map between **Supabase production migration
 
 ## Current state
 
-- Registry rows: **82**
-- Repository-backed production migrations: **30**
+- Registry rows: **84**
+- Repository-backed production migrations: **32**
 - Production legacy migrations without original GitHub SQL: **51**
 - Repository migration whose production state was applied manually: **1**
 - PR42 baseline snapshot: `supabase/baseline/20260925/`
@@ -104,7 +104,9 @@ The 51 `production_legacy` entries are historical migrations that already exist 
 | `20260925040515` | `pr42_database_migration_registry` | repository_migration | `supabase/migrations/20260925100000_pr42_database_migration_registry.sql` | Yes |
 | `20260925050942` | `pr43_security_performance_hardening` | repository_migration | `supabase/migrations/20260925122000_pr43_security_performance_hardening.sql` | Yes |
 | `20260925051308` | `pr43_private_policy_and_rpc_scope` | repository_migration | `supabase/migrations/20260925124500_pr43_private_policy_and_rpc_scope.sql` | Yes |
-| `20260925052600` | `pr44_rls_initplan_and_tenant_indexes` | repository_migration | `supabase/migrations/20260925122600_pr44_rls_initplan_and_tenant_indexes.sql` | Yes |\n| `20260925052702` | `pr44_split_redundant_all_policies` | repository_migration | `supabase/migrations/20260925122702_pr44_split_redundant_all_policies.sql` | Yes |\n| `repo-only-pr37` | `pr37_payment_priority` | repository_manual_state | `supabase/migrations/20260923195500_pr37_payment_priority.sql` | Yes |
+| `20260925052600` | `pr44_rls_initplan_and_tenant_indexes` | repository_migration | `supabase/migrations/20260925122600_pr44_rls_initplan_and_tenant_indexes.sql` | Yes |\n| `20260925052702` | `pr44_split_redundant_all_policies` | repository_migration | `supabase/migrations/20260925122702_pr44_split_redundant_all_policies.sql` | Yes |\n| `20260925065838` | `pr45_rls_policy_query_plan_optimization` | repository_migration | `supabase/migrations/20260925135000_pr45_rls_policy_query_plan_optimization.sql` | Yes |
+| `20260925070033` | `pr45_private_rls_helpers` | repository_migration | `supabase/migrations/20260925140500_pr45_private_rls_helpers.sql` | Yes |
+| `repo-only-pr37` | `pr37_payment_priority` | repository_manual_state | `supabase/migrations/20260923195500_pr37_payment_priority.sql` | Yes |
 
 ## Rule from PR42 onward
 
