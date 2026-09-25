@@ -26,15 +26,13 @@ export default function OwnerCommandCenterSummary({workspaceId}:{workspaceId:str
 
  async function load(){
   setBusy(true);
-  const yearStart=`${year}-01-01T00:00:00Z`,nextYear=`${year+1}-01-01T00:00:00Z`;
-  const [summaryRes,systemRes,providerRes,issueRes,targetRes,subscriptionRes,topupRes]=await Promise.all([
+  const [summaryRes,systemRes,providerRes,issueRes,targetRes,revenueRes]=await Promise.all([
    supabase.rpc("get_owner_monitoring_summary"),
    supabase.from("luma_system_controls").select("*").eq("id",1).maybeSingle(),
    supabase.from("luma_provider_accounts").select("*").order("provider"),
    supabase.from("luma_issue_logs").select("id,severity,title,status,created_at").neq("status","resolved").order("created_at",{ascending:false}).limit(8),
    supabase.from("luma_business_monthly_targets").select("*").gte("target_year",year-1).lte("target_year",year).order("target_year").order("target_month"),
-   supabase.from("luma_subscription_orders").select("amount,paid_at,status").eq("status","paid").gte("paid_at",yearStart).lt("paid_at",nextYear),
-   supabase.from("luma_topup_orders").select("amount,paid_at,status").eq("status","paid").gte("paid_at",yearStart).lt("paid_at",nextYear)
+   supabase.rpc("luma_owner_verified_revenue",{p_year:year})
   ]);
   setSummary(summaryRes.data||{});
   setSystem(systemRes.data||{});
@@ -42,10 +40,8 @@ export default function OwnerCommandCenterSummary({workspaceId}:{workspaceId:str
   setIssues((issueRes.data||[]) as Row[]);
   setTargets((targetRes.data||[]) as Row[]);
   const nextRealized:Record<number,number>={};
-  for(const row of [...(subscriptionRes.data||[]),...(topupRes.data||[])] as Row[]){
-   if(!row.paid_at)continue;
-   const date=new Date(row.paid_at);if(date.getUTCFullYear()!==year)continue;
-   const month=date.getUTCMonth()+1;nextRealized[month]=(nextRealized[month]||0)+Number(row.amount||0);
+  for(const row of (revenueRes.data||[]) as Row[]){
+   nextRealized[Number(row.month_number)]=Number(row.total_revenue||0);
   }
   setRealized(nextRealized);
   setBusy(false);
