@@ -99,7 +99,7 @@ export async function POST(req:NextRequest){
 
     const expiryText=new Date(checkout.expiresAt).toLocaleString("id-ID",{timeZone:"Asia/Jakarta",dateStyle:"medium",timeStyle:"short"});
     const priceMessage=upgrade?`Harga ${money(baseAmount)}, kredit sisa paket ${money(upgradeCredit)}, total pembayaran ${money(amount)}.`:`Total pembayaran ${money(amount)}.`;
-    await sendExternalCustomerNotice(ctx.admin,{userId:ctx.user.id,workspaceId,kind:"subscription_checkout",title:"Checkout langganan dibuat",message:`Order ${orderCode} melalui ${providerName}. ${priceMessage} Selesaikan pembayaran paling lambat ${expiryText} WIB.`,actionUrl:checkout.paymentUrl});
+    void sendExternalCustomerNotice(ctx.admin,{userId:ctx.user.id,workspaceId,kind:"subscription_checkout",title:"Checkout langganan dibuat",message:`Order ${orderCode} melalui ${providerName}. ${priceMessage} Selesaikan pembayaran paling lambat ${expiryText} WIB.`,actionUrl:checkout.paymentUrl}).catch(()=>undefined);
     await ctx.admin.from("luma_api_usage_events").insert({workspace_id:workspaceId,user_id:ctx.user.id,provider:checkout.provider,service:"payment_session",request_type:"subscription_checkout",status:"success",reference:orderCode,metadata:{amount,plan_code:plan.code,attempted:checkout.attempted,idempotent:true}});
 
     return NextResponse.json({ok:true,order_code:orderCode,payment_url:checkout.paymentUrl,expires_at:checkout.expiresAt,payment_provider:providerName,attempted:checkout.attempted,pricing:{base_amount:baseAmount,upgrade_credit_amount:upgradeCredit,promo_discount_amount:promoDiscount,amount,upgrade}});
