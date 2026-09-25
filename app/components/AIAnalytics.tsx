@@ -7,12 +7,10 @@ import { createClient } from "../../lib/supabase-browser";
 
 type Row = Record<string, any>;
 const TYPES = [
-  ["performance", "Performance Analysis", "Lihat kondisi bisnis sekarang: apa yang sehat, apa yang menahan performa, dan keputusan apa yang perlu diambil."],
-  ["creator", "Creator Analysis", "Temukan creator yang layak dipertahankan, di-scale, di-follow-up, atau diuji lagi berdasarkan kontribusinya."],
-  ["product", "Product Analysis", "Cari produk pendorong omzet, produk kuat di volume, dan peluang produk yang layak didorong ke lebih banyak creator."],
-  ["trend", "Trend Analysis", "Baca momentum naik-turun performa dan pahami perubahan yang perlu diantisipasi untuk periode berikutnya."],
-  ["anomaly", "Anomaly Detection", "Jadikan AI sebagai early warning untuk angka tidak wajar, penurunan, refund, atau pola yang perlu segera dicek."],
-  ["recommendation", "Recommendations", "Ubah seluruh insight menjadi prioritas aksi 7-30 hari yang bisa langsung dibawa ke meeting atau Kanban."],
+  ["recommendation", "Rekomendasi", "Ringkas seluruh data periode menjadi prioritas aksi 7-30 hari yang bisa langsung dibawa ke meeting atau Kanban."],
+  ["performance", "Performa Analisis", "Analisa menyeluruh GMV, order, qty, komisi, refund, creator, produk, platform, dan perubahan performa pada periode yang dipilih."],
+  ["product", "Produk Analisis", "Fokus pada performa produk/SKU serta hubungan produk dengan creator untuk mencari produk pendorong omzet dan peluang scale."],
+  ["creator", "Creator Analisis", "Fokus pada seluruh data creator di periode terpilih untuk melihat kontribusi, konsentrasi, produktivitas, dan peluang follow-up."],
 ] as const;
 const PAGE_SIZE = 10;
 
@@ -20,7 +18,7 @@ type MenuState = { row: Row; left: number; top: number } | null;
 
 export default function AIAnalytics({ workspaceId }: { workspaceId: string }) {
   const supabase = useMemo(() => createClient(), []);
-  const [type, setType] = useState("performance");
+  const [type, setType] = useState("recommendation");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [runningCount, setRunningCount] = useState(0);
@@ -207,7 +205,7 @@ export default function AIAnalytics({ workspaceId }: { workspaceId: string }) {
   const menuRow = menu?.row || null;
 
   return <section id="ai-analytics" className="legacy-page-anchor ai-page ai-v2">
-    <div className="ai-page-head"><div><div className="eyebrow">LUMA AFFILIATE INTELLIGENCE · AI ANALYTICS</div><h1>{active[1]}</h1><p className="muted">{active[2]}. Analisis mengacu pada database workspace dari file yang diupload dan dapat mengaitkan enam mode analisis.</p></div></div>
+    <div className="ai-page-head"><div><div className="eyebrow">LUMA AFFILIATE INTELLIGENCE · AI ANALYTICS</div><h1>{active[1]}</h1><p className="muted">{active[2]}. Analisis mengacu pada database workspace dari file yang diupload dan menggunakan empat mode analisis dengan seluruh data yang tersedia pada periode terpilih.</p></div></div>
     <div className="ai-type-grid">{TYPES.map(([key, label, description]) => <button key={key} className={`ai-type-card ${type === key ? "active" : ""}`} onClick={() => { setType(key); setResult(null); setRunId(""); }}><strong>{label}</strong><span>{description}</span></button>)}</div>
     <div className="card ai-control-card"><div className="filters"><label>Start <span className="field-note">Opsional</span><input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></label><label>End <span className="field-note">Opsional</span><input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></label><button className="primary" onClick={run} disabled={runningCount>=3}>{runningCount>=3 ? "3/3 AI berjalan" : runningCount>0 ? `✦ Generate AI · ${runningCount}/3 berjalan` : "✦ Analisis dengan AI"}</button><button className="secondary" onClick={() => { setStart(""); setEnd(""); }}>Reset Date</button></div><div className="ai-status">{status}</div></div>
 
