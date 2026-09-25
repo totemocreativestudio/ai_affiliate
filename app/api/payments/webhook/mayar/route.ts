@@ -41,8 +41,10 @@ export async function POST(req:NextRequest){
 
     const raw=await req.text();const body=JSON.parse(raw||"{}");const data=body?.data||body||{};
     const extra=data?.extraData||data?.extra_data||body?.extraData||{};
-    const orderCode=String(extra?.orderCode||extra?.order_code||data?.orderCode||data?.order_code||"");
-    const invoiceId=String(data?.paymentLinkId||data?.invoiceId||data?.invoice?.id||extra?.invoiceId||"");
+    const description=String(data?.productDescription||data?.description||body?.description||"");
+    const descriptionOrder=description.match(/\\b(?:SUB|TOPUP)-[A-Z0-9]+\\b/i)?.[0]?.toUpperCase()||"";
+    const orderCode=String(extra?.orderCode||extra?.order_code||data?.orderCode||data?.order_code||descriptionOrder||"").trim().toUpperCase();
+    const invoiceId=String(data?.paymentLinkId||data?.productId||data?.product_id||data?.invoiceId||data?.invoice?.id||extra?.invoiceId||"");
     const transactionId=String(data?.transactionId||data?.transaction_id||data?.id||"");
     const eventKey=String(body?.eventId||body?.id||body?.event||"mayar")+"|"+String(transactionId||invoiceId||createHash("sha256").update(raw).digest("hex").slice(0,24));
 
@@ -51,6 +53,7 @@ export async function POST(req:NextRequest){
     const orders=await findOrders(admin,orderCode,invoiceId,transactionId);
     const order=orders.sub||orders.token;
     if(!order)return NextResponse.json({ok:true,ignored:true,reason:"order_not_found"});
+    await admin.from("luma_payment_webhook_events").update({order_code:order.order_code}).eq("provider","mayar").eq("event_key",eventKey);
 
     const key=await getServerSecret(admin,"luma_mayar_api_key");
     if(!key)return NextResponse.json({ok:false,error:"Mayar API key belum tersedia."},{status:503});
