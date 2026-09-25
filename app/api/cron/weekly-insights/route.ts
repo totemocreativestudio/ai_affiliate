@@ -1,6 +1,6 @@
 import {NextRequest,NextResponse} from "next/server";
 import {createClient} from "@supabase/supabase-js";
-import {getServerSecret} from "../../../../../lib/server-secrets";
+import {getServerSecret} from "../../../../lib/server-secrets";
 
 export const runtime="nodejs";
 export const maxDuration=60;
