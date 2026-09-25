@@ -725,3 +725,170 @@ revoke all on function public.get_dashboard_store_options(uuid,text) from public
 grant execute on function public.get_dashboard_store_options(uuid,text) to authenticated,service_role;
 revoke all on function public.get_creator_ranking_v2(uuid,date,date,text,text,bigint,text,integer,integer) from public,anon;
 grant execute on function public.get_creator_ranking_v2(uuid,date,date,text,text,bigint,text,integer,integer) to authenticated,service_role;
+
+
+-- ---------------------------------------------------------------------------
+-- 8. Full-period AI context aggregation.
+-- Calculates from all rows in PostgreSQL; no client-side row sampling limits.
+-- ---------------------------------------------------------------------------
+create or replace function public.luma_ai_period_context(
+  p_workspace_id uuid,
+  p_start_date date default null,
+  p_end_date date default null,
+  p_focus text default 'performance'
+)
+returns jsonb
+language sql
+security invoker
+set search_path=public,pg_temp
+as $$
+with affiliate as (
+  select *
+  from public.sales s
+  where s.workspace_id=p_workspace_id
+    and s.data_type in ('performance','sales')
+    and (p_start_date is null or s.data_date>=p_start_date)
+    and (p_end_date is null or s.data_date<=p_end_date)
+),
+product as (
+  select *
+  from public.sales s
+  where s.workspace_id=p_workspace_id
+    and s.data_type='product_performance'
+    and (p_start_date is null or s.data_date>=p_start_date)
+    and (p_end_date is null or s.data_date<=p_end_date)
+),
+metric as (
+  select * from product where lower(coalesce(p_focus,''))='product'
+  union all
+  select * from affiliate where lower(coalesce(p_focus,''))<>'product'
+),
+kpi as (
+  select
+    coalesce(sum(gmv),0)::numeric gmv,
+    coalesce(sum(qty),0)::numeric qty,
+    coalesce(sum(orders),0)::numeric orders,
+    coalesce(sum(commission),0)::numeric commission,
+    coalesce(sum(refund),0)::numeric refund,
+    coalesce(sum(clicks),0)::numeric clicks,
+    coalesce(sum(buyers),0)::numeric buyers,
+    coalesce(sum(live_count),0)::numeric live_count,
+    coalesce(sum(video_count),0)::numeric video_count,
+    coalesce(sum(sample_sent),0)::numeric sample_sent
+  from metric
+),
+creator_stats as (
+  select
+    coalesce(s.creator_id::text,lower(coalesce(s.platform,''))||'|'||lower(coalesce(s.username,s.creator_name,''))) creator_key,
+    max(s.creator_name) creator,
+    max(s.username) username,
+    max(s.platform) platform,
+    coalesce(sum(s.gmv),0)::numeric gmv,
+    coalesce(sum(s.qty),0)::numeric qty,
+    coalesce(sum(s.orders),0)::numeric orders,
+    coalesce(sum(s.commission),0)::numeric commission
+  from affiliate s
+  where s.creator_id is not null or nullif(trim(coalesce(s.username,s.creator_name,'')),'') is not null
+  group by 1
+),
+product_stats as (
+  select
+    coalesce(nullif(s.sku,''),nullif(s.product_code,''),nullif(s.product_name,'')) product_key,
+    max(s.sku) sku,
+    max(s.product_name) product,
+    max(s.category) category,
+    max(s.platform) platform,
+    coalesce(sum(s.gmv),0)::numeric gmv,
+    coalesce(sum(s.qty),0)::numeric qty,
+    coalesce(sum(s.orders),0)::numeric orders,
+    coalesce(sum(s.commission),0)::numeric commission,
+    coalesce(sum(s.refund),0)::numeric refund,
+    coalesce(sum(s.clicks),0)::numeric clicks
+  from product s
+  where coalesce(nullif(s.sku,''),nullif(s.product_code,''),nullif(s.product_name,'')) is not null
+  group by 1
+),
+platform_stats as (
+  select coalesce(nullif(platform,''),'Unknown') platform,
+         coalesce(sum(gmv),0)::numeric gmv,
+         coalesce(sum(qty),0)::numeric qty,
+         coalesce(sum(orders),0)::numeric orders,
+         coalesce(sum(commission),0)::numeric commission,
+         coalesce(sum(refund),0)::numeric refund,
+         coalesce(sum(clicks),0)::numeric clicks
+  from metric
+  group by 1
+),
+monthly as (
+  select to_char(date_trunc('month',data_date),'YYYY-MM') period,
+         coalesce(sum(gmv),0)::numeric gmv,
+         coalesce(sum(qty),0)::numeric qty,
+         coalesce(sum(orders),0)::numeric orders,
+         coalesce(sum(commission),0)::numeric commission,
+         coalesce(sum(refund),0)::numeric refund
+  from metric
+  where data_date is not null
+  group by 1
+),
+store_stats as (
+  select coalesce(nullif(store_name,''),'Unassigned') store_name,
+         max(platform) platform,
+         count(*)::bigint rows,
+         coalesce(sum(gmv),0)::numeric gmv,
+         coalesce(sum(orders),0)::numeric orders,
+         coalesce(sum(qty),0)::numeric qty
+  from affiliate
+  where nullif(trim(coalesce(store_name,'')),'') is not null
+  group by store_name
+),
+quality as (
+  select
+    (select count(*) from affiliate)::bigint affiliate_rows,
+    (select count(*) from product)::bigint product_rows,
+    (select count(*) from public.imports i
+       where i.workspace_id=p_workspace_id
+         and lower(coalesce(i.status,''))='success'
+         and (p_start_date is null or i.end_date is null or i.end_date>=p_start_date)
+         and (p_end_date is null or i.start_date is null or i.start_date<=p_end_date)
+    )::bigint import_count
+)
+select jsonb_build_object(
+  'analysis_focus',p_focus,
+  'period',jsonb_build_object('start',coalesce(p_start_date::text,'ALL DATA'),'end',coalesce(p_end_date::text,'ALL DATA')),
+  'kpi',(
+    select jsonb_build_object(
+      'gmv',k.gmv,'qty',k.qty,'orders',k.orders,'commission',k.commission,'refund',k.refund,
+      'clicks',k.clicks,'buyers',k.buyers,'live_count',k.live_count,'video_count',k.video_count,'sample_sent',k.sample_sent,
+      'active_creators',(select count(*) from creator_stats),
+      'total_products',(select count(*) from product_stats),
+      'roi',case when k.commission>0 then round(k.gmv/k.commission,4) else null end,
+      'aov',case when k.orders>0 then round(k.gmv/k.orders,2) else null end
+    ) from kpi k
+  ),
+  'platforms',coalesce((select jsonb_agg(to_jsonb(x) order by x.gmv desc) from (select * from platform_stats order by gmv desc limit 20) x),'[]'::jsonb),
+  'top_creators',coalesce((select jsonb_agg(to_jsonb(x) order by x.rank) from (
+      select row_number() over(order by c.gmv desc,c.orders desc,c.qty desc) rank,
+             c.creator,c.username,c.platform,c.gmv,c.qty,c.orders,c.commission
+      from creator_stats c order by c.gmv desc,c.orders desc,c.qty desc limit 50
+    ) x),'[]'::jsonb),
+  'top_products',coalesce((select jsonb_agg(to_jsonb(x) order by x.rank) from (
+      select row_number() over(order by p.gmv desc,p.orders desc,p.qty desc) rank,
+             p.sku,p.product,p.category,p.platform,p.gmv,p.qty,p.orders,p.commission,p.refund,p.clicks
+      from product_stats p order by p.gmv desc,p.orders desc,p.qty desc limit 50
+    ) x),'[]'::jsonb),
+  'monthly_trend',coalesce((select jsonb_agg(to_jsonb(m) order by m.period) from monthly m),'[]'::jsonb),
+  'stores',coalesce((select jsonb_agg(to_jsonb(s) order by s.gmv desc) from store_stats s),'[]'::jsonb),
+  'data_quality',(
+    select jsonb_build_object(
+      'affiliate_rows',q.affiliate_rows,
+      'product_rows',q.product_rows,
+      'imports_in_period',q.import_count,
+      'sampling',false,
+      'complete_period_aggregation',true
+    ) from quality q
+  )
+);
+$$;
+
+revoke all on function public.luma_ai_period_context(uuid,date,date,text) from public,anon;
+grant execute on function public.luma_ai_period_context(uuid,date,date,text) to authenticated,service_role;
