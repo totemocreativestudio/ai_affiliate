@@ -136,14 +136,14 @@ with expanded as (
   ) a(action)
   where s.cmd = a.action or s.cmd = 'ALL'
 ),
-overlaps as (
+overlap_groups as (
   select tablename, action
   from expanded
   group by tablename, action
   having count(*) > 1
 )
 select distinct tablename
-from overlaps;
+from overlap_groups;
 
 do $pr45_drop$
 declare
