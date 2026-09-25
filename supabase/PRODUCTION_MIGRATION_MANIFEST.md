@@ -6,8 +6,8 @@ This manifest is the source-of-truth map between **Supabase production migration
 
 ## Current state
 
-- Registry rows: **78**
-- Repository-backed production migrations: **26**
+- Registry rows: **80**
+- Repository-backed production migrations: **28**
 - Production legacy migrations without original GitHub SQL: **51**
 - Repository migration whose production state was applied manually: **1**
 - PR42 baseline snapshot: `supabase/baseline/20260925/`
@@ -102,6 +102,8 @@ The 51 `production_legacy` entries are historical migrations that already exist 
 | `20260924145637` | `pr38_payment_idempotency_social_v2` | repository_migration | `supabase/migrations/20260924220000_pr38_payment_idempotency_social_v2.sql` | Yes |
 | `20260924161732` | `pr40_user_dashboard_stability` | repository_migration | `supabase/migrations/20260924232000_pr40_user_dashboard_stability.sql` | Yes |
 | `20260925040515` | `pr42_database_migration_registry` | repository_migration | `supabase/migrations/20260925100000_pr42_database_migration_registry.sql` | Yes |
+| `20260925050942` | `pr43_security_performance_hardening` | repository_migration | `supabase/migrations/20260925122000_pr43_security_performance_hardening.sql` | Yes |
+| `20260925051308` | `pr43_private_policy_and_rpc_scope` | repository_migration | `supabase/migrations/20260925124500_pr43_private_policy_and_rpc_scope.sql` | Yes |
 | `repo-only-pr37` | `pr37_payment_priority` | repository_manual_state | `supabase/migrations/20260923195500_pr37_payment_priority.sql` | Yes |
 
 ## Rule from PR42 onward

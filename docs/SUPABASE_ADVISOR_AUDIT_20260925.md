@@ -28,3 +28,26 @@ Notable findings:
 PR42 records these findings but does not perform broad permission/index removal because its purpose is **baseline and migration synchronization**, and destructive/security behavior changes require isolated testing.
 
 Recommended follow-up: a dedicated Database Security & Performance Hardening PR.
+
+
+## PR43 hardening result
+
+After PR43 production migrations:
+
+- Mutable function `search_path` warnings: **2 → 0**.
+- Duplicate index warnings: **4 → 0**.
+- Anonymous-callable SECURITY DEFINER warnings: **57 → 2**.
+- The two intentionally anonymous SECURITY DEFINER RPCs retained are:
+  - `luma_get_public_share_post(bigint)`
+  - `luma_get_social_feed(integer, integer)`
+- Multiple permissive policy warnings reduced from **60 → 50** by changing private dashboard policies from `public` to `authenticated`.
+- Authenticated staff smoke test for dashboard RPC succeeded.
+- Authenticated admin smoke test for Owner Monitoring RPC succeeded.
+- Creator Samples, Listings, Shipping, Ratecard and Product Master related RLS access was tested in a rollback transaction after the policy scope change.
+
+Remaining advisor items are intentionally deferred because they require broader behavioral/performance testing:
+- 9 RLS-enabled tables without policies; several are deliberately service-role-only.
+- 38 authenticated-callable SECURITY DEFINER functions; many are expected authenticated RPCs and RLS helpers.
+- 78 unindexed foreign keys; current production row counts are generally small, so indexes should be added selectively based on query growth rather than blindly.
+- 65 `auth_rls_initplan` warnings and 50 overlapping permissive policy warnings; these need a dedicated RLS optimization pass.
+- Auth leaked-password protection is an Auth configuration setting, not a schema migration.
