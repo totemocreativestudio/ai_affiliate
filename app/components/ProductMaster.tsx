@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { createClient } from "../../lib/supabase-browser";
 
 type Product = {
@@ -313,6 +313,42 @@ export default function ProductMaster({
     return new Intl.NumberFormat("id-ID").format(Number(value));
   };
 
+  function closeForm(){
+    setShowForm(false);
+    setEditingId(null);
+    setForm(EMPTY_FORM);
+    setError("");
+  }
+
+  function renderProductEditor(mode:"add"|"edit"){
+    return <div style={{
+      padding:18,border:"1px solid #cfd5df",borderRadius:10,background:"#f8fafc",
+      boxShadow:"0 8px 24px rgba(15,23,42,.06)"
+    }}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:14}}>
+        <div>
+          <h3 style={{margin:0}}>{mode==="edit"?"Edit Product":"Tambah Product"}</h3>
+          <small style={{color:"#667085"}}>{mode==="edit"?"Form berada tepat di bawah produk yang sedang diedit.":"Tambahkan SKU induk baru. Product ID marketplace tetap terhubung terpisah per platform."}</small>
+        </div>
+        <button type="button" aria-label="Tutup" onClick={closeForm} style={{width:34,height:34,borderRadius:"50%"}}>×</button>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:12}}>
+        <label style={{display:"grid",gap:6}}><span>SKU Produk / SKU Induk *</span><input placeholder="Contoh: GRS-01" value={form.sku} onChange={(e)=>updateField("sku",e.target.value)}/></label>
+        <label style={{display:"grid",gap:6}}><span>Nama Produk</span><input placeholder="Nama produk yang mudah dikenali" value={form.product_name} onChange={(e)=>updateField("product_name",e.target.value)}/></label>
+        <label style={{display:"grid",gap:6}}><span>Kategori Marketplace</span><input list="product-category-options" placeholder="Contoh: Peralatan Dapur" value={form.category} onChange={(e)=>updateField("category",e.target.value)}/><datalist id="product-category-options">{marketplaceCategories.map(category=><option key={category} value={category}/>)}</datalist></label>
+        <label style={{display:"grid",gap:6}}><span>Selling Price</span><input type="number" min="0" placeholder="Harga jual produk" value={form.selling_price} onChange={(e)=>updateField("selling_price",e.target.value)}/></label>
+        <label style={{display:"grid",gap:6}}><span>HPP / Cost Price</span><input type="number" min="0" placeholder="Harga pokok produk" value={form.cost_price} onChange={(e)=>updateField("cost_price",e.target.value)}/></label>
+        <label style={{display:"grid",gap:6}}><span>Point per Unit</span><input type="number" min="0" placeholder="Point per produk terjual" value={form.point_per_unit} onChange={(e)=>updateField("point_per_unit",e.target.value)}/></label>
+        <label style={{display:"grid",gap:6}}><span>Status</span><select value={form.status} onChange={(e)=>updateField("status",e.target.value)}><option value="Active">Active</option><option value="Inactive">Inactive</option></select></label>
+        <label style={{display:"grid",gap:6}}><span>Catatan</span><input placeholder="Catatan internal produk (opsional)" value={form.notes} onChange={(e)=>updateField("notes",e.target.value)}/></label>
+      </div>
+      <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
+        <button type="button" onClick={closeForm}>Batal</button>
+        <button type="button" className="primary" onClick={saveProduct} disabled={saving}>{saving?"Menyimpan...":"Simpan"}</button>
+      </div>
+    </div>;
+  }
+
   return (
     <section
       style={{
@@ -403,80 +439,7 @@ export default function ProductMaster({
         </div>
       )}
 
-      {showForm && (
-        <div
-          role="presentation"
-          onMouseDown={(event)=>{if(event.target===event.currentTarget){setShowForm(false);setEditingId(null);setForm(EMPTY_FORM);setError("");}}}
-          style={{
-            position:"fixed",inset:0,zIndex:180,background:"rgba(15,23,42,.48)",
-            display:"grid",placeItems:"center",padding:20,backdropFilter:"blur(3px)"
-          }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={editingId!==null?"Edit Product":"Tambah Product"}
-            onMouseDown={(event)=>event.stopPropagation()}
-            style={{
-              width:"min(920px,96vw)",maxHeight:"88vh",overflowY:"auto",
-              padding:20,border:"1px solid #d1d5db",borderRadius:14,background:"#fff",
-              boxShadow:"0 24px 80px rgba(15,23,42,.28)"
-            }}
-          >
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:16}}>
-              <div>
-                <h3 style={{margin:0}}>{editingId!==null?"Edit Product":"Tambah Product"}</h3>
-                <small style={{color:"#667085"}}>SKU Produk adalah SKU internal/induk. Product ID marketplace tetap tersimpan terpisah per Shopee/TikTok.</small>
-              </div>
-              <button type="button" aria-label="Tutup" onClick={()=>{setShowForm(false);setEditingId(null);setForm(EMPTY_FORM);setError("");}} style={{width:36,height:36,borderRadius:"50%"}}>×</button>
-            </div>
-
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:14}}>
-              <label style={{display:"grid",gap:6}}>
-                <span>SKU Produk / SKU Induk *</span>
-                <input placeholder="Contoh: GRS-01" value={form.sku} onChange={(e)=>updateField("sku",e.target.value)}/>
-              </label>
-              <label style={{display:"grid",gap:6}}>
-                <span>Nama Produk</span>
-                <input placeholder="Nama produk yang mudah dikenali" value={form.product_name} onChange={(e)=>updateField("product_name",e.target.value)}/>
-              </label>
-              <label style={{display:"grid",gap:6}}>
-                <span>Kategori Marketplace</span>
-                <input list="product-category-options" placeholder="Contoh: Peralatan Dapur" value={form.category} onChange={(e)=>updateField("category",e.target.value)}/>
-                <datalist id="product-category-options">{marketplaceCategories.map(category=><option key={category} value={category}/>)}</datalist>
-              </label>
-              <label style={{display:"grid",gap:6}}>
-                <span>Selling Price</span>
-                <input type="number" min="0" placeholder="Harga jual produk" value={form.selling_price} onChange={(e)=>updateField("selling_price",e.target.value)}/>
-              </label>
-              <label style={{display:"grid",gap:6}}>
-                <span>HPP / Cost Price</span>
-                <input type="number" min="0" placeholder="Harga pokok produk" value={form.cost_price} onChange={(e)=>updateField("cost_price",e.target.value)}/>
-              </label>
-              <label style={{display:"grid",gap:6}}>
-                <span>Point per Unit</span>
-                <input type="number" min="0" placeholder="Point per produk terjual" value={form.point_per_unit} onChange={(e)=>updateField("point_per_unit",e.target.value)}/>
-              </label>
-              <label style={{display:"grid",gap:6}}>
-                <span>Status</span>
-                <select value={form.status} onChange={(e)=>updateField("status",e.target.value)}>
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
-              </label>
-              <label style={{display:"grid",gap:6}}>
-                <span>Catatan</span>
-                <input placeholder="Catatan internal produk (opsional)" value={form.notes} onChange={(e)=>updateField("notes",e.target.value)}/>
-              </label>
-            </div>
-
-            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:18}}>
-              <button type="button" onClick={()=>{setShowForm(false);setEditingId(null);setForm(EMPTY_FORM);setError("");}}>Batal</button>
-              <button type="button" className="primary" onClick={saveProduct} disabled={saving}>{saving?"Menyimpan...":"Simpan"}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {showForm&&editingId===null&&<div style={{marginTop:16}}>{renderProductEditor("add")}</div>}
 
       <div
         style={{
@@ -539,104 +502,50 @@ export default function ProductMaster({
 
             <tbody>
               {filteredProducts.map((product) => (
-                <tr key={product.id}>
-                  <td style={{ padding: 10 }}>
-                    {product.sku}
-                  </td>
-
-                  <td style={{ padding: 10 }}>
-                    {product.product_name || "-"}
-                  </td>
-
-                  <td style={{ padding: 10, minWidth: 180 }}>
-                    {(mappingsByProduct.get(product.id) || []).filter((item) => item.platform.toLowerCase() === "shopee").length ? (
-                      <div style={{ display: "grid", gap: 5 }}>
-                        {(mappingsByProduct.get(product.id) || []).filter((item) => item.platform.toLowerCase() === "shopee").map((item) => (
-                          <span key={item.id} style={{ display: "block" }}>
-                            <b>{item.product_code}</b>{item.variant_name ? <small style={{ display: "block", color: "#667085" }}>{item.variant_name}</small> : null}
-                          </span>
-                        ))}
+                <Fragment key={product.id}>
+                  <tr>
+                    <td style={{ padding: 10 }}>{product.sku}</td>
+                    <td style={{ padding: 10 }}>{product.product_name || "-"}</td>
+                    <td style={{ padding: 10, minWidth: 180 }}>
+                      {(mappingsByProduct.get(product.id) || []).filter((item) => item.platform.toLowerCase() === "shopee").length ? (
+                        <div style={{ display: "grid", gap: 5 }}>
+                          {(mappingsByProduct.get(product.id) || []).filter((item) => item.platform.toLowerCase() === "shopee").map((item) => (
+                            <span key={item.id} style={{ display: "block" }}><b>{item.product_code}</b>{item.variant_name ? <small style={{ display: "block", color: "#667085" }}>{item.variant_name}</small> : null}</span>
+                          ))}
+                        </div>
+                      ) : "-"}
+                    </td>
+                    <td style={{ padding: 10, minWidth: 180 }}>
+                      {(mappingsByProduct.get(product.id) || []).filter((item) => item.platform.toLowerCase() === "tiktok").length ? (
+                        <div style={{ display: "grid", gap: 5 }}>
+                          {(mappingsByProduct.get(product.id) || []).filter((item) => item.platform.toLowerCase() === "tiktok").map((item) => (
+                            <span key={item.id} style={{ display: "block" }}><b>{item.product_code}</b>{item.variant_name ? <small style={{ display: "block", color: "#667085" }}>{item.variant_name}</small> : null}</span>
+                          ))}
+                        </div>
+                      ) : "-"}
+                    </td>
+                    <td style={{ padding: 10, minWidth: 160 }}>
+                      {(variantsByProduct.get(product.id) || []).length ? <div style={{ display: "grid", gap: 4 }}>{(variantsByProduct.get(product.id) || []).map((variant) => <span key={variant.id}>{variant.slot}. {variant.variant_name}</span>)}</div> : "-"}
+                    </td>
+                    <td style={{ padding: 10, minWidth: 170 }}>
+                      {(()=>{
+                        const categories=(mappingsByProduct.get(product.id)||[]).filter(item=>item.category).map(item=>({platform:item.platform,category:String(item.category)})).filter((item,index,list)=>list.findIndex(x=>x.platform.toLowerCase()===item.platform.toLowerCase()&&x.category.toLowerCase()===item.category.toLowerCase())===index);
+                        return categories.length?<div style={{display:"grid",gap:3}}>{categories.map(item=><small key={item.platform+"|"+item.category}><b>{item.platform}:</b> {item.category}</small>)}</div>:product.category||"-";
+                      })()}
+                    </td>
+                    <td style={{ padding: 10 }}>Rp {formatNumber(product.selling_price)}</td>
+                    <td style={{ padding: 10 }}>Rp {formatNumber(product.cost_price)}</td>
+                    <td style={{ padding: 10 }}>{formatNumber(product.point_per_unit)}</td>
+                    <td style={{ padding: 10 }}>{product.status || "-"}</td>
+                    <td style={{ padding: 10 }}>
+                      <div style={{display:"flex",gap:6}}>
+                        <button type="button" onClick={()=>openEdit(product)}>{editingId===product.id?"Editing":"Edit"}</button>
+                        <button type="button" onClick={()=>deleteProduct(product.id)}>Hapus</button>
                       </div>
-                    ) : "-"}
-                  </td>
-
-                  <td style={{ padding: 10, minWidth: 180 }}>
-                    {(mappingsByProduct.get(product.id) || []).filter((item) => item.platform.toLowerCase() === "tiktok").length ? (
-                      <div style={{ display: "grid", gap: 5 }}>
-                        {(mappingsByProduct.get(product.id) || []).filter((item) => item.platform.toLowerCase() === "tiktok").map((item) => (
-                          <span key={item.id} style={{ display: "block" }}>
-                            <b>{item.product_code}</b>{item.variant_name ? <small style={{ display: "block", color: "#667085" }}>{item.variant_name}</small> : null}
-                          </span>
-                        ))}
-                      </div>
-                    ) : "-"}
-                  </td>
-
-                  <td style={{ padding: 10, minWidth: 160 }}>
-                    {(variantsByProduct.get(product.id) || []).length ? (
-                      <div style={{ display: "grid", gap: 4 }}>
-                        {(variantsByProduct.get(product.id) || []).map((variant) => (
-                          <span key={variant.id}>{variant.slot}. {variant.variant_name}</span>
-                        ))}
-                      </div>
-                    ) : "-"}
-                  </td>
-
-                  <td style={{ padding: 10, minWidth: 170 }}>
-                    {(()=>{
-                      const categories=(mappingsByProduct.get(product.id)||[])
-                        .filter(item=>item.category)
-                        .map(item=>({platform:item.platform,category:String(item.category)}))
-                        .filter((item,index,list)=>list.findIndex(x=>x.platform.toLowerCase()===item.platform.toLowerCase()&&x.category.toLowerCase()===item.category.toLowerCase())===index);
-                      return categories.length
-                        ? <div style={{display:"grid",gap:3}}>{categories.map(item=><small key={item.platform+"|"+item.category}><b>{item.platform}:</b> {item.category}</small>)}</div>
-                        : product.category||"-";
-                    })()}
-                  </td>
-
-                  <td style={{ padding: 10 }}>
-                    Rp {formatNumber(product.selling_price)}
-                  </td>
-
-                  <td style={{ padding: 10 }}>
-                    Rp {formatNumber(product.cost_price)}
-                  </td>
-
-                  <td style={{ padding: 10 }}>
-                    {formatNumber(product.point_per_unit)}
-                  </td>
-
-                  <td style={{ padding: 10 }}>
-                    {product.status || "-"}
-                  </td>
-
-                  <td style={{ padding: 10 }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: 6,
-                      }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() =>
-                          openEdit(product)
-                        }
-                      >
-                        Edit
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          deleteProduct(product.id)
-                        }
-                      >
-                        Hapus
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                    </td>
+                  </tr>
+                  {showForm&&editingId===product.id&&<tr><td colSpan={11} style={{padding:"8px 10px 18px",background:"#f8fafc"}}>{renderProductEditor("edit")}</td></tr>}
+                </Fragment>
               ))}
             </tbody>
           </table>

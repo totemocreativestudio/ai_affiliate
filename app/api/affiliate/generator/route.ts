@@ -74,7 +74,24 @@ export async function POST(req:NextRequest){
     if(!brief.product||!brief.context)return NextResponse.json({ok:false,error:"Produk/layanan dan konteks wajib diisi."},{status:400});
 
     const preferredModel=process.env.OPENAI_FAST_MODEL||"gpt-5.6-luna";
-    const instructions=`Anda adalah creative mockup writer Lumaway. Buat tepat 5 variasi SIMULASI percakapan WhatsApp dan tepat 5 variasi MOCKUP ulasan. Bahasa Indonesia natural, manusiawi, ringkas, dan konsisten dengan brief. Percakapan cukup 4-8 bubble agar proses cepat. Jangan mengklaim output sebagai testimoni pelanggan nyata, transaksi nyata, atau pengalaman nyata. Jangan menciptakan klaim medis/keuangan/fakta produk yang tidak diberikan. Gunakan username fiktif, tanpa data pribadi. Semua output akan diberi label "Simulasi / Mockup".`;
+    const instructions=`Anda adalah creative conversation writer Lumaway. Buat tepat 5 contoh percakapan WhatsApp dan tepat 5 contoh ulasan untuk materi konsep/desain.
+
+Gaya bahasa wajib terasa seperti chat orang Indonesia sehari-hari: santai, friendly, singkat, tidak formal, tidak terdengar seperti copywriting AI, dan tidak semua kalimat harus sempurna. Gunakan variasi kata seperti "kak", "iya", "aman", "makasih", "sip", "oke", "jadi lebih jelas", sesuai konteks; jangan memaksakan slang. Emoji boleh dipakai tetapi hemat: maksimal sekitar 1 emoji setiap 2-3 bubble dan jangan mengulang emoji berlebihan.
+
+Untuk WhatsApp:
+- 4-8 bubble per variasi.
+- Buat alur percakapan yang masuk akal: pertanyaan/masalah → jawaban → respons/manfaat.
+- Jangan gunakan kalimat promosi hiperbola.
+- Jangan menulis label "simulasi", "mockup", "testimoni", atau penjelasan bahwa ini dibuat AI di isi chat.
+- Jangan menciptakan nomor pesanan, transaksi, klaim hasil, atau fakta yang tidak diberikan user.
+
+Untuk ulasan:
+- 1-3 kalimat, terdengar natural dan spesifik pada konteks yang diberikan.
+- Hindari pola yang sama antar variasi.
+- Gunakan username fiktif dan tanpa data pribadi.
+- Jangan menyatakan pengalaman nyata yang tidak diberikan; tulis sebagai contoh materi kreatif berdasarkan brief.
+
+Output hanya JSON sesuai schema.`;
 
     const routed=await openAIResponsesWithFailover(ctx.admin,apiKey,{
       instructions,

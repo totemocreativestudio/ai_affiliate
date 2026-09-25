@@ -34,6 +34,25 @@ function normalizeMobile(raw:any){
   else if(v.startsWith("62"))v="0"+v.slice(2);
   return v;
 }
+function normalizeProviderExpiry(raw:any,fallback:string){
+  if(raw===null||raw===undefined||raw==="")return fallback;
+  if(typeof raw==="number"&&Number.isFinite(raw)){
+    const ms=raw<1e12?raw*1000:raw;
+    const d=new Date(ms);
+    return Number.isNaN(d.getTime())?fallback:d.toISOString();
+  }
+  const text=String(raw).trim();
+  if(/^\d+$/.test(text)){
+    const numeric=Number(text);
+    if(Number.isFinite(numeric)){
+      const ms=numeric<1e12?numeric*1000:numeric;
+      const d=new Date(ms);
+      if(!Number.isNaN(d.getTime()))return d.toISOString();
+    }
+  }
+  const parsed=new Date(text);
+  return Number.isNaN(parsed.getTime())?fallback:parsed.toISOString();
+}
 function hashInt(value:string){
   return parseInt(createHash("sha256").update(value).digest("hex").slice(0,8),16)>>>0;
 }
@@ -122,7 +141,7 @@ async function recoverMayarDuplicate(key:string,input:CheckoutInput,customer:{na
         paymentUrl:link,
         paymentSessionId:String(d.id||row.id)||null,
         paymentReference:String(d.transactionId||"")||null,
-        expiresAt:d.expiredAt?new Date(Number(d.expiredAt)).toISOString():input.expiresAt,
+        expiresAt:normalizeProviderExpiry(d.expiredAt,input.expiresAt),
         providerPayload:{invoice_id:d.id||row.id,transaction_id:d.transactionId||null,recovered_duplicate:true,order_code:input.orderCode}
       };
     }
@@ -173,7 +192,7 @@ async function createMayar(input:CheckoutInput){
     throw new Error(mayarMessage);
   }
   const d=body.data;
-  return {provider:"mayar" as PaymentProvider,paymentUrl:String(d.link),paymentSessionId:String(d.id||"")||null,paymentReference:String(d.transactionId||"")||null,expiresAt:d.expiredAt?new Date(Number(d.expiredAt)).toISOString():input.expiresAt,providerPayload:{invoice_id:d.id,transaction_id:d.transactionId,status_code:body.statusCode,order_code:input.orderCode}};
+  return {provider:"mayar" as PaymentProvider,paymentUrl:String(d.link),paymentSessionId:String(d.id||"")||null,paymentReference:String(d.transactionId||"")||null,expiresAt:normalizeProviderExpiry(d.expiredAt,input.expiresAt),providerPayload:{invoice_id:d.id,transaction_id:d.transactionId,status_code:body.statusCode,order_code:input.orderCode}};
 }
 
 async function createXendit(input:CheckoutInput){

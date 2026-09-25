@@ -7,12 +7,12 @@ import { createClient } from "../../lib/supabase-browser";
 
 type Row = Record<string, any>;
 const TYPES = [
-  ["performance", "Performance Analysis", "KPI, efisiensi, kesehatan performa, kontribusi platform"],
-  ["creator", "Creator Analysis", "Kontributor, konsentrasi, segmentasi dan peluang creator"],
-  ["product", "Product Analysis", "SKU, produk, kontribusi GMV, volume dan product mix"],
-  ["trend", "Trend Analysis", "Pergerakan periode, momentum dan arah performa"],
-  ["anomaly", "Anomaly Detection", "Lonjakan, penurunan, outlier dan pola tidak biasa"],
-  ["recommendation", "Recommendations", "Prioritas tindakan lintas performance, creator, product, trend dan anomaly"],
+  ["performance", "Performance Analysis", "Lihat kondisi bisnis sekarang: apa yang sehat, apa yang menahan performa, dan keputusan apa yang perlu diambil."],
+  ["creator", "Creator Analysis", "Temukan creator yang layak dipertahankan, di-scale, di-follow-up, atau diuji lagi berdasarkan kontribusinya."],
+  ["product", "Product Analysis", "Cari produk pendorong omzet, produk kuat di volume, dan peluang produk yang layak didorong ke lebih banyak creator."],
+  ["trend", "Trend Analysis", "Baca momentum naik-turun performa dan pahami perubahan yang perlu diantisipasi untuk periode berikutnya."],
+  ["anomaly", "Anomaly Detection", "Jadikan AI sebagai early warning untuk angka tidak wajar, penurunan, refund, atau pola yang perlu segera dicek."],
+  ["recommendation", "Recommendations", "Ubah seluruh insight menjadi prioritas aksi 7-30 hari yang bisa langsung dibawa ke meeting atau Kanban."],
 ] as const;
 const PAGE_SIZE = 10;
 
@@ -214,10 +214,36 @@ export default function AIAnalytics({ workspaceId }: { workspaceId: string }) {
     {(runningCount>0||generatingReport)&&<div className="ai-generation-loading"><LumaLoadingMotion compact label={generatingReport?"Menyusun dokumen AI":`Lumaway AI sedang menganalisis · ${runningCount}/3 proses`} detail={generatingReport?"Menyiapkan struktur, insight, dan dokumen laporan.":"Data dihitung di server agar lebih cepat dan stabil. Anda dapat menjalankan hingga 3 analisis bersamaan."}/></div>}
 
     {result && <div className="ai-result-grid">
-      <div className="card ai-summary-card"><div className="eyebrow">EXECUTIVE SUMMARY</div><p>{result.executive_summary}</p><div className="button-row"><button className="primary" disabled={generatingReport === runId} onClick={() => generateDocument()}>{generatingReport === runId ? "Generating..." : "Generate Dokumen"}</button>{currentHistory?.report && <><button className="secondary" onClick={() => previewReport(currentHistory.report.id)}>Preview Document · 5 token*</button><button className="secondary" onClick={() => downloadReport(currentHistory.report.id)}>Download PDF · 10 token</button></>}</div><small className="muted">*Preview pertama menggunakan 5 token. Preview berikutnya gratis.</small></div>
-      {[["Key Findings", result.key_findings], ["Creator Findings", result.creator_findings], ["Product Findings", result.product_findings], ["Trend Findings", result.trend_findings], ["Anomalies", result.anomalies]].map(([title, items]: any) => <div className="card" key={title}><h3>{title}</h3><ul className="legacy-list">{(items || []).map((item: string, index: number) => <li key={index}>{item}</li>)}</ul></div>)}
-      <div className="card ai-do-card"><h3>DO · Recommendations</h3><div className="recommendation-list">{(result.recommendations || []).map((item: string, index: number) => <div className="recommendation-row" key={index}><span>{item}</span><button className="secondary" disabled={taskAdded[index]} onClick={() => addTask(item, index)}>{taskAdded[index] ? "Added ✓" : "+ Kanban"}</button></div>)}</div></div>
-      <div className="card"><h3>Confidence & Data Note</h3><p className="muted">{result.confidence_note}</p></div>
+      <div className="card ai-summary-card" style={{gridColumn:"1 / -1"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:14,flexWrap:"wrap"}}>
+          <div>
+            <div className="eyebrow">INSTANT CLIENT BRIEF</div>
+            <h2 style={{margin:"6px 0 8px"}}>{result.headline||"Ringkasan performa untuk periode ini"}</h2>
+          </div>
+          <span className="status-pill s-active">{String(result.performance_status||"INFO").replaceAll("_"," ")}</span>
+        </div>
+        <p style={{fontSize:15,lineHeight:1.65}}>{result.executive_summary}</p>
+        {result.client_takeaway&&<div style={{marginTop:12,padding:14,borderRadius:10,background:"#f5f3ff",border:"1px solid #ddd6fe"}}><b>Kalau diringkas untuk Anda</b><p style={{margin:"6px 0 0",lineHeight:1.6}}>{result.client_takeaway}</p></div>}
+        {result.business_impact&&<div style={{marginTop:10}}><b>Dampaknya ke bisnis</b><p style={{margin:"5px 0 0",color:"#475467",lineHeight:1.6}}>{result.business_impact}</p></div>}
+        <div className="button-row" style={{marginTop:14}}><button className="primary" disabled={generatingReport === runId} onClick={() => generateDocument()}>{generatingReport === runId ? "Generating..." : "Generate Dokumen"}</button>{currentHistory?.report && <><button className="secondary" onClick={() => previewReport(currentHistory.report.id)}>Preview Document · 5 token*</button><button className="secondary" onClick={() => downloadReport(currentHistory.report.id)}>Download PDF · 10 token</button></>}</div>
+        <small className="muted">*Preview pertama menggunakan 5 token. Preview berikutnya gratis.</small>
+      </div>
+
+      {!!result.key_findings?.length&&<div className="card"><h3>Yang Paling Penting</h3><ul className="legacy-list">{result.key_findings.map((item:string,index:number)=><li key={index}>{item}</li>)}</ul></div>}
+      {!!result.opportunities?.length&&<div className="card"><h3>Peluang yang Bisa Diambil</h3><ul className="legacy-list">{result.opportunities.map((item:string,index:number)=><li key={index}>{item}</li>)}</ul></div>}
+      {!!result.watchouts?.length&&<div className="card"><h3>Yang Perlu Dijaga</h3><ul className="legacy-list">{result.watchouts.map((item:string,index:number)=><li key={index}>{item}</li>)}</ul></div>}
+
+      {[
+        ["Creator yang Perlu Diperhatikan",result.creator_findings],
+        ["Produk yang Perlu Diperhatikan",result.product_findings],
+        ["Arah & Momentum",result.trend_findings],
+        ["Sinyal yang Perlu Dicek",result.anomalies],
+      ].filter(([,items]:any)=>Array.isArray(items)&&items.length).map(([title,items]:any)=><div className="card" key={title}><h3>{title}</h3><ul className="legacy-list">{items.map((item:string,index:number)=><li key={index}>{item}</li>)}</ul></div>)}
+
+      {!!result.next_7_days?.length&&<div className="card"><h3>Fokus 7 Hari ke Depan</h3><ol style={{margin:0,paddingLeft:20,display:"grid",gap:8}}>{result.next_7_days.map((item:string,index:number)=><li key={index}>{item}</li>)}</ol></div>}
+
+      <div className="card ai-do-card" style={{gridColumn:"1 / -1"}}><h3>Next Move yang Disarankan</h3><p className="muted">Pilih tindakan yang ingin langsung dimasukkan ke Kanban tim.</p><div className="recommendation-list">{(result.recommendations || []).map((item: string, index: number) => <div className="recommendation-row" key={index}><span>{item}</span><button className="secondary" disabled={taskAdded[index]} onClick={() => addTask(item, index)}>{taskAdded[index] ? "Added ✓" : "+ Kanban"}</button></div>)}</div></div>
+      <div className="card" style={{gridColumn:"1 / -1"}}><h3>Catatan Data</h3><p className="muted">{result.confidence_note}</p></div>
     </div>}
 
     <div className="card ai-history-card">
@@ -236,7 +262,7 @@ export default function AIAnalytics({ workspaceId }: { workspaceId: string }) {
       document.body
     )}
 
-    {detail && <div className="kanban-modal-backdrop" onClick={() => setDetail(null)}><div className="analysis-detail-modal" onClick={(event) => event.stopPropagation()}><div className="report-modal-actions"><div><strong>{TYPES.find((x) => x[0] === detail.analysis_type)?.[1] || detail.analysis_type}</strong><small>{detail.run_id}</small></div><button onClick={() => setDetail(null)}>×</button></div><div className="analysis-detail-body"><div className="eyebrow">EXECUTIVE SUMMARY</div><p>{detail.insight?.executive_summary || "Tidak ada ringkasan."}</p>{[["Key Findings", detail.insight?.key_findings], ["Creator Findings", detail.insight?.creator_findings], ["Product Findings", detail.insight?.product_findings], ["Trend Findings", detail.insight?.trend_findings], ["Anomalies", detail.insight?.anomalies], ["Recommendations", detail.insight?.recommendations]].map(([title, items]: any) => <section key={title}><h3>{title}</h3><ul>{(items || []).map((item: string, index: number) => <li key={index}>{item}</li>)}</ul></section>)}</div></div></div>}
+    {detail && <div className="kanban-modal-backdrop" onClick={() => setDetail(null)}><div className="analysis-detail-modal" onClick={(event) => event.stopPropagation()}><div className="report-modal-actions"><div><strong>{TYPES.find((x) => x[0] === detail.analysis_type)?.[1] || detail.analysis_type}</strong><small>{detail.run_id}</small></div><button onClick={() => setDetail(null)}>×</button></div><div className="analysis-detail-body"><div className="eyebrow">INSTANT CLIENT BRIEF</div><h2>{detail.insight?.headline||"Ringkasan Analisis"}</h2><p>{detail.insight?.executive_summary || "Tidak ada ringkasan."}</p>{detail.insight?.client_takeaway&&<section><h3>Kalau diringkas untuk Anda</h3><p>{detail.insight.client_takeaway}</p></section>}{[["Yang Paling Penting", detail.insight?.key_findings], ["Peluang yang Bisa Diambil", detail.insight?.opportunities], ["Yang Perlu Dijaga", detail.insight?.watchouts], ["Creator", detail.insight?.creator_findings], ["Produk", detail.insight?.product_findings], ["Arah & Momentum", detail.insight?.trend_findings], ["Sinyal yang Perlu Dicek", detail.insight?.anomalies], ["Fokus 7 Hari", detail.insight?.next_7_days], ["Next Move", detail.insight?.recommendations]].filter(([,items]:any)=>Array.isArray(items)&&items.length).map(([title, items]: any) => <section key={title}><h3>{title}</h3><ul>{items.map((item: string, index: number) => <li key={index}>{item}</li>)}</ul></section>)}</div></div></div>}
 
     {docPreview && <div className="kanban-modal-backdrop report-preview-backdrop" onClick={() => setDocPreview(null)}><div className="report-preview-modal" onClick={(event) => event.stopPropagation()}><div className="report-modal-actions"><div><strong>{docPreview.title}</strong><small>{docPreview.page_count || 20} halaman</small></div><div className="button-row"><button onClick={() => setDocZoom((value) => Math.max(0.45, value - 0.1))}>−</button><span>{Math.round(docZoom * 100)}%</span><button onClick={() => setDocZoom((value) => Math.min(1.3, value + 0.1))}>+</button>{!docPreview.watermark_removed_at && <button onClick={removeWatermark}>Remove Watermark · 25 token</button>}<button onClick={() => downloadReport(docPreview.id)}>Download PDF</button><button onClick={() => setDocPreview(null)}>×</button></div></div><div className="report-preview-scroll"><div className="report-pages" style={{ transform: `scale(${docZoom})`, transformOrigin: "top center" }}>{(docPreview.document_json?.pages || []).map((pageData: any, index: number) => <article className={`a4-report-page ${index === 0 ? "cover" : ""}`} key={pageData.page_number || index}>{!docPreview.watermark_removed_at && <div className="report-watermark">LUMAWAY</div>}<header><img src="/luma-mark.png" alt="Luma" /><b>LUMAWAY</b><span>{String(pageData.page_number || index + 1).padStart(2, "0")}</span></header><main><small>LUMA AFFILIATE INTELLIGENCE</small><h1>{pageData.title}</h1><p className="subtitle">{pageData.subtitle}</p>{(pageData.sections || []).map((section: any, sectionIndex: number) => <section key={sectionIndex}><h2>{section.heading}</h2><p>{section.body}</p></section>)}{!!pageData.bullets?.length && <ul>{pageData.bullets.map((item: string, itemIndex: number) => <li key={itemIndex}>{item}</li>)}</ul>}{pageData.callout && <aside>{pageData.callout}</aside>}</main><footer>© Lumaway · Light Up Your Potential.</footer></article>)}</div></div></div></div>}
   </section>;

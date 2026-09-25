@@ -9,28 +9,56 @@ export const runtime="nodejs";
 const AI_SCHEMA={
   type:"object",additionalProperties:false,
   properties:{
+    headline:{type:"string"},
     executive_summary:{type:"string"},
+    client_takeaway:{type:"string"},
+    business_impact:{type:"string"},
     performance_status:{type:"string",enum:["HIGH GROWTH","GROWING","STABLE","DECLINING","AT RISK","TOP PERFORMER","INFO"]},
     key_findings:{type:"array",items:{type:"string"}},
     creator_findings:{type:"array",items:{type:"string"}},
     product_findings:{type:"array",items:{type:"string"}},
     trend_findings:{type:"array",items:{type:"string"}},
     anomalies:{type:"array",items:{type:"string"}},
+    opportunities:{type:"array",items:{type:"string"}},
+    watchouts:{type:"array",items:{type:"string"}},
     recommendations:{type:"array",items:{type:"string"}},
+    next_7_days:{type:"array",items:{type:"string"}},
     confidence_note:{type:"string"}
   },
-  required:["executive_summary","performance_status","key_findings","creator_findings","product_findings","trend_findings","anomalies","recommendations","confidence_note"]
+  required:["headline","executive_summary","client_takeaway","business_impact","performance_status","key_findings","creator_findings","product_findings","trend_findings","anomalies","opportunities","watchouts","recommendations","next_7_days","confidence_note"]
 };
 
-const BASE_PROMPT=`Anda adalah Senior Business Intelligence Analyst untuk LUMA Affiliate Intelligence. Gunakan HANYA database_context dan related_analysis yang diberikan. Angka database adalah sumber kebenaran. Related analysis hanya konteks sekunder dan tidak boleh mengalahkan data mentah/agregat. Jangan menciptakan angka, creator, SKU, sebab-akibat, benchmark, atau tren. Jika data tidak cukup, katakan eksplisit. Bahasa Indonesia profesional, managerial, jelas, ringkas, dan actionable. Recommendations harus konkret dan dapat dijadikan task.`;
+const BASE_PROMPT=`Anda adalah Lumaway Insight Partner: gabungan account manager, business intelligence consultant, dan performance strategist. Anda menjelaskan hasil analisis kepada client Lumaway secara langsung, bukan menulis laporan akademik.
+
+Gunakan HANYA database_context dan related_analysis yang diberikan. Angka database adalah sumber kebenaran. Jangan membuat angka, creator, SKU, sebab-akibat, benchmark, atau tren yang tidak ada datanya.
+
+GAYA BAHASA:
+- Bahasa Indonesia profesional tetapi hangat, natural, mudah dipahami owner/marketing team.
+- Tulis seperti sedang menjelaskan insight ke client dalam meeting: "Gambaran besarnya...", "Yang menarik...", "Yang perlu dijaga...", bukan bahasa robot/skripsi.
+- Hindari frasa berulang seperti "berdasarkan data menunjukkan bahwa" dan jargon berlebihan.
+- Setiap poin harus menjawab minimal salah satu: jadi apa artinya, peluangnya apa, risikonya apa, atau tindakan berikutnya apa.
+- Sebut angka yang relevan secara natural bila tersedia, tetapi jangan menumpuk angka.
+- Jangan menutupi keterbatasan data; jelaskan dengan bahasa sederhana.
+- Jangan mengulang insight yang sama di banyak section.
+
+FORMAT NILAI UNTUK CLIENT:
+- headline: satu kalimat pendek yang langsung menyampaikan kondisi paling penting.
+- executive_summary: 2-4 kalimat sebagai briefing cepat.
+- client_takeaway: apa yang seharusnya dipahami client setelah melihat data ini.
+- business_impact: dampak praktis terhadap penjualan, creator, produk, atau keputusan marketing.
+- opportunities: peluang nyata yang bisa dimanfaatkan.
+- watchouts: hal yang perlu diawasi sebelum menjadi masalah.
+- recommendations: tindakan konkret; sebisa mungkin format "Aksi — alasan".
+- next_7_days: 3-5 langkah realistis yang bisa dilakukan dalam 7 hari.
+- confidence_note: jelaskan kualitas/keterbatasan data secara singkat dan manusiawi.`;
 
 const ANALYSIS_GUIDE:Record<string,string>={
-  performance:"Fokus PERFORMANCE ANALYSIS: kesehatan KPI keseluruhan, GMV, Qty, Orders, Commission, refund, efisiensi, dan kontribusi platform.",
-  creator:"Fokus CREATOR ANALYSIS: konsentrasi kontribusi, top/middle/low contributor, ketergantungan, peluang retain/grow/reactivate/test.",
-  product:"Fokus PRODUCT ANALYSIS: SKU/product, kategori marketplace, GMV, Qty, Orders, product mix, volume vs revenue. Jika SKU granular kosong, nyatakan keterbatasan dan jangan mengarang produk.",
-  trend:"Fokus TREND ANALYSIS: perubahan antar bulan/periode, momentum, konsistensi, seasonality yang terlihat. Jangan menyebut tren jika hanya ada satu titik waktu.",
-  anomaly:"Fokus ANOMALY DETECTION: outlier, perubahan ekstrem, ketidakseimbangan GMV-vs-orders-vs-qty, konsentrasi creator/platform/product, serta kemungkinan anomali data. Bedakan fakta, hipotesis, dan item yang harus diverifikasi.",
-  recommendation:"Fokus RECOMMENDATIONS: kombinasikan seluruh analysis yang tersedia menjadi prioritas tindakan. Urutkan dampak dan urgensi. Setiap rekomendasi harus memiliki dasar temuan dan bisa langsung dijadikan Kanban task."
+  performance:`PERFORMANCE ANALYSIS harus menjawab: "Bisnis sedang sehat atau tidak, kenapa, dan apa yang harus dilakukan sekarang?" Hubungkan GMV, order, qty, commission, refund, click, creator aktif, dan platform. Soroti efisiensi dan bottleneck yang benar-benar terlihat. Berikan 2-4 keputusan yang bisa dibawa ke weekly meeting.`,
+  creator:`CREATOR ANALYSIS harus membantu user memutuskan siapa yang perlu dipertahankan, dinaikkan, di-follow-up, diuji, atau tidak diprioritaskan. Bahas konsentrasi kontribusi, kualitas GMV/order, ketergantungan pada sedikit creator, dan peluang memperluas creator produktif. Jangan memberi label buruk tanpa data.`,
+  product:`PRODUCT ANALYSIS harus menjawab produk mana yang mendorong omzet, mana yang kuat di volume, mana yang belum maksimal, serta produk mana yang layak didorong ke lebih banyak creator. Gunakan SKU, produk, kategori, GMV, qty, order, click/refund bila tersedia. Jika data produk belum granular, jelaskan apa yang perlu diupload agar keputusan berikutnya lebih tajam.`,
+  trend:`TREND ANALYSIS harus menjelaskan momentum dengan bahasa sederhana: apa yang bergerak naik/turun, sejak kapan, seberapa konsisten, dan apa implikasinya untuk periode berikutnya. Jangan menyebut seasonality bila titik data belum cukup.`,
+  anomaly:`ANOMALY DETECTION harus menjadi early-warning system. Cari angka tidak wajar, lonjakan/penurunan, ketidakseimbangan GMV-order-qty, refund, atau konsentrasi ekstrem. Pisahkan "terlihat di data" dari "kemungkinan penyebab yang perlu dicek". Berikan checklist verifikasi yang praktis.`,
+  recommendation:`RECOMMENDATIONS harus berfungsi seperti mini action plan untuk client. Gabungkan insight lintas performance, creator, product, trend, dan anomaly yang tersedia. Prioritaskan 3-5 tindakan paling berdampak, jelaskan alasan, horizon 7/30 hari, dan apa yang perlu dimonitor setelah tindakan dijalankan.`
 };
 
 const n=(v:any)=>Number(v||0);
@@ -176,12 +204,12 @@ export async function POST(req:NextRequest){
     const insightMap=Object.fromEntries((prevInsights||[]).map((x:any)=>[x.run_id,x.insight_json]));
     const relatedAnalysis=Object.values(latest).map((x:any)=>({analysis_type:x.analysis_type,run_id:x.run_id,result:insightMap[x.run_id]||{}}));
 
-    const instructions=`${BASE_PROMPT}\n\n${ANALYSIS_GUIDE[analysisType]||ANALYSIS_GUIDE.performance}\n\nCross-analysis rule: gunakan related_analysis untuk hubungan antartipe analysis, tetapi database_context selalu menjadi sumber utama. Ringkas output agar cepat dibaca; maksimal 5 item per array temuan/rekomendasi.`;
+    const instructions=`${BASE_PROMPT}\n\n${ANALYSIS_GUIDE[analysisType]||ANALYSIS_GUIDE.performance}\n\nCross-analysis rule: gunakan related_analysis untuk menghubungkan konteks antar analisis, tetapi database_context selalu sumber utama. Maksimal 5 item per array. Jangan isi section hanya demi memenuhi template; bila tidak relevan, gunakan array kosong. Hasil akhir harus terasa seperti instant client briefing yang punya nilai keputusan, bukan sekadar rangkuman angka.`;
     const routed=await openAIResponsesWithFailover(ctx.admin,apiKey,{
       instructions,
       input:JSON.stringify({analysis_type:analysisType,database_context:context,related_analysis:relatedAnalysis}),
       text:{format:{type:"json_schema",name:"luma_ai_analysis",schema:AI_SCHEMA,strict:true}},
-      max_output_tokens:2200,
+      max_output_tokens:3000,
       store:false
     },requestedModel,45000);
 
