@@ -74,7 +74,7 @@ export async function POST(req:NextRequest){
 
     await ctx.admin.from("luma_api_usage_events").insert({workspace_id:workspaceId,user_id:ctx.user.id,provider:checkout.provider,service:"payment_session",request_type:"token_checkout",status:"success",reference:orderCode,metadata:{amount,tokens:Number(pkg.tokens),promo_code:promo?.code||null,attempted:checkout.attempted,idempotent:true}});
     const expiryText=new Date(checkout.expiresAt).toLocaleString("id-ID",{timeZone:"Asia/Jakarta",dateStyle:"medium",timeStyle:"short"});
-    await sendExternalCustomerNotice(ctx.admin,{userId:ctx.user.id,workspaceId,kind:"token_checkout",title:"Checkout token dibuat",message:`Order ${orderCode} untuk ${pkg.tokens} token senilai ${money(amount)} dibuat melalui ${providerName}. Selesaikan pembayaran paling lambat ${expiryText} WIB.`,actionUrl:checkout.paymentUrl});
+    void sendExternalCustomerNotice(ctx.admin,{userId:ctx.user.id,workspaceId,kind:"token_checkout",title:"Checkout token dibuat",message:`Order ${orderCode} untuk ${pkg.tokens} token senilai ${money(amount)} dibuat melalui ${providerName}. Selesaikan pembayaran paling lambat ${expiryText} WIB.`,actionUrl:checkout.paymentUrl}).catch(()=>undefined);
     return NextResponse.json({ok:true,order_code:orderCode,payment_url:checkout.paymentUrl,expires_at:checkout.expiresAt,amount,discount_amount:discount,payment_provider:providerName,attempted:checkout.attempted});
   }catch(error:any){
     if(ctx){try{await ctx.admin.from("luma_api_usage_events").insert({workspace_id:workspaceId||null,user_id:ctx.user.id,provider:"payment-router",service:"payment_session",request_type:"token_checkout",status:"error",reference:orderCode||null,metadata:{error:error?.message||"unknown",intent_id:intentId}})}catch{}}
