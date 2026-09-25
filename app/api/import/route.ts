@@ -4,7 +4,7 @@ import { getServerContext } from "../../../lib/server-auth";
 
 export const runtime = "nodejs";
 type Row = Record<string, any>;
-const PARSER_VERSION = "universal-v11-pr40-20260924";
+const PARSER_VERSION = "universal-v12-pr46-20260925";
 
 const clean = (v: any) => (v === null || v === undefined ? "" : String(v).trim());
 type NumericKind = "money" | "count" | "percent" | "decimal";
@@ -430,7 +430,7 @@ async function ensureCreator(admin: any, workspaceId: string, row: Row, platform
 
 export async function POST(req: NextRequest) {
   try {
-    const b=await req.json(); const workspaceId=clean(b.workspace_id); const dataType=clean(b.data_type); const requestedPlatform=clean(b.platform)||"Other"; const start=clean(b.start_date); const end=clean(b.end_date); const filename=clean(b.filename)||"upload"; const fileHash=clean(b.file_hash); const importId=clean(b.import_id)||`IMP-${randomUUID().replace(/-/g,"").slice(0,8).toUpperCase()}`; const rows:Row[]=Array.isArray(b.rows)?b.rows:[]; const platform=(dataType==="performance"||dataType==="product_performance")?detectedPlatform(rows,requestedPlatform):requestedPlatform; const batchIndex=Number(b.batch_index||0); const totalBatches=Math.max(1,Number(b.total_batches||1)); const force=Boolean(b.force_reimport);
+    const b=await req.json(); const workspaceId=clean(b.workspace_id); const dataType=clean(b.data_type); const requestedPlatform=clean(b.platform)||"Other"; const start=clean(b.start_date); const end=clean(b.end_date); const filename=clean(b.filename)||"upload"; const fileHash=clean(b.file_hash); const uploadStoreName=clean(b.store_name); const uploadStoreId=clean(b.store_id); const importId=clean(b.import_id)||`IMP-${randomUUID().replace(/-/g,"").slice(0,8).toUpperCase()}`; const rows:Row[]=Array.isArray(b.rows)?b.rows:[]; const platform=(dataType==="performance"||dataType==="product_performance")?detectedPlatform(rows,requestedPlatform):requestedPlatform; const batchIndex=Number(b.batch_index||0); const totalBatches=Math.max(1,Number(b.total_batches||1)); const force=Boolean(b.force_reimport);
     if(!workspaceId||!dataType||!rows.length)return NextResponse.json({ok:false,error:"Workspace, jenis data, dan rows wajib diisi."},{status:400});
     const ctx=await getServerContext(workspaceId); if(!ctx.canManage)return NextResponse.json({ok:false,error:"Role Anda tidak dapat melakukan import."},{status:403}); const {admin}=ctx;
     if(batchIndex===0&&fileHash){
@@ -453,26 +453,34 @@ export async function POST(req: NextRequest) {
     let inserted=0,updated=0,skipped=0,duplicates=0;
 
     if(batchIndex===0&&(dataType==="performance"||dataType==="product_performance")){
-      // Affiliate Performance is a period snapshot. Keep exactly one snapshot
-      // per workspace + platform + period, regardless of filename/hash.
+      // PR46: a workspace may upload one consolidated file or many store files.
+      // A store-scoped upload only replaces the same store + platform + period.
+      // A file with multiple store columns replaces those stores, while legacy
+      // files without any store identity retain the previous platform-period behavior.
+      const rowStoreNames=[...new Set(rows.map(row=>clean(value(row,["Store Name","Shop Name","Nama Toko","Toko","Seller Name","Store","Shop"],false))).filter(Boolean))];
+      const scopedStores=uploadStoreName?[uploadStoreName]:rowStoreNames;
       let cleanup=admin.from("sales").delete()
         .eq("workspace_id",workspaceId)
         .eq("data_type",dataType)
         .ilike("platform",platform);
       if(start)cleanup=cleanup.eq("data_date",start);
       if(end)cleanup=cleanup.eq("end_date",end);
+      if(scopedStores.length===1)cleanup=cleanup.ilike("store_name",scopedStores[0]);
+      else if(scopedStores.length>1)cleanup=cleanup.in("store_name",scopedStores);
       const {error:cleanupError}=await cleanup;
       if(cleanupError)throw cleanupError;
 
       let supersede=admin.from("imports").update({
         status:"Superseded",
-        message:JSON.stringify({parser_version:PARSER_VERSION,note:"Replaced by a newer upload for the same platform and period."})
+        message:JSON.stringify({parser_version:PARSER_VERSION,note:"Replaced by a newer upload for the same platform, period, and store scope."})
       })
         .eq("workspace_id",workspaceId)
-        .eq("data_type","performance")
+        .eq("data_type",dataType)
         .ilike("platform",platform);
       if(start)supersede=supersede.eq("start_date",start);
       if(end)supersede=supersede.eq("end_date",end);
+      if(scopedStores.length===1)supersede=supersede.ilike("store_name",scopedStores[0]);
+      else if(scopedStores.length>1)supersede=supersede.in("store_name",scopedStores);
       const {error:supersedeError}=await supersede.neq("import_id",importId);
       if(supersedeError)throw supersedeError;
     }
@@ -802,12 +810,15 @@ export async function POST(req: NextRequest) {
         const flatFee=moneyValue(mappedRaw(row,mapping.flatFee),styles.flatFee);
         const roi=num(mappedRaw(row,mapping.roi),"decimal");
         const dataDate=start||null;
+        const storeName=clean(value(row,["Store Name","Shop Name","Nama Toko","Toko","Seller Name","Store","Shop"],false))||uploadStoreName;
+        const storeId=clean(value(row,["Store ID","Shop ID","Seller ID","ID Toko"],false))||uploadStoreId;
         const uniqueCode=(productCode||canonicalSku).toLowerCase();
-        const recordKey=`product_performance|${workspaceId}|${platform}|${start||"all"}|${end||start||"all"}|${uniqueCode}`;
+        const storeKey=(storeId||storeName||"all").toLowerCase();
+        const recordKey=`product_performance|${workspaceId}|${platform}|store:${storeKey}|${start||"all"}|${end||start||"all"}|${uniqueCode}`;
         payloads.push({
           workspace_id:workspaceId,record_key:recordKey,data_type:"product_performance",
           data_date:dataDate,end_date:end||dataDate,creator_id:null,creator_name:null,username:null,
-          platform,channel:"Product Performance",sku:canonicalSku,product_code:productCode||null,
+          platform,channel:"Product Performance",store_name:storeName||null,store_id:storeId||null,sku:canonicalSku,product_code:productCode||null,
           variant_name:variantName,product_name:productName||canonicalSku,category:marketplaceCategory,qty,orders,gmv,refund,
           refund_qty:refundQty,commission,clicks,buyers,new_buyers:newBuyers,live_count:liveCount,
           video_count:videoCount,sample_sent:sampleSent,sales_creator:salesCreator,flat_fee:flatFee,roi,
@@ -886,8 +897,9 @@ export async function POST(req: NextRequest) {
           liveCount=countNum(value(row,["Siaran LIVE","Live Count"]));
           videoCount=countNum(value(row,["Video","Video Count"]));
         }
-        const orderId=clean(value(row,["Order ID","OrderID","ID Pesanan"]));const itemId=clean(value(row,["Item ID","ItemID","ID Item"]));const tx=clean(value(row,["Transaction ID","TransactionID","ID Transaksi"]));const sku=dataType==="sales"?clean(value(row,["SKU","Kode SKU"],false)):"";const product=dataType==="sales"?clean(value(row,["Product Name","Nama Produk","Produk"],false)):"";const dataDate=dataType==="sales"?dateValue(value(row,["Transaction Date","Tanggal Transaksi","Tanggal","Date","Data Date"]),start):start;const unique=dataType==="performance"?`creator:${creatorId}|start:${start||"all"}|end:${end||start||"all"}`:tx||[orderId,itemId].filter(Boolean).join("|")||`${fileHash||importId}|${batchIndex}-${i}`;
-        const storeName=clean(value(row,["Store Name","Shop Name","Nama Toko","Toko","Seller Name","Store","Shop"],false));const storeId=clean(value(row,["Store ID","Shop ID","Seller ID","ID Toko"],false));const costProduct=moneyNum(value(row,["HPP","Cost Product","Product Cost","Harga Modal"],false));const shippingCost=moneyNum(value(row,["Shipping Cost","Ongkir","Biaya Ongkir"],false));const adsSpend=moneyNum(value(row,["Ads Spend","Ad Spend","Biaya Ads","Iklan"],false));const points=num(value(row,["Points","Point","Poin"],false));
+        const orderId=clean(value(row,["Order ID","OrderID","ID Pesanan"]));const itemId=clean(value(row,["Item ID","ItemID","ID Item"]));const tx=clean(value(row,["Transaction ID","TransactionID","ID Transaksi"]));const sku=dataType==="sales"?clean(value(row,["SKU","Kode SKU"],false)):"";const product=dataType==="sales"?clean(value(row,["Product Name","Nama Produk","Produk"],false)):"";const dataDate=dataType==="sales"?dateValue(value(row,["Transaction Date","Tanggal Transaksi","Tanggal","Date","Data Date"]),start):start;
+        const storeName=clean(value(row,["Store Name","Shop Name","Nama Toko","Toko","Seller Name","Store","Shop"],false))||uploadStoreName;const storeId=clean(value(row,["Store ID","Shop ID","Seller ID","ID Toko"],false))||uploadStoreId;const storeKey=(storeId||storeName||"all").toLowerCase();
+        const unique=dataType==="performance"?`creator:${creatorId}|store:${storeKey}|start:${start||"all"}|end:${end||start||"all"}`:tx||[orderId,itemId].filter(Boolean).join("|")||`${fileHash||importId}|${batchIndex}-${i}`;const costProduct=moneyNum(value(row,["HPP","Cost Product","Product Cost","Harga Modal"],false));const shippingCost=moneyNum(value(row,["Shipping Cost","Ongkir","Biaya Ongkir"],false));const adsSpend=moneyNum(value(row,["Ads Spend","Ad Spend","Biaya Ads","Iklan"],false));const points=num(value(row,["Points","Point","Poin"],false));
         payloads.push({workspace_id:workspaceId,record_key:`${dataType}|${workspaceId}|${platform}|${unique}`,data_type:dataType,transaction_id:tx||null,order_id:orderId||null,item_id:itemId||null,data_date:dataDate||null,end_date:end||dataDate||null,creator_id:creatorId,creator_name:creatorName,username,platform,channel:dataType==="performance"?"Affiliate Performance":clean(value(row,["Channel","Saluran"]))||"Affiliate",store_name:storeName||null,store_id:storeId||null,sku:sku||null,product_name:product||null,category:dataType==="sales"?clean(value(row,["Category","Kategori"],false))||null:null,qty,orders:orders||(orderId?1:0),gmv,refund,refund_qty:refundQty,commission,cost_product:costProduct,shipping_cost:shippingCost,ads_spend:adsSpend,points,clicks,buyers,new_buyers:newBuyers,live_gmv:liveGmv,video_gmv:videoGmv,showcase_gmv:showcaseGmv,ctr,ctor,live_count:liveCount,video_count:videoCount,sample_content:sampleContent,sample_sent:sampleSent,impressions,video_views:videoViews,source_file:filename,imported_at:new Date().toISOString(),import_id:importId,updated_at:new Date().toISOString()});
       }
       if(payloads.length){
@@ -901,6 +913,12 @@ export async function POST(req: NextRequest) {
         const {data:saved,error}=await admin.from("sales").upsert(deduped,{onConflict:"record_key"}).select("id");
         if(error)throw error;
         inserted+=saved?.length||deduped.length;
+        if(dataType==="performance"){
+          const affiliations=[...new Map(deduped.filter(x=>x.creator_id&&x.store_name).map(x=>[`${x.creator_id}|${String(x.platform).toLowerCase()}|${String(x.store_name).toLowerCase()}`,{
+            workspace_id:workspaceId,creator_id:x.creator_id,platform:x.platform,store_name:x.store_name,store_id:x.store_id||null,last_seen_at:new Date().toISOString(),source_import_id:importId
+          }])).values()];
+          if(affiliations.length){const {error:affError}=await admin.from("creator_store_affiliations").upsert(affiliations,{onConflict:"workspace_id,creator_id,platform,store_name"});if(affError)throw affError}
+        }
       }
     }else return NextResponse.json({ok:false,error:"Jenis Data tidak valid."},{status:400});
 
@@ -909,7 +927,7 @@ export async function POST(req: NextRequest) {
     const stats={detected:Number(prev.detected||0)+rows.length,inserted:Number(prev.inserted||0)+inserted,updated:Number(prev.updated||0)+updated,skipped:Number(prev.skipped||0)+skipped,duplicates:Number(prev.duplicates||0)+duplicates,errors:Number(prev.errors||0)};
     const currentMapping=dataType==="performance"?mappingSummary(performanceMapping(rows[0]||{},platform)):dataType==="product_performance"?productMappingSummary(productPerformanceMapping(rows[0]||{},platform)):undefined;
     const message={...stats,parser_version:PARSER_VERSION,mapping:currentMapping||prev.mapping||null};
-    const meta={workspace_id:workspaceId,import_id:importId,filename,data_type:dataType,platform,start_date:start||null,end_date:end||null,rows_imported:Number(existing?.rows_imported||0)+inserted+updated,status:batchIndex+1>=totalBatches?"Success":"Processing",imported_at:new Date().toISOString(),message:JSON.stringify(message),file_hash:fileHash||null};
+    const meta={workspace_id:workspaceId,import_id:importId,filename,data_type:dataType,platform,store_name:uploadStoreName||null,store_id:uploadStoreId||null,start_date:start||null,end_date:end||null,rows_imported:Number(existing?.rows_imported||0)+inserted+updated,status:batchIndex+1>=totalBatches?"Success":"Processing",imported_at:new Date().toISOString(),message:JSON.stringify(message),file_hash:fileHash||null};
     if(existing?.id){const {error}=await admin.from("imports").update(meta).eq("id",existing.id);if(error)throw error}else{const {error}=await admin.from("imports").insert(meta);if(error)throw error}
     const complete=batchIndex+1>=totalBatches;
     let persistedRows:number|null=null;
