@@ -5,6 +5,7 @@ import { createClient } from "../../lib/supabase-browser";
 import Creator360Modal from "./Creator360Modal";
 
 type Props={workspaceId:string};
+type Row=Record<string,any>;
 type KPI={total_creators:number;total_sales_records:number;total_qty:number;total_orders:number;total_gmv:number;total_commission:number;total_products:number;total_cost_product:number;total_shipping:number;total_ads_spend:number;total_spend:number;roi:number;aov:number;avg_daily_creator_sales:number;referral_commission:number;total_live_streams:number;total_videos:number};
 type RankRow={rank:number;creator_id:number;creator_code:string|null;creator_name:string|null;username:string|null;platform:string|null;qty:number;orders:number;gmv:number;commission:number;total_rows:number};
 type ProductRankRow={rank:number;sku:string|null;product_name:string|null;platform:string|null;qty:number;orders:number;gmv:number;commission:number;clicks:number;buyers:number;new_buyers:number;refund:number;refund_qty:number;roi:number;total_rows:number};
