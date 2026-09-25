@@ -19,8 +19,36 @@ export async function POST(req:NextRequest){
     const chosen=Object.values(latestByType);const ids=chosen.map((x:any)=>x.run_id);const {data:insights,error:insError}=ids.length?await ctx.admin.from("ai_insights").select("run_id,insight_json").eq("workspace_id",workspaceId).in("run_id",ids):{data:[],error:null};if(insError)throw insError;
     const insightMap=Object.fromEntries((insights||[]).map((x:any)=>[x.run_id,x.insight_json]));const combined=chosen.map((x:any)=>({analysis_type:x.analysis_type,result:insightMap[x.run_id]||{}}));
     const {data:ref}=await ctx.admin.from("referral_profiles").select("referral_code").eq("user_id",ctx.user.id).maybeSingle();const appUrl=process.env.NEXT_PUBLIC_APP_URL||"https://lumaway.online";
-    const pagePlan=["Cover — LUMAWAY / LUMA Affiliate Intelligence, report title, period, generated date.","Executive Summary — most important findings across all available analyses.","Scope & Data — dataset scope, period, caveats, what was uploaded and analyzed.","KPI Snapshot — performance status and measurable indicators present in the analysis.","Performance Analysis — overall performance interpretation.","Creator Analysis — concentration and contribution insights.","Creator Action Map — retain, grow, reactivate, test recommendations where supported.","Product Analysis — SKU/product contribution and limitations where granular data is absent.","Product Opportunity Map — priorities based only on available findings.","Trend Analysis — time movement and momentum.","Period Comparison — comparisons supported by the data; explicitly state if unavailable.","Anomaly Detection — unusual patterns and possible data/business anomalies.","Risk & Validation — what must be verified before decisions.","Recommendations — prioritized actions with business rationale.","30-Day Action Plan — sequence of practical actions.","Kanban Priorities — task-ready backlog with suggested priority and deadline horizon.","DO — recommended operating principles derived from the analysis.","DON'T — actions to avoid, data caveats, governance.","Conclusion & Next Analysis — what changed, what to monitor, what data to upload next.",`Lumaway Affiliate — invite readers to register at ${appUrl} using referral code ${ref?.referral_code||"LUMAWAY"}. This final page is promotional and must be clearly separated from analytical findings.`];
-    const instructions=`Anda adalah Senior Business Intelligence Editor untuk LUMAWAY. Buat DOKUMEN TEPAT 20 HALAMAN A4 dari kumpulan hasil enam jenis LUMA Affiliate Intelligence: performance, creator, product, trend, anomaly, recommendation.\nGunakan hanya fakta dan angka yang benar-benar ada pada combined_analysis. Jangan mengarang angka, sebab, SKU, creator, tren, atau benchmark. Bila salah satu tipe belum tersedia, nyatakan keterbatasannya dan gunakan hubungan logis dari tipe lain tanpa membuat fakta baru.\nSetiap halaman harus punya fokus berbeda sesuai PAGE PLAN. Tulis Bahasa Indonesia profesional, managerial, padat tetapi cukup kaya untuk menjadi halaman report. sections 1-3 per halaman, bullets 2-6 bila relevan, callout singkat.\nPage 1 harus cover minimal. Page 20 adalah promosi Lumaway/referral dan tidak boleh dicampur dengan kesimpulan data.\nPastikan page_number berurutan 1 sampai 20.`;
+    const pagePlan=[
+      "Cover — Lumaway Affiliate Intelligence, judul report, periode, tanggal dibuat.",
+      "Baca 2 Menit — headline, ringkasan kondisi, dan 3 hal yang paling penting untuk client.",
+      "Apa yang Sedang Terjadi — narasi sederhana tentang kondisi bisnis/performa periode ini.",
+      "KPI yang Perlu Dilihat — angka paling relevan beserta arti praktisnya, bukan tabel angka tanpa konteks.",
+      "Yang Sudah Bekerja — area, platform, creator, atau produk yang menjadi kekuatan bila didukung data.",
+      "Yang Menahan Performa — bottleneck, ketidakseimbangan, atau area yang belum maksimal.",
+      "Creator yang Mendorong Hasil — kontribusi creator utama dan apa artinya untuk strategi.",
+      "Peluang Creator — siapa/segmen apa yang layak di-scale, diuji, atau di-follow-up bila didukung data.",
+      "Produk yang Mendorong Hasil — produk/SKU/kategori yang berkontribusi paling relevan.",
+      "Peluang Produk — produk high-volume, high-revenue, atau yang layak didorong ke creator lain.",
+      "Arah & Momentum — perubahan performa dan apa yang perlu diantisipasi.",
+      "Platform & Mix — kontribusi platform dan keseimbangan channel yang terlihat.",
+      "Early Warning — anomaly, refund, konsentrasi ekstrem, atau angka yang perlu diverifikasi.",
+      "Dampak ke Bisnis — jelaskan kenapa temuan utama penting untuk omzet, efisiensi, atau keputusan marketing.",
+      "Peluang yang Bisa Diambil — 3-5 peluang dengan alasan yang jelas.",
+      "Prioritas Keputusan — apa yang harus didahulukan, ditunda, atau dipantau.",
+      "Rencana 7 Hari — action plan realistis untuk minggu berikutnya.",
+      "Rencana 30 Hari — eksperimen, scale-up, follow-up, dan monitoring.",
+      "Apa yang Harus Dipantau Selanjutnya — KPI/data tambahan yang membuat analisis berikutnya lebih tajam.",
+      `Lumaway Affiliate — ajak pembaca melanjutkan analisis di ${appUrl} menggunakan referral code ${ref?.referral_code||"LUMAWAY"}. Halaman promosi harus terpisah dari temuan data.`
+    ];    const instructions=`Anda adalah Lumaway Client Insight Editor. Buat DOKUMEN TEPAT 20 HALAMAN A4 dari kumpulan hasil LUMA Affiliate Intelligence.
+
+Report ini harus terasa seperti konsultan/account manager sedang menjelaskan kondisi bisnis kepada client: profesional, hangat, mudah dipahami, tidak kaku, dan setiap halaman punya nilai keputusan. Hindari bahasa akademik, template kosong, jargon berlebihan, dan pengulangan insight.
+
+Gunakan hanya fakta/angka yang benar-benar ada pada combined_analysis. Jangan mengarang angka, sebab, SKU, creator, tren, benchmark, atau target. Bila data belum cukup, jelaskan dengan sederhana apa yang belum bisa disimpulkan dan data apa yang perlu ditambahkan.
+
+Setiap halaman mengikuti PAGE PLAN, tetapi narasinya harus mengalir: kondisi → arti → dampak → peluang → tindakan. sections 1-3 per halaman, bullets 2-6 bila relevan, callout berisi satu takeaway yang mudah dibawa ke meeting.
+
+Page 1 harus cover minimal. Page 20 adalah promosi Lumaway/referral dan tidak boleh dicampur dengan kesimpulan data. Pastikan page_number berurutan 1 sampai 20.`;
     const input={period:{start:primary.start_date||"All data",end:primary.end_date||"All data"},primary_analysis_type:primary.analysis_type,page_plan:pagePlan,combined_analysis:combined,referral_code:ref?.referral_code||null,registration_url:appUrl};
     const model=process.env.OPENAI_MODEL||process.env.AI_MODEL||"gpt-5.6-sol";const routed=await openAIResponsesWithFailover(ctx.admin,apiKey,{instructions,input:JSON.stringify(input),text:{format:{type:"json_schema",name:"lumaway_20_page_report",schema:SCHEMA,strict:true}},store:false},model);
     const raw=routed.raw;const text=outputText(raw);if(!text)throw new Error("AI report response kosong.");const document=JSON.parse(text);document.pages=(document.pages||[]).sort((a:any,b:any)=>a.page_number-b.page_number).slice(0,20);
