@@ -1,6 +1,6 @@
 import {NextRequest,NextResponse} from "next/server";
-import {getServerContext} from "../../../../../lib/server-auth";
-import {getServerSecretSource,hasServerSecret} from "../../../../../lib/server-secrets";
+import {getServerContext} from "../../../../lib/server-auth";
+import {getServerSecretSource,hasServerSecret} from "../../../../lib/server-secrets";
 
 export const runtime="nodejs";
 
