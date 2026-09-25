@@ -6,6 +6,8 @@
 - [ ] Production build passes
 - [ ] HTTP smoke test passes
 - [ ] No secrets or local-only configuration are included
+- [ ] If this PR changes database schema/RLS/RPC, a timestamped file exists in `supabase/migrations/`
+- [ ] If this PR changes database schema/RLS/RPC, the migration was applied and verified in Supabase before dependent app code is released
 - [ ] Ready to squash-merge as one production commit
 
 ### Summary
