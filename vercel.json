@@ -19,5 +19,11 @@
       "fix/lumaway-ops-v4-polish": false
     }
   },
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ':(exclude)apps/marketing/**'"
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ':(exclude)apps/marketing/**'",
+  "crons": [
+    {
+      "path": "/api/cron/weekly-insights",
+      "schedule": "0 1 * * 1"
+    }
+  ]
 }

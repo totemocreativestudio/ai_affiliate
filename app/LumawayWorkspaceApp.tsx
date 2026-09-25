@@ -34,7 +34,7 @@ import SystemStatusGate from "./components/SystemStatusGate";
 import {LumaErrorMotion} from "./components/LumaMotionState";
 import TableSortEnhancer from "./components/TableSortEnhancer";
 
-type Profile = { id: string; email: string | null; full_name: string | null; nickname: string | null; role: string; active: boolean; phone: string | null; phone_verified_at: string | null; email_verified_at: string | null; education: string | null; birth_date: string | null; bio: string | null; position_title: string | null; profile_completed: boolean };
+type Profile = { id: string; email: string | null; full_name: string | null; nickname: string | null; role: string; active: boolean; phone: string | null; phone_verified_at: string | null; email_verified_at: string | null; education: string | null; birth_date: string | null; bio: string | null; position_title: string | null; profile_completed: boolean; password_configured_at: string | null };
 type Workspace = { id: string; name: string; slug: string; status: string };
 type AuthMode = "signin" | "signup";
 const REFERRAL_STORAGE_KEY="lumaway_referral_code";
@@ -94,7 +94,7 @@ function cleanAuthErrorQuery() {
 }
 
 function profileComplete(profile: Profile) {
-  return Boolean(profile.profile_completed && profile.full_name?.trim() && profile.nickname?.trim() && profile.phone_verified_at && profile.email_verified_at && profile.education?.trim() && profile.birth_date && profile.bio?.trim());
+  return Boolean(profile.profile_completed && profile.password_configured_at && profile.full_name?.trim() && profile.nickname?.trim() && profile.phone_verified_at && profile.email_verified_at && profile.education?.trim() && profile.birth_date && profile.bio?.trim());
 }
 
 function activateCurrentRoute(isAdmin: boolean, accessLocked = false) {
@@ -268,7 +268,7 @@ export default function LumawayWorkspaceApp() {
     setError("");
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
-      .select("id,email,full_name,nickname,role,active,phone,phone_verified_at,email_verified_at,education,birth_date,bio,position_title,profile_completed")
+      .select("id,email,full_name,nickname,role,active,phone,phone_verified_at,email_verified_at,education,birth_date,bio,position_title,profile_completed,password_configured_at")
       .eq("id", userId)
       .single();
     if (profileError || !profileData) {

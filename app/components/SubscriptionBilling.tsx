@@ -194,7 +194,7 @@ export default function SubscriptionBilling({ workspaceId, userId }: { workspace
           <div>
             <h3>Paket Langganan Lumaway</h3>
             <p className="muted">
-              Upgrade dari paket 1 bulan ke 6 bulan otomatis mengubah sisa hari menjadi kredit rupiah. Sisa hari lama tidak dihitung dua kali.
+              Upgrade ke paket dengan durasi lebih panjang otomatis mengubah sisa hari paket aktif menjadi kredit rupiah. Sisa hari lama tidak dihitung dua kali.
             </p>
           </div>
         </div>
@@ -227,7 +227,7 @@ export default function SubscriptionBilling({ workspaceId, userId }: { workspace
                     disabled={busy === plan.id || isCurrent}
                     onClick={() => checkout(plan)}
                   >
-                    {busy === plan.id ? "Preparing..." : upgrade ? "Upgrade ke 6 Bulan" : isCurrent ? "Aktif" : "Pilih Paket"}
+                    {busy === plan.id ? "Preparing..." : upgrade ? `Upgrade ke ${plan.name}` : isCurrent ? "Aktif" : "Pilih Paket"}
                   </button>
                 )}
               </article>

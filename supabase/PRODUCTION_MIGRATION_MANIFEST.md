@@ -6,8 +6,8 @@ This manifest is the source-of-truth map between **Supabase production migration
 
 ## Current state
 
-- Registry rows: **84**
-- Repository-backed production migrations: **32**
+- Registry rows: **86**
+- Repository-backed production migrations: **34**
 - Production legacy migrations without original GitHub SQL: **51**
 - Repository migration whose production state was applied manually: **1**
 - PR42 baseline snapshot: `supabase/baseline/20260925/`
@@ -106,6 +106,8 @@ The 51 `production_legacy` entries are historical migrations that already exist 
 | `20260925051308` | `pr43_private_policy_and_rpc_scope` | repository_migration | `supabase/migrations/20260925124500_pr43_private_policy_and_rpc_scope.sql` | Yes |
 | `20260925052600` | `pr44_rls_initplan_and_tenant_indexes` | repository_migration | `supabase/migrations/20260925122600_pr44_rls_initplan_and_tenant_indexes.sql` | Yes |\n| `20260925052702` | `pr44_split_redundant_all_policies` | repository_migration | `supabase/migrations/20260925122702_pr44_split_redundant_all_policies.sql` | Yes |\n| `20260925065838` | `pr45_rls_policy_query_plan_optimization` | repository_migration | `supabase/migrations/20260925135000_pr45_rls_policy_query_plan_optimization.sql` | Yes |
 | `20260925070033` | `pr45_private_rls_helpers` | repository_migration | `supabase/migrations/20260925140500_pr45_private_rls_helpers.sql` | Yes |
+| `20260925075042` | `pr46_billing_multistore_social_account` | repository_migration | `supabase/migrations/20260925151500_pr46_billing_multistore_social_account.sql` | Yes |
+| `20260925082452` | `pr46_fix_community_profile_rpc` | repository_migration | `supabase/migrations/20260925153500_pr46_fix_community_profile_rpc.sql` | Yes |
 | `repo-only-pr37` | `pr37_payment_priority` | repository_manual_state | `supabase/migrations/20260923195500_pr37_payment_priority.sql` | Yes |
 
 ## Rule from PR42 onward

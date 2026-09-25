@@ -53,12 +53,10 @@ FORMAT NILAI UNTUK CLIENT:
 - confidence_note: jelaskan kualitas/keterbatasan data secara singkat dan manusiawi.`;
 
 const ANALYSIS_GUIDE:Record<string,string>={
-  performance:`PERFORMANCE ANALYSIS harus menjawab: "Bisnis sedang sehat atau tidak, kenapa, dan apa yang harus dilakukan sekarang?" Hubungkan GMV, order, qty, commission, refund, click, creator aktif, dan platform. Soroti efisiensi dan bottleneck yang benar-benar terlihat. Berikan 2-4 keputusan yang bisa dibawa ke weekly meeting.`,
-  creator:`CREATOR ANALYSIS harus membantu user memutuskan siapa yang perlu dipertahankan, dinaikkan, di-follow-up, diuji, atau tidak diprioritaskan. Bahas konsentrasi kontribusi, kualitas GMV/order, ketergantungan pada sedikit creator, dan peluang memperluas creator produktif. Jangan memberi label buruk tanpa data.`,
-  product:`PRODUCT ANALYSIS harus menjawab produk mana yang mendorong omzet, mana yang kuat di volume, mana yang belum maksimal, serta produk mana yang layak didorong ke lebih banyak creator. Gunakan SKU, produk, kategori, GMV, qty, order, click/refund bila tersedia. Jika data produk belum granular, jelaskan apa yang perlu diupload agar keputusan berikutnya lebih tajam.`,
-  trend:`TREND ANALYSIS harus menjelaskan momentum dengan bahasa sederhana: apa yang bergerak naik/turun, sejak kapan, seberapa konsisten, dan apa implikasinya untuk periode berikutnya. Jangan menyebut seasonality bila titik data belum cukup.`,
-  anomaly:`ANOMALY DETECTION harus menjadi early-warning system. Cari angka tidak wajar, lonjakan/penurunan, ketidakseimbangan GMV-order-qty, refund, atau konsentrasi ekstrem. Pisahkan "terlihat di data" dari "kemungkinan penyebab yang perlu dicek". Berikan checklist verifikasi yang praktis.`,
-  recommendation:`RECOMMENDATIONS harus berfungsi seperti mini action plan untuk client. Gabungkan insight lintas performance, creator, product, trend, dan anomaly yang tersedia. Prioritaskan 3-5 tindakan paling berdampak, jelaskan alasan, horizon 7/30 hari, dan apa yang perlu dimonitor setelah tindakan dijalankan.`
+  performance:`PERFORMA ANALISIS harus membaca seluruh data periode yang tersedia dan menjawab: "Bisnis sedang sehat atau tidak, bagian mana yang bergerak, dan apa yang perlu dilakukan sekarang?" Hubungkan GMV, order, qty, commission, refund, click, buyers, live/video, creator aktif, produk, platform, toko, serta tren bulanan. Soroti efisiensi, perubahan, dan bottleneck yang benar-benar terlihat. Berikan 2-4 keputusan yang bisa dibawa ke weekly meeting.`,
+  creator:`CREATOR ANALISIS harus fokus pada seluruh data creator di periode terpilih. Bantu user memutuskan siapa yang perlu dipertahankan, dinaikkan, di-follow-up, diuji, atau tidak diprioritaskan. Bahas kontribusi GMV/order/qty/commission, konsentrasi kontribusi, platform/toko, serta peluang memperluas creator produktif. Jangan memberi label buruk tanpa data.`,
+  product:`PRODUK ANALISIS harus fokus pada data Product Performance dan mengaitkannya dengan konteks creator pada periode yang sama. Jawab produk mana yang mendorong omzet, mana yang kuat di volume, mana yang belum maksimal, creator mana yang menjadi konteks performa periode, serta produk mana yang layak didorong ke lebih banyak creator. Gunakan SKU, produk, kategori, GMV, qty, order, click/refund bila tersedia. Jika sumber data belum memiliki atribusi creator-ke-produk secara langsung, katakan dengan jelas dan jangan mengarang relasinya.`,
+  recommendation:`REKOMENDASI harus berfungsi seperti mini action plan untuk client. Gunakan seluruh konteks periode: performa, creator, produk, platform, toko, tren, refund, dan sinyal tidak wajar yang benar-benar tersedia. Prioritaskan 3-5 tindakan paling berdampak, jelaskan alasan, horizon 7/30 hari, dan apa yang perlu dimonitor setelah tindakan dijalankan.`
 };
 
 const n=(v:any)=>Number(v||0);
@@ -68,94 +66,24 @@ function extractOutputText(data:any){
   return "";
 }
 
-function aggregate(rows:any[],keyFn:(row:any)=>string|null){
-  const map=new Map<string,any>();
-  for(const row of rows){
-    const key=keyFn(row);if(!key)continue;
-    const item=map.get(key)||{
-      sku:row.sku||null,product:row.product_name||null,category:row.category||null,
-      creator:row.creator_name||row.username||null,username:row.username||null,platform:row.platform||null,
-      gmv:0,qty:0,orders:0,commission:0,refund:0,clicks:0,rows:0
-    };
-    item.gmv+=n(row.gmv);item.qty+=n(row.qty);item.orders+=n(row.orders);item.commission+=n(row.commission);
-    item.refund+=n(row.refund);item.clicks+=n(row.clicks);item.rows++;
-    if(!item.category&&row.category)item.category=row.category;
-    map.set(key,item);
-  }
-  return [...map.values()];
-}
-
 async function buildDatabaseContext(admin:any,workspaceId:string,start:string,end:string,analysisType:string){
-  const fields="data_type,data_date,end_date,creator_id,creator_name,username,platform,sku,product_code,product_name,category,qty,orders,gmv,commission,refund,clicks,buyers,new_buyers,live_count,video_count,sample_sent";
-  const base=(types:string[],limit:number)=>{
-    let q=admin.from("sales").select(fields).eq("workspace_id",workspaceId).in("data_type",types).order("data_date",{ascending:true,nullsFirst:false}).limit(limit);
-    if(start)q=q.gte("data_date",start);
-    if(end)q=q.lte("data_date",end);
-    return q;
-  };
-  const [affiliateResult,productResult]=await Promise.all([
-    base(["performance","sales"],8000),
-    base(["product_performance"],5000)
-  ]);
-  if(affiliateResult.error)throw affiliateResult.error;
-  if(productResult.error)throw productResult.error;
-
-  const affiliateRows=(affiliateResult.data||[]) as any[];
-  const productRows=(productResult.data||[]) as any[];
-  const metricRows=affiliateRows.length?affiliateRows:productRows;
-  const preferredProductRows=productRows.length?productRows:affiliateRows.filter(row=>row.sku||row.product_name);
-
-  const kpi=metricRows.reduce((acc:any,row:any)=>{
-    acc.gmv+=n(row.gmv);acc.qty+=n(row.qty);acc.orders+=n(row.orders);acc.commission+=n(row.commission);
-    acc.refund+=n(row.refund);acc.clicks+=n(row.clicks);acc.buyers+=n(row.buyers);
-    acc.live_count+=n(row.live_count);acc.video_count+=n(row.video_count);acc.sample_sent+=n(row.sample_sent);
-    return acc;
-  },{gmv:0,qty:0,orders:0,commission:0,refund:0,clicks:0,buyers:0,live_count:0,video_count:0,sample_sent:0});
-
-  const creatorKeys=new Set(affiliateRows.map(row=>row.creator_id?String(row.creator_id):[row.platform,row.username||row.creator_name].filter(Boolean).join("|")).filter(Boolean));
-  const productKeys=new Set(preferredProductRows.map(row=>row.sku||row.product_code||row.product_name).filter(Boolean));
-  kpi.active_creators=creatorKeys.size;
-  kpi.total_products=productKeys.size;
-  kpi.roi=kpi.commission>0?kpi.gmv/kpi.commission:null;
-  kpi.aov=kpi.orders>0?kpi.gmv/kpi.orders:null;
-
-  const platforms=aggregate(metricRows,row=>row.platform||"Unknown")
-    .sort((a,b)=>b.gmv-a.gmv)
-    .slice(0,12)
-    .map(({platform,gmv,qty,orders,commission,refund,clicks})=>({platform,gmv,qty,orders,commission,refund,clicks}));
-
-  const topCreators=aggregate(affiliateRows,row=>{
-    const name=row.username||row.creator_name;if(!name)return null;
-    return `${String(row.platform||"Unknown").toLowerCase()}|${String(name).toLowerCase()}`;
-  }).sort((a,b)=>b.gmv-a.gmv).slice(0,30)
-    .map((x,index)=>({rank:index+1,creator:x.creator||x.username,username:x.username,platform:x.platform,gmv:x.gmv,qty:x.qty,orders:x.orders,commission:x.commission}));
-
-  const topProducts=aggregate(preferredProductRows,row=>row.sku||row.product_code||row.product_name||null)
-    .sort((a,b)=>b.gmv-a.gmv).slice(0,35)
-    .map(x=>({sku:x.sku,product:x.product,category:x.category,gmv:x.gmv,qty:x.qty,orders:x.orders,commission:x.commission,refund:x.refund,clicks:x.clicks}));
-
-  const monthlyMap=new Map<string,any>();
-  for(const row of metricRows){
-    const period=row.data_date?String(row.data_date).slice(0,7):"undated";
-    const item=monthlyMap.get(period)||{period,gmv:0,qty:0,orders:0,commission:0,refund:0};
-    item.gmv+=n(row.gmv);item.qty+=n(row.qty);item.orders+=n(row.orders);item.commission+=n(row.commission);item.refund+=n(row.refund);
-    monthlyMap.set(period,item);
-  }
-
-  return {
+  const {data,error}=await admin.rpc("luma_ai_period_context",{
+    p_workspace_id:workspaceId,
+    p_start_date:start||null,
+    p_end_date:end||null,
+    p_focus:analysisType
+  });
+  if(error)throw error;
+  return data||{
     analysis_focus:analysisType,
     period:{start:start||"ALL DATA",end:end||"ALL DATA"},
-    kpi,
-    platforms,
-    top_creators:topCreators,
-    top_products:topProducts,
-    monthly_trend:[...monthlyMap.values()],
-    data_quality:{
-      affiliate_rows_sampled:affiliateRows.length,
-      product_rows_sampled:productRows.length,
-      affiliate_limit_reached:affiliateRows.length>=8000,
-      product_limit_reached:productRows.length>=5000
-    }
+    kpi:{},
+    platforms:[],
+    top_creators:[],
+    top_products:[],
+    monthly_trend:[],
+    stores:[],
+    data_quality:{affiliate_rows:0,product_rows:0,imports_in_period:0,sampling:false,complete_period_aggregation:true}
   };
 }
 
@@ -167,7 +95,9 @@ export async function POST(req:NextRequest){
   try{
     const body=await req.json();
     workspaceId=String(body.workspace_id||"");
-    const analysisType=String(body.analysis_type||"performance");
+    const analysisType=String(body.analysis_type||"recommendation");
+    const allowedTypes=new Set(["recommendation","performance","product","creator"]);
+    if(!allowedTypes.has(analysisType))return NextResponse.json({ok:false,error:"Jenis analisis tidak tersedia."},{status:400});
     const start=body.start_date?String(body.start_date):"";
     const end=body.end_date?String(body.end_date):"";
     if(!workspaceId)return NextResponse.json({ok:false,error:"Workspace tidak valid."},{status:400});
@@ -178,7 +108,7 @@ export async function POST(req:NextRequest){
 
     await ctx.admin.from("ai_analysis_runs").insert({
       workspace_id:workspaceId,run_id:runId,analysis_type:analysisType,start_date:start||null,end_date:end||null,
-      dataset_version:"supabase-production-pr40",input_hash:"",model:requestedModel,status:"Processing",
+      dataset_version:"supabase-production-pr46-full-period",input_hash:"",model:requestedModel,status:"Processing",
       created_at:new Date().toISOString(),created_by:ctx.user.id
     });
 
@@ -196,7 +126,7 @@ export async function POST(req:NextRequest){
     if(end)rq=rq.eq("end_date",end);else rq=rq.is("end_date",null);
     const {data:previousRuns}=await rq;
     const latest:Record<string,any>={};
-    for(const x of previousRuns||[])if(!latest[x.analysis_type])latest[x.analysis_type]=x;
+    for(const x of previousRuns||[])if(["recommendation","performance","product","creator"].includes(String(x.analysis_type))&&!latest[x.analysis_type])latest[x.analysis_type]=x;
     const prevIds=Object.values(latest).map((x:any)=>x.run_id);
     const {data:prevInsights}=prevIds.length
       ? await ctx.admin.from("ai_insights").select("run_id,insight_json").eq("workspace_id",workspaceId).in("run_id",prevIds)
