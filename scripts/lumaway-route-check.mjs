@@ -24,8 +24,8 @@ const analytics = read("app/components/AIAnalytics.tsx");
 const finalCss = read("app/luma-final-fixes.css");
 const serviceWorker = read("public/sw.js");
 
-if (!navigation.includes('export const APP_BASE = "/app.lumaway"')) {
-  fail("APP_BASE must stay at /app.lumaway");
+if (!navigation.includes('export const APP_BASE = ""')) {
+  fail("APP_BASE must use clean paths for app.lumaway.online");
 }
 
 for (const route of [
@@ -50,8 +50,16 @@ for (const route of [
 if (!exists("app/LumawayWorkspaceApp.tsx")) {
   fail("Lumaway workspace app shell is missing");
 }
-if (!rootPage.includes('redirect("/app.lumaway/login")')) {
-  fail("root route must redirect directly to /app.lumaway/login");
+if (!rootPage.includes('redirect("/web/home")')) {
+  fail("root public domain must enter the Lumaway landing page");
+}
+if (!exists("proxy.ts")) {
+  fail("hostname routing proxy is missing");
+} else {
+  const proxy = read("proxy.ts");
+  if (!proxy.includes('APP_HOST="app.lumaway.online"')) fail("proxy must target app.lumaway.online");
+  if (!proxy.includes('/app.lumaway')) fail("proxy must preserve legacy /app.lumaway compatibility");
+  if (!proxy.includes("NextResponse.rewrite")) fail("proxy must rewrite clean app-subdomain routes internally");
 }
 if (!exists("app/app.lumaway/[[...route]]/page.tsx")) {
   fail("Lumaway catch-all route is missing");
@@ -73,7 +81,7 @@ if (!appShell.includes('navigateToSection(target, { replace: true })')) {
   fail("post-login navigation must resolve through path-based routing");
 }
 if (!appShell.includes('`${APP_BASE}/login`') || !appShell.includes('`${APP_BASE}/register`')) {
-  fail("login/register must use /app.lumaway paths");
+  fail("login/register must resolve through APP_BASE clean paths");
 }
 
 for (const [legacyPath, target] of [
@@ -86,7 +94,7 @@ for (const [legacyPath, target] of [
 }
 
 if (!navigation.includes('value === "/?auth=signin"') || !navigation.includes('value === "/?auth=signup"')) {
-  fail("legacy root auth URLs must normalize to /app.lumaway login/register");
+  fail("legacy root auth URLs must normalize to Lumaway login/register");
 }
 
 // Dashboard navigation must not reintroduce hash anchors. Legacy hash handling is allowed only in the app shell/navigation compatibility layer.
