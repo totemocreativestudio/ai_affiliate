@@ -10,11 +10,14 @@ type Health={
   smtp_user:string;
   smtp_security:string;
   can_configure:boolean;
+  key_last4?:string;
+  masked_key?:string;
 };
 
 export default function ResendIntegration({workspaceId}:{workspaceId:string}){
   const [health,setHealth]=useState<Health|null>(null);
   const [apiKey,setApiKey]=useState("");
+  const [showApiKey,setShowApiKey]=useState(false);
   const [fromAddress,setFromAddress]=useState("Lumaway <marketing@lumaway.online>");
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState("Memeriksa Resend...");
@@ -46,8 +49,9 @@ export default function ResendIntegration({workspaceId}:{workspaceId:string}){
       const d=await r.json();
       if(!r.ok||!d.ok)throw new Error(d.error||"Gagal menyimpan Resend API key.");
       setApiKey("");
+      setShowApiKey(false);
       setHealth(d);
-      setMessage("Resend API key tersimpan aman di Supabase Vault. Key tidak ditampilkan kembali ke browser.");
+      setMessage(`Resend API key tersimpan aman di Supabase Vault. Token: ${d.masked_key||"re_••••••••••••"}.`);
     }catch(e:any){setMessage(e?.message||"Gagal menyimpan Resend API key.")}finally{setBusy(false)}
   }
 
@@ -72,7 +76,7 @@ export default function ResendIntegration({workspaceId}:{workspaceId:string}){
     </div>
 
     <div className="owner-kpi-grid small">
-      <div className="owner-metric"><span>API Key</span><b>{health?.configured?"Configured":"Missing"}</b><small>{health?.source||"secure-vault"}</small></div>
+      <div className="owner-metric"><span>API Key</span><b>{health?.configured?(health?.masked_key||`re_••••••••••${health?.key_last4||"••••"}`):"Missing"}</b><small>{health?.configured?`Secure Vault · Last 4: ${health?.key_last4||"••••"}`:(health?.source||"none")}</small></div>
       <div className="owner-metric"><span>SMTP Host</span><b>{health?.smtp_host||"smtp.resend.com"}</b><small>Resend SMTP</small></div>
       <div className="owner-metric"><span>Port</span><b>{health?.smtp_port||465}</b><small>SMTPS</small></div>
       <div className="owner-metric"><span>Security</span><b>{health?.smtp_security||"SSL/TLS"}</b><small>Encrypted transport</small></div>
@@ -81,7 +85,11 @@ export default function ResendIntegration({workspaceId}:{workspaceId:string}){
     {health?.can_configure&&<div className="card" style={{marginTop:14}}>
       <div className="grid">
         <label>Resend API Key
-          <input type="password" autoComplete="off" value={apiKey} onChange={e=>setApiKey(e.target.value)} placeholder={health?.configured?"Tersimpan · isi hanya untuk mengganti key":"re_..."} />
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <input style={{flex:1}} type={showApiKey?"text":"password"} autoComplete="off" value={apiKey} onChange={e=>setApiKey(e.target.value)} placeholder={health?.configured?(health?.masked_key||"re_••••••••••••"):"re_..."} />
+            <button type="button" className="secondary compact" disabled={!apiKey} onClick={()=>setShowApiKey(v=>!v)}>{showApiKey?"Hide":"Show"}</button>
+          </div>
+          <small>{health?.configured?`Token tersimpan aman · hanya 4 karakter terakhir ditampilkan: ${health?.key_last4||"••••"}`:"Full token hanya terlihat selama Anda mengetik dan belum disimpan."}</small>
         </label>
         <label>Sender
           <input value={fromAddress} onChange={e=>setFromAddress(e.target.value)} placeholder="Lumaway <marketing@lumaway.online>" />
