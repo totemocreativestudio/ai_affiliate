@@ -47,6 +47,15 @@ function captureReferralCode(){
   return incoming||String(window.localStorage.getItem(REFERRAL_STORAGE_KEY)||"").trim().toUpperCase();
 }
 
+function verificationRedirectUrl(){
+  if(typeof window==="undefined")return "https://www.lumaway.online/app.lumaway/login?verified=1";
+  const url=new URL(`${window.location.origin}${APP_BASE}/login`);
+  url.searchParams.set("verified","1");
+  const code=captureReferralCode();
+  if(code&&/^[A-Z0-9]{12}$/.test(code))url.searchParams.set("ref",code);
+  return url.toString();
+}
+
 function authUrlWithReferral(path:string){
   const code=captureReferralCode();
   return code&&/^[A-Z0-9]{12}$/.test(code)?`${path}?ref=${encodeURIComponent(code)}`:path;
@@ -139,6 +148,8 @@ export default function LumawayWorkspaceApp() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual";
+    const initialParams=new URLSearchParams(window.location.search);
+    if(initialParams.get("verified")==="1")setAuthMessage("Email berhasil diverifikasi. Silakan masuk ke Lumaway dengan email dan password Anda.");
     cleanAuthErrorQuery();
     captureReferralCode();
 
@@ -365,7 +376,7 @@ export default function LumawayWorkspaceApp() {
     const { error: resendError } = await supabase.auth.resend({
       type: "signup",
       email: email.trim(),
-      options: { emailRedirectTo: `${window.location.origin}${routeForSection("dashboard")}${captureReferralCode()?`?ref=${encodeURIComponent(captureReferralCode())}`:""}` },
+      options: { emailRedirectTo: verificationRedirectUrl() },
     });
     setLoading(false);
     if (resendError) {
@@ -385,7 +396,7 @@ export default function LumawayWorkspaceApp() {
     const { data, error: signupError } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: `${window.location.origin}${routeForSection("dashboard")}${captureReferralCode()?`?ref=${encodeURIComponent(captureReferralCode())}`:""}` },
+      options: { emailRedirectTo: verificationRedirectUrl() },
     });
     if (signupError) {
       const message = String(signupError.message || "").toLowerCase();
