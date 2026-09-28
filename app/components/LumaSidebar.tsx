@@ -13,10 +13,10 @@ type Props = {
 };
 
 const aiNav = [
-  ["recommendation", "Rekomendasi"],
-  ["performance", "Performa Analisis"],
-  ["product", "Produk Analisis"],
-  ["creator", "Creator Analisis"],
+  ["recommendation", "Recommendations"],
+  ["performance", "Performance Insights"],
+  ["product", "Product Insights"],
+  ["creator", "Creator Insights"],
 ] as const;
 
 const masterNav: Array<[string, IconName, string]> = [
@@ -208,14 +208,14 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
 
               <details className="side-group" open>
                 <summary className={activeSection === "ai-analytics" ? "active" : ""}>
-                  <span><NavIcon name="ai" /><span className="nav-label">AI Analytics</span></span><LumaIcon name="chevron" className="chevron" />
+                  <span><NavIcon name="performance" /><span className="nav-label">Insights & Analysis</span></span><LumaIcon name="chevron" className="chevron" />
                 </summary>
                 <div className="side-subnav">
-                  {aiNav.map(([key, label]) => <button type="button" key={key} onClick={() => openAi(key)}><LumaIcon name="ai" /><span>{label}</span></button>)}
+                  {aiNav.map(([key, label]) => <button type="button" key={key} onClick={() => openAi(key)}><LumaIcon name="performance" /><span>{label}</span></button>)}
                 </div>
               </details>
 
-              <a href={routeForSection("promo-studio")} onClick={(e) => go(e, "promo-studio")}><NavIcon name="sparkles" /><span className="nav-label">AI Promo Studio</span></a>
+              <a href={routeForSection("promo-studio")} onClick={(e) => go(e, "promo-studio")}><NavIcon name="content" /><span className="nav-label">Promo Studio</span></a>
               <a href={routeForSection("kanban")} onClick={(e) => go(e, "kanban")}><NavIcon name="kanban" /><span className="nav-label">Kanban</span></a>
 
               <Group icon="ticket" label="Tiket Bantuan">
