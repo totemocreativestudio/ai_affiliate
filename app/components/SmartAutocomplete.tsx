@@ -34,12 +34,34 @@ function useDebouncedSearch(endpoint:string,workspaceId:string,query:string,enab
 }
 
 export function CreatorAutocomplete({
-  workspaceId,value,selectedId,onTextChange,onSelect,placeholder="Ketik username atau nama creator",disabled=false
-}:{workspaceId:string;value:string;selectedId?:string|number|null;onTextChange:(value:string)=>void;onSelect:(creator:CreatorSearchResult)=>void;placeholder?:string;disabled?:boolean}){
+  workspaceId,value,selectedId,onTextChange,onSelect,onCreate,placeholder="Ketik username atau nama creator",disabled=false
+}:{workspaceId:string;value:string;selectedId?:string|number|null;onTextChange:(value:string)=>void;onSelect:(creator:CreatorSearchResult)=>void;onCreate?:(value:string)=>void;placeholder?:string;disabled?:boolean}){
   const {results,loading,setResults}=useDebouncedSearch("/api/search/creators",workspaceId,value,!disabled&&!selectedId);
+  const typed=value.trim();
+  const normalized=typed.replace(/^@+/,"").trim().toLowerCase();
+  const exactMatch=results.some((c:CreatorSearchResult)=>
+    [c.name,c.username,c.creator_code].some(v=>String(v||"").replace(/^@+/,"").trim().toLowerCase()===normalized)
+  );
+  function createTyped(){
+    if(!typed||disabled||selectedId||!onCreate)return;
+    onCreate(typed);
+    setResults([]);
+  }
   return <div className="smart-autocomplete">
-    <input disabled={disabled} value={value} onChange={e=>onTextChange(e.target.value)} placeholder={placeholder} autoComplete="off"/>
-    {!disabled&&!selectedId&&value.trim()&&<div className="smart-autocomplete-menu" role="listbox">
+    <input
+      disabled={disabled}
+      value={value}
+      onChange={e=>onTextChange(e.target.value)}
+      onKeyDown={e=>{
+        if(e.key==="Enter"&&!selectedId&&typed&&onCreate&&!exactMatch){
+          e.preventDefault();
+          createTyped();
+        }
+      }}
+      placeholder={placeholder}
+      autoComplete="off"
+    />
+    {!disabled&&!selectedId&&typed&&<div className="smart-autocomplete-menu" role="listbox">
       {loading&&<div className="smart-autocomplete-empty">Mencari creator...</div>}
       {!loading&&results.map((c:CreatorSearchResult)=>{
         const name=String(c.name||"").trim();
@@ -50,7 +72,11 @@ export function CreatorAutocomplete({
           {c.platform&&<span>{c.platform}</span>}
         </button>
       })}
-      {!loading&&!results.length&&<div className="smart-autocomplete-empty">Tidak ada creator yang cocok.</div>}
+      {!loading&&onCreate&&!exactMatch&&<button type="button" className="smart-autocomplete-create" onMouseDown={e=>{e.preventDefault();createTyped()}}>
+        <strong>+ Tambahkan “{typed}” sebagai creator baru</strong>
+        <span>Username baru akan dibuat di Master Creator saat data disimpan.</span>
+      </button>}
+      {!loading&&!results.length&&!onCreate&&<div className="smart-autocomplete-empty">Tidak ada creator yang cocok.</div>}
     </div>}
   </div>;
 }
