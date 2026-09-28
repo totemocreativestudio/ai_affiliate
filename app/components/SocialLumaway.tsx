@@ -50,6 +50,11 @@ export default function SocialLumaway({workspaceId,userId}:{workspaceId:string;u
     const me=(i.data||[])[0] as Identity|undefined;if(me)setIdentity(me);
   }
   useEffect(()=>{void load()},[workspaceId,userId,tab]);
+  useEffect(()=>{
+    const refresh=()=>void load();
+    window.addEventListener("lumaway-social-profile-updated",refresh);
+    return()=>window.removeEventListener("lumaway-social-profile-updated",refresh);
+  },[workspaceId,userId,tab]);
 
   const sorted=useMemo(()=>{
     const rows=[...feed];
