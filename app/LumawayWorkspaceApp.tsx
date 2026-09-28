@@ -131,6 +131,28 @@ function activateCurrentRoute(isAdmin: boolean, accessLocked = false) {
   return found;
 }
 
+function LumawayWorkspaceSkeleton() {
+  return <div className="luma-app lw-boot-shell" aria-label="Menyiapkan workspace Lumaway">
+    <aside className="lw-boot-sidebar">
+      <div className="lw-boot-brand"><img src="/luma-mark.png" alt="" /><div><b>LUMAWAY.</b><span>Light Up Your Potential.</span></div></div>
+      <div className="lw-boot-nav">
+        <i className="active"/><i/><i/><i/><i/><i/>
+      </div>
+      <div className="lw-boot-profile"><span/><div><i/><i/></div></div>
+    </aside>
+    <div className="lw-boot-main">
+      <header className="lw-boot-topbar"><div><i/><b/></div><div className="lw-boot-top-actions"><i/><i/><i/></div></header>
+      <main className="lw-boot-content">
+        <div className="lw-boot-title"><span/><strong/></div>
+        <div className="lw-boot-toolbar"><i/><i/><i/><i/></div>
+        <div className="lw-boot-summary"><section><i/><b/><span/><span/></section><section><i/><b/><span/></section></div>
+        <div className="lw-boot-kpis">{Array.from({length:8}).map((_,index)=><i key={index}/>)}</div>
+        <div className="lw-boot-grid"><section><i/><i/><i/><i/><i/></section><section><i/><i/><i/></section></div>
+      </main>
+    </div>
+  </div>;
+}
+
 export default function LumawayWorkspaceApp() {
   const supabase = useMemo(() => createClient(), []);
   const [email, setEmail] = useState("");
@@ -438,7 +460,7 @@ export default function LumawayWorkspaceApp() {
   }
 
   if (loading || (profile && !workspace)) {
-    return <main className="auth-loading-screen lumaway-loading-screen"><BrandLockup /><div className="lumaway-loading-orbit"><i /><i /><i /></div><strong>Menyiapkan workspace Anda</strong><span>Memuat dashboard Lumaway...</span></main>;
+    return <LumawayWorkspaceSkeleton />;
   }
 
   if (!profile || !workspace) {
