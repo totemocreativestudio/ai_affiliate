@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../../lib/supabase-browser";
-import {CreatorAutocomplete,CreatorSearchResult} from "./SmartAutocomplete";
+import {CreatorAutocomplete,CreatorSearchResult,resolveOrCreateCreator} from "./SmartAutocomplete";
 
 type Creator = {
   id: number;
@@ -222,40 +222,16 @@ export default function RatecardMaster({ workspaceId }: { workspaceId: string })
 
   async function ensureCreatorId(): Promise<number | null> {
     if (form.creator_id) return Number(form.creator_id);
-
     const manualName = form.creator_name.trim() || creatorSearch.trim();
     if (!manualName) return null;
-
-    if (!form.platform) {
-      throw new Error("Pilih platform terlebih dahulu untuk creator baru.");
-    }
-
-    const creatorCode = makeCreatorCode(manualName);
-
-    const { data, error: creatorError } = await supabase
-      .from("creators")
-      .insert({
-        workspace_id: workspaceId,
-        creator_code: creatorCode,
-        name: manualName,
-        platform: form.platform,
-        status: "Active",
-      })
-      .select("id,name,username,creator_code,platform")
-      .single();
-
-    if (creatorError) throw new Error(creatorError.message);
-
-    const newCreator = data as Creator;
-    setCreators((prev) => [newCreator, ...prev]);
-    setForm((prev) => ({
-      ...prev,
-      creator_id: String(newCreator.id),
-      creator_name: creatorLabel(newCreator),
-    }));
+    if (!form.platform) throw new Error("Pilih platform terlebih dahulu untuk creator baru.");
+    const resolved=await resolveOrCreateCreator(workspaceId,manualName,form.platform);
+    if(!resolved)return null;
+    const newCreator=resolved as Creator;
+    setCreators(prev=>prev.some(x=>x.id===newCreator.id)?prev:[newCreator,...prev]);
+    setForm(prev=>({...prev,creator_id:String(newCreator.id),creator_name:creatorLabel(newCreator)}));
     setCreatorSearch(creatorLabel(newCreator));
     setManualCreatorConfirmed(false);
-
     return newCreator.id;
   }
 
@@ -443,7 +419,9 @@ export default function RatecardMaster({ workspaceId }: { workspaceId: string })
                   setCreators(prev=>prev.some(x=>x.id===item.id)?prev:[item,...prev]);
                   chooseCreator(item);
                 }}
+                onCreate={(value)=>{setCreatorSearch(value);setManualCreatorConfirmed(true);setForm(prev=>({...prev,creator_id:"",creator_name:value}))}}
               />
+              {manualCreatorConfirmed&&!form.creator_id&&<small className="field-note">Creator baru akan otomatis ditambahkan saat ratecard disimpan.</small>}
             </label>
 
             <label style={labelStyle}>
