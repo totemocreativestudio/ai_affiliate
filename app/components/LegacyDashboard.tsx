@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../../lib/supabase-browser";
 import Creator360Modal from "./Creator360Modal";
+import DashboardActionCenter from "./DashboardActionCenter";
 
 type Props={workspaceId:string};
 type Row=Record<string,any>;
@@ -97,6 +98,7 @@ export default function LegacyDashboard({workspaceId}:Props){
   <div className="filters"><label>Start<input type="date" value={start} onChange={e=>{setStart(e.target.value);setPeriodPreset("custom");setPeriodApplied(false);clearDashboardData()}}/></label><label>End<input type="date" value={end} onChange={e=>{setEnd(e.target.value);setPeriodPreset("custom");setPeriodApplied(false);clearDashboardData()}}/></label><label>Platform<select value={platform} onChange={e=>{setPlatform(e.target.value);setPeriodApplied(false);clearDashboardData()}}><option value="">All</option><option>TikTok</option><option>Shopee</option><option>Instagram</option></select></label><label>Toko<select value={store} onChange={e=>{setStore(e.target.value);setPeriodApplied(false);clearDashboardData()}}><option value="">Semua Toko</option>{storeOptions.map((item:any)=><option key={`${item.platform||""}-${item.store_name}`} value={item.store_name}>{item.store_name}{item.platform?` · ${item.platform}`:""}</option>)}</select></label><button className="primary" onClick={applyCustom} disabled={busy}>{busy?"Menyiapkan...":"Terapkan"}</button><button className="secondary" onClick={resetDashboard}>Reset</button></div>
   {error&&<div className="flash error">{error}</div>}
   {busy&&<div className="lw-dashboard-skeleton" aria-label="Menyiapkan data dashboard"><span className="lw-skeleton"/><span className="lw-skeleton"/><span className="lw-skeleton"/><span className="lw-skeleton"/></div>}
+  <DashboardActionCenter workspaceId={workspaceId} />
   {!periodApplied?<div className="dashboard-period-empty"><strong>Pilih periode untuk menampilkan dashboard.</strong><span>Data tidak ditampilkan saat Start dan End masih kosong (dd/mm/tttt).</span></div>:<>
   {prev&&<div className="lw-workspace-summary">
    <section className="lw-summary-card">
