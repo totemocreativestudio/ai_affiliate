@@ -16,6 +16,11 @@ async function currentFrom(admin:any){
   return String(process.env.LUMA_EMAIL_FROM||data?.setting_value||"Lumaway <marketing@lumaway.online>").trim();
 }
 
+async function currentKeyLast4(admin:any){
+  const {data}=await admin.from("luma_platform_settings").select("setting_value").eq("setting_key","email_resend_key_last4").maybeSingle();
+  return String(data?.setting_value||"").trim().slice(-4);
+}
+
 export async function GET(req:NextRequest){
   try{
     const workspaceId=new URL(req.url).searchParams.get("workspace_id")||"";
@@ -23,10 +28,13 @@ export async function GET(req:NextRequest){
     if(!ctx.platformAdmin)return NextResponse.json({ok:false,error:"Owner access required."},{status:403});
     const configured=await hasServerSecret(ctx.admin,SECRET_NAME);
     const from=await currentFrom(ctx.admin);
+    const keyLast4=configured?await currentKeyLast4(ctx.admin):"";
     return NextResponse.json({
       ok:true,
       configured,
       source:configured?getServerSecretSource(SECRET_NAME):"none",
+      key_last4:keyLast4,
+      masked_key:configured?`re_••••••••••${keyLast4||"••••"}`:"",
       from_address:from,
       smtp_host:SMTP.host,
       smtp_port:SMTP.port,
@@ -86,6 +94,7 @@ export async function POST(req:NextRequest){
     const settings=[
       ["email_provider","resend"],
       ["email_from",from],
+      ["email_resend_key_last4",apiKey.slice(-4)],
       ["email_smtp_host",SMTP.host],
       ["email_smtp_port",String(SMTP.port)],
       ["email_smtp_user",SMTP.user],
@@ -98,6 +107,8 @@ export async function POST(req:NextRequest){
       ok:true,
       configured:true,
       source:"secure-vault",
+      key_last4:apiKey.slice(-4),
+      masked_key:`re_••••••••••${apiKey.slice(-4)}`,
       from_address:from,
       smtp_host:SMTP.host,
       smtp_port:SMTP.port,
