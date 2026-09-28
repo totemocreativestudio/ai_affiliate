@@ -373,19 +373,27 @@ export default function LumawayWorkspaceApp() {
   async function resendVerification() {
     if (!email.trim()) return setError("Masukkan email akun terlebih dahulu.");
     setError(""); setAuthMessage(""); setLoading(true);
-    const { error: resendError } = await supabase.auth.resend({
-      type: "signup",
-      email: email.trim(),
-      options: { emailRedirectTo: verificationRedirectUrl() },
-    });
-    setLoading(false);
-    if (resendError) {
-      const message = String(resendError.message || "").toLowerCase();
-      setError(message.includes("rate") ? "Terlalu banyak permintaan verifikasi. Tunggu sebentar lalu coba lagi." : "Email verifikasi belum dapat dikirim. Coba lagi beberapa saat.");
-      return;
+    try {
+      const response = await fetch("/api/auth/email-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "resend", email: email.trim() }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result?.ok) {
+        const message = String(result?.error || "");
+        setError(/terlalu banyak/i.test(message)
+          ? message
+          : "Email verifikasi belum dapat dikirim. Coba lagi beberapa saat.");
+        return;
+      }
+      setNeedsEmailVerification(true);
+      setAuthMessage("Jika akun tersedia, email verifikasi Lumaway telah dikirim dari marketing@lumaway.online. Cek Inbox, Spam, Promotions, atau Junk.");
+    } catch {
+      setError("Email verifikasi belum dapat dikirim. Coba lagi beberapa saat.");
+    } finally {
+      setLoading(false);
     }
-    setNeedsEmailVerification(true);
-    setAuthMessage("Email verifikasi dikirim ulang. Cek Inbox, Spam, Promotions, atau Junk lalu buka link verifikasi sebelum login.");
   }
 
   async function signup() {
@@ -393,25 +401,26 @@ export default function LumawayWorkspaceApp() {
     if (password.length < 8) return setError("Gunakan password minimal 8 karakter.");
     if (!termsAccepted) return setError("Konfirmasi persetujuan akses workspace terlebih dahulu.");
     setError(""); setAuthMessage(""); setNeedsEmailVerification(false); setLoading(true);
-    const { data, error: signupError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: verificationRedirectUrl() },
-    });
-    if (signupError) {
-      const message = String(signupError.message || "").toLowerCase();
-      setError(message.includes("already") || message.includes("registered")
-        ? "Email ini sudah terdaftar. Silakan Sign in atau kirim ulang email verifikasi."
-        : "Akun belum dapat dibuat. Silakan coba lagi.");
-      setNeedsEmailVerification(message.includes("already") || message.includes("registered"));
+    try {
+      const response = await fetch("/api/auth/email-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "signup", email: email.trim(), password }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result?.ok) {
+        setError(String(result?.error || "Akun belum dapat dibuat. Silakan coba lagi."));
+        return;
+      }
+      setNeedsEmailVerification(true);
+      setAuthMessage("Akun berhasil dibuat. Email verifikasi Lumaway dikirim dari marketing@lumaway.online. Cek Inbox, Spam, Promotions, atau Junk lalu konfirmasi sebelum login.");
+      setAuthMode("signin"); setPassword(""); setTermsAccepted(false);
+      window.history.replaceState(null, "", authUrlWithReferral(`${APP_BASE}/login`));
+    } catch {
+      setError("Akun belum dapat dibuat. Silakan coba lagi.");
+    } finally {
       setLoading(false);
-      return;
     }
-    if (data.session) await supabase.auth.signOut();
-    setNeedsEmailVerification(true);
-    setAuthMessage("Akun berhasil dibuat. Link verifikasi sudah diminta. Cek Inbox, Spam, Promotions, atau Junk, lalu verifikasi email sebelum login.");
-    setAuthMode("signin"); setPassword(""); setTermsAccepted(false); setLoading(false);
-    window.history.replaceState(null, "", authUrlWithReferral(`${APP_BASE}/login`));
   }
 
   async function logout() {
