@@ -45,7 +45,6 @@ export async function POST(req:NextRequest){
     const platform=String(body.platform||"").trim();
     if(!workspaceId)return NextResponse.json({ok:false,error:"workspace_id required"},{status:400});
     if(!raw)return NextResponse.json({ok:false,error:"Username / nama creator wajib diisi."},{status:400});
-    if(!platform)return NextResponse.json({ok:false,error:"Pilih platform terlebih dahulu untuk creator baru."},{status:400});
     if(raw.length>160)return NextResponse.json({ok:false,error:"Nama creator terlalu panjang."},{status:400});
 
     const {admin}=await getServerContext(workspaceId);
@@ -60,7 +59,7 @@ export async function POST(req:NextRequest){
 
     const exact=(matches||[]).find((row:any)=>
       [row.name,row.username,row.creator_code].some((v:any)=>normalizeCreator(String(v||""))===normalized)
-      && (!row.platform||String(row.platform).toLowerCase()===platform.toLowerCase())
+      && (!platform||!row.platform||String(row.platform).toLowerCase()===platform.toLowerCase())
     );
     if(exact){
       const {total_count,...creator}=exact as any;
@@ -73,7 +72,7 @@ export async function POST(req:NextRequest){
       creator_code:makeCreatorCode(cleanUsername),
       name:cleanUsername,
       username:cleanUsername,
-      platform,
+      platform:platform||null,
       status:"Active"
     }).select("id,creator_code,name,username,platform,affiliate_id,phone,payment_type,ratecard,status").single();
     if(error)throw error;

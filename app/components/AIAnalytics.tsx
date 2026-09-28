@@ -163,11 +163,11 @@ export default function AIAnalytics({ workspaceId }: { workspaceId: string }) {
     window.dispatchEvent(new CustomEvent("lumaway-background-task",{detail:{id:taskId,title:"Smart Report",detail:"Menyiapkan struktur laporan",status:"running",progress:12}}));
     setGeneratingReport(targetRun);
     try {
-      window.dispatchEvent(new CustomEvent("lumaway-background-task",{detail:{id:taskId,title:"Smart Report",detail:"Menyusun insight dan visual laporan",status:"running",progress:52}}));
+      window.dispatchEvent(new CustomEvent("lumaway-background-task",{detail:{id:taskId,title:"Smart Report",detail:"Menggabungkan insight dengan grafik dan tabel database",status:"running",progress:52}}));
       const response = await fetch("/api/ai/report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspace_id: workspaceId, run_id: targetRun }) });
       const data = await response.json();
       if (!response.ok || !data.ok) throw new Error();
-      setStatus("Dokumen berhasil dibuat dan disimpan ke history.");
+      setStatus(`Dokumen berhasil dibuat${data.generation_ms? ` dalam ${(Number(data.generation_ms)/1000).toFixed(1)} detik`:""} dan disimpan ke history.`);
       window.dispatchEvent(new CustomEvent("lumaway-background-task",{detail:{id:taskId,title:"Smart Report",detail:"Dokumen siap dibuka",status:"success",progress:100}}));
       await loadHistory();
     } catch {
@@ -241,7 +241,7 @@ export default function AIAnalytics({ workspaceId }: { workspaceId: string }) {
     <div className="ai-type-grid">{TYPES.map(([key, label, description]) => <button key={key} className={`ai-type-card ${type === key ? "active" : ""}`} onClick={() => { setType(key); setResult(null); setRunId(""); }}><strong>{label}</strong><span>{description}</span></button>)}</div>
     <div className="card ai-control-card"><div className="filters"><label>Start <span className="field-note">Opsional</span><input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></label><label>End <span className="field-note">Opsional</span><input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></label><button className="primary" onClick={run} disabled={runningCount>=3}>{runningCount>=3 ? "3/3 proses berjalan" : runningCount>0 ? `Analisis · ${runningCount}/3 berjalan` : "Mulai Analisis"}</button><button className="secondary" onClick={() => { setStart(""); setEnd(""); }}>Reset Date</button></div><div className="ai-status">{status}</div></div>
 
-    {(runningCount>0||generatingReport)&&<div className="ai-generation-loading"><LumaLoadingMotion compact label={generatingReport?"Menyusun dokumen":`Lumaway sedang menganalisis · ${runningCount}/3 proses`} detail={generatingReport?"Menyiapkan struktur, insight, dan dokumen laporan.":"Data dihitung di server agar lebih cepat dan stabil. Anda dapat menjalankan hingga 3 analisis bersamaan."}/></div>}
+    {(runningCount>0||generatingReport)&&<div className="ai-generation-loading"><LumaLoadingMotion compact label={generatingReport?"Menyusun dokumen":`Lumaway sedang menganalisis · ${runningCount}/3 proses`} detail={generatingReport?"Grafik dan tabel dirakit langsung dari data yang sudah dianalisis, tanpa menunggu generasi AI kedua.":"Data periode dihitung penuh di server lalu konteks diringkas sebelum dikirim ke model agar respons lebih cepat."}/></div>}
 
     {result && <div className="ai-result-grid">
       <div className="card ai-summary-card" style={{gridColumn:"1 / -1"}}>

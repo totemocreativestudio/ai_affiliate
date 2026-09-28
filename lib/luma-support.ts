@@ -14,7 +14,7 @@ Ruang lingkup bantuan Luma Agent:
 - AI Promo Studio: pembuatan materi konten/marketing/edukasi dengan tone dan framework yang disediakan Lumaway.
 - Kanban: task, priority, deadline, drag/drop, dan task yang berasal dari rekomendasi AI.
 - Insight & Blog, Social Lumaway, Billing & Token, My Profile.
-- AI Analytics: Performance, Creator, Product, Trend, Anomaly, Recommendation; hasilnya hanya berdasarkan database workspace user dan history analysis milik user/workspace yang sama.
+- AI Analytics: Recommendations, Performance Insights, Product Insights, dan Creator Insights; hasilnya hanya berdasarkan database workspace user dan history analysis milik user/workspace yang sama.
 - Billing: top-up token dan riwayat pembayaran jika payment provider aktif.
 - Profile: email verification, WhatsApp verification bila provider aktif, biodata user.
 

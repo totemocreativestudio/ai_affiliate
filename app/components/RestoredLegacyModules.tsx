@@ -100,7 +100,8 @@ function Agreements({workspaceId}:{workspaceId:string}){
     <div className="eyebrow">CREATOR MANAGEMENT</div><h1>Agreement</h1>
     <div className="card">
       <div className="grid">
-        <label>Creator Search<CreatorAutocomplete workspaceId={workspaceId} value={creatorSearch} selectedId={form.creator_id} onTextChange={value=>{setCreatorSearch(value);setForm(p=>({...p,creator_id:"",creator_name:value}))}} onSelect={chooseCreator} onCreate={value=>{setCreatorSearch(value);setForm(p=>({...p,creator_id:"",creator_name:value}))}}/><small className="field-note">Creator yang belum terdaftar akan otomatis dibuat di Master Creator saat Agreement disimpan.</small></label>
+        <label>Creator Search<CreatorAutocomplete workspaceId={workspaceId} value={creatorSearch} selectedId={form.creator_id}
+                createPlatform={form.platform} onTextChange={value=>{setCreatorSearch(value);setForm(p=>({...p,creator_id:"",creator_name:value}))}} onSelect={chooseCreator} onCreate={value=>{setCreatorSearch(value);setForm(p=>({...p,creator_id:"",creator_name:value}))}}/><small className="field-note">Creator yang belum terdaftar akan otomatis dibuat di Master Creator saat Agreement disimpan.</small></label>
         {f("platform","Platform")}
         {f("brand","Brand")}
         {f("category","Category")}

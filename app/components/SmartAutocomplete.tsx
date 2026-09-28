@@ -11,13 +11,13 @@ export type ProductSearchResult={
   selling_price?:number|null; cost_price?:number|null; status?:string|null;
 };
 
-export async function resolveOrCreateCreator(workspaceId:string,value:string,platform:string){
+export async function resolveOrCreateCreator(workspaceId:string,value:string,platform?:string){
   const typed=String(value||"").trim();
   if(!typed)return null;
   const r=await fetch("/api/master-data/creators",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({workspace_id:workspaceId,creator:typed,platform})
+    body:JSON.stringify({workspace_id:workspaceId,creator:typed,platform:platform||null})
   });
   const d=await r.json().catch(()=>({}));
   if(!r.ok||!d.ok)throw new Error(d.error||"Gagal membuat creator baru.");
@@ -47,51 +47,68 @@ function useDebouncedSearch(endpoint:string,workspaceId:string,query:string,enab
 }
 
 export function CreatorAutocomplete({
-  workspaceId,value,selectedId,onTextChange,onSelect,onCreate,placeholder="Ketik username atau nama creator",disabled=false
-}:{workspaceId:string;value:string;selectedId?:string|number|null;onTextChange:(value:string)=>void;onSelect:(creator:CreatorSearchResult)=>void;onCreate?:(value:string)=>void;placeholder?:string;disabled?:boolean}){
+  workspaceId,value,selectedId,onTextChange,onSelect,onCreate,createPlatform,placeholder="Ketik username atau nama creator",disabled=false
+}:{workspaceId:string;value:string;selectedId?:string|number|null;onTextChange:(value:string)=>void;onSelect:(creator:CreatorSearchResult)=>void;onCreate?:(value:string)=>void;createPlatform?:string|null;placeholder?:string;disabled?:boolean}){
   const {results,loading,setResults}=useDebouncedSearch("/api/search/creators",workspaceId,value,!disabled&&!selectedId);
+  const [creating,setCreating]=useState(false);
+  const [createMessage,setCreateMessage]=useState("");
   const typed=value.trim();
   const normalized=typed.replace(/^@+/,"").trim().toLowerCase();
-  const createLabel=typed.startsWith("@")?typed:`@${typed}`;
-  const exactMatch=results.some((c:CreatorSearchResult)=>
-    [c.name,c.username,c.creator_code].some(v=>String(v||"").replace(/^@+/,"").trim().toLowerCase()===normalized)
-  );
-  function createTyped(){
-    if(!typed||disabled||selectedId||!onCreate)return;
-    onCreate(typed);
-    setResults([]);
+  const exactMatch=results.find((creator:CreatorSearchResult)=>
+    [creator.name,creator.username,creator.creator_code].some(v=>String(v||"").replace(/^@+/,"").trim().toLowerCase()===normalized)
+  ) as CreatorSearchResult|undefined;
+
+  async function commitTyped(){
+    if(!typed||disabled||selectedId||creating)return;
+    setCreateMessage("");
+    if(exactMatch){
+      onSelect(exactMatch);
+      setResults([]);
+      return;
+    }
+    setCreating(true);
+    try{
+      const creator=await resolveOrCreateCreator(workspaceId,typed,createPlatform||undefined);
+      if(!creator)throw new Error("Creator belum dapat disimpan.");
+      onSelect(creator);
+      setResults([]);
+      setCreateMessage("Creator baru tersimpan di Master Creator.");
+    }catch(error:any){
+      setCreateMessage(error?.message||"Creator baru belum dapat disimpan.");
+      onCreate?.(typed);
+    }finally{
+      setCreating(false);
+    }
   }
+
   return <div className="smart-autocomplete">
     <input
-      disabled={disabled}
+      disabled={disabled||creating}
       value={value}
-      onChange={e=>onTextChange(e.target.value)}
+      onChange={e=>{setCreateMessage("");onTextChange(e.target.value)}}
       onKeyDown={e=>{
-        if(e.key==="Enter"&&!selectedId&&typed&&onCreate&&!exactMatch){
+        if(e.key==="Enter"&&!e.shiftKey&&!selectedId&&typed){
           e.preventDefault();
-          createTyped();
+          void commitTyped();
         }
       }}
       placeholder={placeholder}
       autoComplete="off"
     />
-    {!disabled&&!selectedId&&typed&&<div className="smart-autocomplete-menu" role="listbox">
+    {!disabled&&!selectedId&&typed&&(loading||results.length>0)&&<div className="smart-autocomplete-menu" role="listbox">
       {loading&&<div className="smart-autocomplete-empty">Mencari creator...</div>}
-      {!loading&&results.map((c:CreatorSearchResult)=>{
-        const name=String(c.name||"").trim();
-        const username=String(c.username||"").trim();
-        const label=name&&username&&name.toLowerCase()!==username.toLowerCase()?`${name} · @${username}`:username?`@${username}`:name||"-";
-        return <button type="button" key={c.id} onMouseDown={e=>{e.preventDefault();onSelect(c);setResults([])}}>
+      {!loading&&results.map((creator:CreatorSearchResult)=>{
+        const name=String(creator.name||"").trim();
+        const username=String(creator.username||"").trim();
+        const label=name&&username&&name.toLowerCase()!==username.toLowerCase()?name+" · @"+username:username?"@"+username:name||"-";
+        return <button type="button" key={creator.id} onMouseDown={e=>{e.preventDefault();onSelect(creator);setResults([]);setCreateMessage("")}}>
           <strong>{label}</strong>
-          {c.platform&&<span>{c.platform}</span>}
+          {creator.platform&&<span>{creator.platform}</span>}
         </button>
       })}
-      {!loading&&onCreate&&!exactMatch&&<button type="button" className="smart-autocomplete-create" onMouseDown={e=>{e.preventDefault();createTyped()}}>
-        <strong>+ Gunakan “{createLabel}” sebagai creator baru</strong>
-        <span>Tidak wajib sudah terdaftar. Creator baru otomatis dibuat di Master Creator saat data disimpan.</span>
-      </button>}
-      {!loading&&!results.length&&!onCreate&&<div className="smart-autocomplete-empty">Creator belum terdaftar. Username tetap bisa diketik manual.</div>}
     </div>}
+    {creating&&<small className="field-note">Menyimpan creator baru...</small>}
+    {!creating&&createMessage&&<small className="field-note">{createMessage}</small>}
   </div>;
 }
 

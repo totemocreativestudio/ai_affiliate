@@ -98,13 +98,13 @@ export async function POST(req:NextRequest){
     }).filter(Boolean).join("\n");
     const apiKey=await getServerSecret(ctx.admin,"luma_openai_api_key");
     if(!apiKey)return NextResponse.json({ok:false,error:"Luma Agent belum aktif karena OpenAI integration belum dikonfigurasi owner.",ticket_id:ticket.id},{status:503});
-    const model=process.env.LUMA_SUPPORT_MODEL||process.env.OPENAI_MODEL||"gpt-5.6-sol";
+    const model=process.env.LUMA_SUPPORT_MODEL||"gpt-5.6-luna";
     const instructions=`Anda adalah Luma, AI Help Desk resmi Lumaway. Nama user aktif: ${userName}. Workspace user: ${String(workspace?.name||"Lumaway").slice(0,120)}.\n\nBASE KNOWLEDGE:\n${LUMA_SUPPORT_KNOWLEDGE}\n\nOWNER PRODUCT KNOWLEDGE (Obsidian-compatible vault):\n${dynamicKnowledge||"Belum ada knowledge tambahan."}\n\nBATASAN WAJIB: Jawab HANYA tentang produk, fitur, tutorial, error, billing, data, dan penggunaan Lumaway yang didukung oleh knowledge di atas atau halaman aktif user. Jangan menjawab topik umum di luar Lumaway. Jika pertanyaan di luar cakupan, jelaskan singkat bahwa Luma hanya menangani Lumaway. Jangan mengarang fitur, SOP, harga, credential, data admin/owner, user lain, atau workspace lain. Jika knowledge tidak cukup, katakan informasi belum tersedia lalu arahkan eskalasi. Bila belum solve, tandai escalation_recommended=true.`;
     const currentContext=JSON.stringify({current_page:String(body.page||""),conversation:ordered,current_message:message||"Analisis screenshot kendala yang dikirim user."});
     const input:any[]=imageDataUrl
       ? [{role:"user",content:[{type:"input_text",text:currentContext},{type:"input_image",image_url:imageDataUrl}]}]
       : [{role:"user",content:[{type:"input_text",text:currentContext}]}];
-    const routed=await openAIResponsesWithFailover(ctx.admin,apiKey,{instructions,input,text:{format:{type:"json_schema",name:"luma_support_reply",schema:LUMA_SUPPORT_SCHEMA,strict:true}},store:false},model);
+    const routed=await openAIResponsesWithFailover(ctx.admin,apiKey,{instructions,input,text:{format:{type:"json_schema",name:"luma_support_reply",schema:LUMA_SUPPORT_SCHEMA,strict:true}},max_output_tokens:1200,store:false},model,30000);
     const raw=routed.raw;const actualModel=routed.model;
     const output=extractOpenAIText(raw);if(!output)throw new Error("Luma Agent tidak menerima respons AI.");
     const result=JSON.parse(output);

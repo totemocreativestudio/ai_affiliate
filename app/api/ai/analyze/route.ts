@@ -74,16 +74,22 @@ async function buildDatabaseContext(admin:any,workspaceId:string,start:string,en
     p_focus:analysisType
   });
   if(error)throw error;
-  return data||{
+  const source=data||{
     analysis_focus:analysisType,
     period:{start:start||"ALL DATA",end:end||"ALL DATA"},
-    kpi:{},
-    platforms:[],
-    top_creators:[],
-    top_products:[],
-    monthly_trend:[],
-    stores:[],
+    kpi:{},platforms:[],top_creators:[],top_products:[],monthly_trend:[],stores:[],
     data_quality:{affiliate_rows:0,product_rows:0,imports_in_period:0,sampling:false,complete_period_aggregation:true}
+  };
+  return {
+    analysis_focus:source.analysis_focus,
+    period:source.period,
+    kpi:source.kpi||{},
+    platforms:(source.platforms||[]).slice(0,8),
+    top_creators:(source.top_creators||[]).slice(0,20),
+    top_products:(source.top_products||[]).slice(0,20),
+    monthly_trend:(source.monthly_trend||[]).slice(-18),
+    stores:(source.stores||[]).slice(0,12),
+    data_quality:{...(source.data_quality||{}),sampling:false,complete_period_aggregation:true,context_trimmed_for_ai:true}
   };
 }
 
@@ -104,7 +110,7 @@ export async function POST(req:NextRequest){
     if(start&&end&&start>end)return NextResponse.json({ok:false,error:"Start Date tidak boleh melewati End Date."},{status:400});
 
     ctx=await getServerContext(workspaceId);
-    const requestedModel=process.env.OPENAI_ANALYTICS_MODEL||process.env.OPENAI_MODEL||process.env.AI_MODEL||"gpt-5.6-sol";
+    const requestedModel=process.env.OPENAI_ANALYTICS_MODEL||"gpt-5.6-luna";
 
     await ctx.admin.from("ai_analysis_runs").insert({
       workspace_id:workspaceId,run_id:runId,analysis_type:analysisType,start_date:start||null,end_date:end||null,
@@ -121,7 +127,7 @@ export async function POST(req:NextRequest){
     let rq=ctx.admin.from("ai_analysis_runs")
       .select("run_id,analysis_type,start_date,end_date,created_at")
       .eq("workspace_id",workspaceId).eq("created_by",ctx.user.id).eq("status","Success")
-      .order("created_at",{ascending:false}).limit(40);
+      .order("created_at",{ascending:false}).limit(12);
     if(start)rq=rq.eq("start_date",start);else rq=rq.is("start_date",null);
     if(end)rq=rq.eq("end_date",end);else rq=rq.is("end_date",null);
     const {data:previousRuns}=await rq;
@@ -139,9 +145,9 @@ export async function POST(req:NextRequest){
       instructions,
       input:JSON.stringify({analysis_type:analysisType,database_context:context,related_analysis:relatedAnalysis}),
       text:{format:{type:"json_schema",name:"luma_ai_analysis",schema:AI_SCHEMA,strict:true}},
-      max_output_tokens:3000,
+      max_output_tokens:2200,
       store:false
-    },requestedModel,45000);
+    },requestedModel,30000);
 
     const raw=routed.raw;
     const outputText=extractOutputText(raw);

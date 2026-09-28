@@ -569,6 +569,7 @@ async function saveListing() {
               workspaceId={workspaceId}
               value={creatorSearch}
               selectedId={form.creator_id}
+                createPlatform={form.platform}
               onTextChange={(value)=>{setCreatorSearch(value);setManualCreatorConfirmed(false);setForm(prev=>({...prev,creator_id:"",creator_name:value}))}}
               placeholder="Ketik username atau nama creator"
               onSelect={(creator:CreatorSearchResult)=>{
