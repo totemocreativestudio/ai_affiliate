@@ -29,6 +29,7 @@ const masterNav: Array<[string, IconName, string]> = [
 
 const ownerNav: Array<[string, IconName, string]> = [
   ["overview", "dashboard", "Command Center"],
+  ["targets", "finance", "Target & Forecast"],
   ["monitoring", "data", "Monitoring 360"],
   ["support", "support", "Support Desk"],
   ["finance", "finance", "Payments & Subscription"],
@@ -82,6 +83,11 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
   useEffect(() => {
     const sync = () => {
       setActiveSection(isOwner ? "administration" : sectionFromPath(window.location.pathname) || "dashboard");
+      if(isOwner){
+        const parts=window.location.pathname.split("/").filter(Boolean);
+        const candidate=parts[0]==="administration"?String(parts[1]||"overview"):"overview";
+        setOwnerTab(ownerNav.some(([key])=>key===candidate)||candidate==="integrations"||candidate==="financial"?candidate:"overview");
+      }
       if (window.innerWidth <= 1024) setMobileOpen(false);
     };
     const openMobile = () => setMobileOpen(true);
@@ -122,10 +128,11 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
   }
 
   function openOwner(tab: string, section?: string) {
-    const actualTab = tab === "referral" ? "finance" : tab;
     setOwnerTab(tab);
-    navigateToSection("administration");
-    window.setTimeout(() => window.dispatchEvent(new CustomEvent("luma-owner-nav", { detail: { tab: actualTab, section } })), 50);
+    const path=`/administration/${tab}`;
+    window.history.pushState(null,"",path);
+    window.dispatchEvent(new CustomEvent("lumaway-routechange",{detail:{section:"administration",path}}));
+    window.setTimeout(() => window.dispatchEvent(new CustomEvent("luma-owner-nav", { detail: { tab, section } })), 20);
     setMobileOpen(false);
   }
 
@@ -241,7 +248,7 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
 
         <div className="sidebar-bottom">
           {!isOwner && <PWAInstallButton />}
-          <a href={routeForSection(isOwner ? "administration" : "profile")} className="user-chip sidebar-profile-link" onClick={(event) => go(event, isOwner ? "administration" : "profile")}>
+          <a href={isOwner?"/administration/overview":routeForSection("profile")} className="user-chip sidebar-profile-link" onClick={(event)=>{if(isOwner){event.preventDefault();openOwner("overview")}else go(event,"profile")}}>
             <div className="avatar">{(profile.full_name || profile.email || "U").slice(0, 1).toUpperCase()}</div>
             <div className="sidebar-user-copy"><strong>{profile.full_name || profile.email}</strong><small>{isOwner ? "Owner · Lumaway" : `My Profile · ${workspace.name}`}</small></div>
           </a>

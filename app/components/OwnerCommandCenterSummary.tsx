@@ -9,7 +9,7 @@ const months=["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov",
 
 function newPlan(year:number,month:number){return {id:null as number|null,target_year:year,target_month:month,target_revenue:"",forecast_revenue:"",notes:""}}
 
-export default function OwnerCommandCenterSummary({workspaceId}:{workspaceId:string}){
+export default function OwnerCommandCenterSummary({workspaceId,mode="summary"}:{workspaceId:string;mode?:"summary"|"targets"}){
  const supabase=useMemo(()=>createClient(),[]);
  const today=new Date();
  const [summary,setSummary]=useState<Row>({});
@@ -95,10 +95,13 @@ export default function OwnerCommandCenterSummary({workspaceId}:{workspaceId:str
  }
 
  return <div className="owner-command-summary">
-  <div className="section-head"><div><h2>Command Center</h2><p className="muted">Ringkasan kondisi bisnis dan operasional Lumaway, target bulanan, forecast, serta pencapaian revenue terverifikasi.</p></div><button className="secondary" disabled={busy} onClick={()=>void load()}>{busy?"Refreshing...":"Refresh Summary"}</button></div>
+  {mode==="summary"&&<>
+   <div className="section-head"><div><h2>Executive Summary</h2><p className="muted">Ringkasan kondisi bisnis dan operasional utama. Detail target, billing, provider, dan sistem tersedia di halaman sidebar masing-masing.</p></div><button className="secondary" disabled={busy} onClick={()=>void load()}>{busy?"Refreshing...":"Refresh Summary"}</button></div>
+   <div className="owner-kpi-grid"><Metric label="Users" value={fmt(summary.users)} sub={fmt(summary.active_users)+" active"}/><Metric label="Workspaces" value={fmt(summary.workspaces)} sub="customer databases"/><Metric label="Creators" value={fmt(summary.creators)} sub={fmt(summary.stores)+" stores"}/><Metric label="GMV Monitored" value={money(summary.gmv)} sub={fmt(summary.orders)+" customer orders"}/><Metric label="API Tokens" value={fmt(summary.api_total_tokens)} sub={fmt(summary.api_requests)+" calls"}/><Metric label="Open Issues" value={fmt(summary.open_issues)} sub="production"/></div>
+  </>}
 
-  <div className="owner-kpi-grid"><Metric label="Users" value={fmt(summary.users)} sub={fmt(summary.active_users)+" active"}/><Metric label="Workspaces" value={fmt(summary.workspaces)} sub="customer databases"/><Metric label="Creators" value={fmt(summary.creators)} sub={fmt(summary.stores)+" stores"}/><Metric label="GMV Monitored" value={money(summary.gmv)} sub={fmt(summary.orders)+" customer orders"}/><Metric label="API Tokens" value={fmt(summary.api_total_tokens)} sub={fmt(summary.api_requests)+" calls"}/><Metric label="Open Issues" value={fmt(summary.open_issues)} sub="production"/></div>
-
+  {mode==="targets"&&<>
+   <div className="section-head"><div><h2>Monthly Target & Forecast</h2><p className="muted">Perencanaan revenue bulanan dan pencapaian actual verified revenue.</p></div><button className="secondary" disabled={busy} onClick={()=>void load()}>{busy?"Refreshing...":"Refresh Data"}</button></div>
   <section className="owner-panel target-control-panel">
    <div className="owner-panel-head"><div><h3>Monthly Target & Forecast</h3><p>Target bisnis Lumaway per bulan. Actual hanya menghitung pembayaran subscription + top-up token berstatus <b>paid</b>.</p></div><label className="target-year-select">Year<select value={year} onChange={event=>{const next=Number(event.target.value);setYear(next);setPlan(newPlan(next,1))}}>{Array.from({length:5},(_,index)=>today.getFullYear()-1+index).map(item=><option key={item} value={item}>{item}</option>)}</select></label></div>
 
@@ -137,12 +140,13 @@ export default function OwnerCommandCenterSummary({workspaceId}:{workspaceId:str
 
    <div className="owner-table-wrap target-plan-table"><table><thead><tr><th>Period</th><th>Target</th><th>Forecast</th><th>Actual</th><th>Achievement</th><th>Notes</th><th></th></tr></thead><tbody>{currentTargets.length?currentTargets.map(row=>{const month=Number(row.target_month),target=Number(row.target_revenue||0),actual=Number(realized[month]||0),pct=target>0?actual/target*100:0;return <tr key={row.id}><td>{months[month-1]} {row.target_year}</td><td>{money(target)}</td><td>{money(row.forecast_revenue)}</td><td>{money(actual)}</td><td>{target>0?`${pct.toFixed(1)}%`:"—"}</td><td>{row.notes||"-"}</td><td><div className="button-row"><button onClick={()=>editPlan(row)}>Edit</button><button onClick={()=>void deletePlan(row)}>Delete</button></div></td></tr>}):<tr><td colSpan={7}><div className="empty-state"><strong>Belum ada target untuk {year}.</strong></div></td></tr>}</tbody></table></div>
   </section>
+  </>}
 
-  <div className="owner-command-grid">
+  {mode==="summary"&&<div className="owner-command-grid">
    <section className="owner-panel"><div className="owner-panel-head"><div><h3>Platform Status</h3><p>Status global yang dilihat seluruh user.</p></div><span className={`integration-badge ${system.mode==="normal"?"connected":"disconnected"}`}>{String(system.mode||"normal").toUpperCase()}</span></div><strong>{system.title||"Lumaway berjalan normal"}</strong><p className="muted">{system.message||"Semua layanan utama tersedia."}</p><button className="secondary" onClick={()=>open("system","owner-system-control")}>Buka System & Issues</button></section>
    <section className="owner-panel"><div className="owner-panel-head"><div><h3>Needs Attention</h3><p>Provider, renewal, saldo, dan issue yang perlu ditinjau.</p></div><span className="priority-badge p-high">{providerAlerts.length+issues.length}</span></div>{providerAlerts.slice(0,4).map(row=><div className="owner-attention-row" key={row.id}><b>{row.display_name}</b><span>{row.status} · {row.renewal_at?"renew "+new Date(row.renewal_at).toLocaleDateString("id-ID"):"no renewal date"}</span></div>)}{issues.slice(0,4).map(row=><div className="owner-attention-row" key={"i-"+row.id}><b>{row.title}</b><span>{row.severity} · system issue</span></div>)}{!providerAlerts.length&&!issues.length&&<div className="empty-state"><strong>Tidak ada alert kritis.</strong></div>}<div className="button-row"><button className="secondary" onClick={()=>open("providers")}>Provider Accounts</button><button className="secondary" onClick={()=>open("system")}>Issues</button></div></section>
    <section className="owner-panel"><h3>Quick Access</h3><div className="owner-quick-grid"><button onClick={()=>open("monitoring")}>Monitoring 360<span>User, creator, store, token</span></button><button onClick={()=>open("finance")}>Payments & Subscription<span>Pricing, payment, promo</span></button><button onClick={()=>open("ai")}>AI & API Usage<span>Model, token, cost, provider</span></button><button onClick={()=>open("financial")}>Financial Reports<span>Lumaway revenue, API, cashflow, P&L</span></button><button onClick={()=>open("hpp")}>Lumaway Pricing Guardrail<span>Subscription unit economics</span></button><button onClick={()=>open("knowledge")}>Knowledge Vault<span>Product knowledge & tutorial</span></button></div></section>
-  </div>
+  </div>}
  </div>;
 }
 
