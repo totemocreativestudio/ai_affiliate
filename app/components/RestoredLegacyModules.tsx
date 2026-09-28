@@ -9,7 +9,7 @@ import KanbanBoard from "./KanbanBoard";
 import InternalExcelGrid from "./InternalExcelGrid";
 import UserProfile from "./UserProfile";
 import AdminDashboard from "./AdminDashboard";
-import {CreatorAutocomplete,ProductAutocomplete,CreatorSearchResult,ProductSearchResult} from "./SmartAutocomplete";
+import {CreatorAutocomplete,ProductAutocomplete,CreatorSearchResult,ProductSearchResult,resolveOrCreateCreator} from "./SmartAutocomplete";
 
 type Row=Record<string,any>;
 const fmt=(v:any)=>new Intl.NumberFormat("id-ID").format(Number(v||0));
@@ -66,11 +66,26 @@ function Agreements({workspaceId}:{workspaceId:string}){
     setForm(p=>({...p,product_master_id:String(x.id),product_name:x.product_name||x.sku,product_hpp:Number(x.cost_price||0)}));
   }
   async function save(){
-    if(!form.creator_id)return setMsg("Pilih creator dari hasil pencarian.");
+    let creatorId=form.creator_id?Number(form.creator_id):null;
+    const manualCreator=String(form.creator_name||creatorSearch||"").trim();
+    if(!creatorId&&manualCreator){
+      try{
+        const resolved=await resolveOrCreateCreator(workspaceId,manualCreator,String(form.platform||"TikTok"));
+        if(resolved){
+          creatorId=resolved.id;
+          const label=resolved.name||resolved.username||resolved.creator_code||manualCreator;
+          setForm(p=>({...p,creator_id:String(resolved.id),creator_name:label,platform:resolved.platform||p.platform}));
+          setCreatorSearch(label);
+        }
+      }catch(err){
+        return setMsg(err instanceof Error?err.message:"Creator baru belum dapat dibuat.");
+      }
+    }
+    if(!creatorId)return setMsg("Ketik username/nama creator atau pilih creator yang sudah ada.");
     if(!String(form.signed_by_name||"").trim())return setMsg("Nama tanda tangan wajib diisi.");
     const payload={
       ...form,workspace_id:workspaceId,agreement_id:`AGR-${Date.now()}`,
-      creator_id:Number(form.creator_id),product_master_id:form.product_master_id?Number(form.product_master_id):null,
+      creator_id:creatorId,creator_name:String(form.creator_name||manualCreator).trim(),product_master_id:form.product_master_id?Number(form.product_master_id):null,
       product_hpp:Number(form.product_hpp||0),ratecard:Number(form.ratecard||0),support_value:Number(form.support_value||0),
       e_stamp_id:sealId(),signed_by_name:String(form.signed_by_name).trim(),signed_at:new Date().toISOString(),
       updated_at:new Date().toISOString()
@@ -85,7 +100,7 @@ function Agreements({workspaceId}:{workspaceId:string}){
     <div className="eyebrow">CREATOR MANAGEMENT</div><h1>Agreement</h1>
     <div className="card">
       <div className="grid">
-        <label>Creator Search<CreatorAutocomplete workspaceId={workspaceId} value={creatorSearch} selectedId={form.creator_id} onTextChange={value=>{setCreatorSearch(value);setForm(p=>({...p,creator_id:"",creator_name:value}))}} onSelect={chooseCreator}/></label>
+        <label>Creator Search<CreatorAutocomplete workspaceId={workspaceId} value={creatorSearch} selectedId={form.creator_id} onTextChange={value=>{setCreatorSearch(value);setForm(p=>({...p,creator_id:"",creator_name:value}))}} onSelect={chooseCreator} onCreate={value=>{setCreatorSearch(value);setForm(p=>({...p,creator_id:"",creator_name:value}))}}/><small className="field-note">Creator yang belum terdaftar akan otomatis dibuat di Master Creator saat Agreement disimpan.</small></label>
         {f("platform","Platform")}
         {f("brand","Brand")}
         {f("category","Category")}
