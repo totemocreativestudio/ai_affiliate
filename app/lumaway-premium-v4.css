@@ -314,6 +314,39 @@
 .luma-error-copy small{display:block!important;margin-top:9px;padding:7px 9px;border-radius:8px;background:#f8f9fc;color:#7c8799!important;font-size:8.5px!important;word-break:break-word}
 .luma-error-copy .primary{margin-top:14px!important;min-width:110px!important}
 
+
+.system-status-blocker{
+  position:fixed!important;inset:0!important;z-index:190!important;
+  display:grid!important;place-items:center!important;padding:22px!important;
+  background:
+    radial-gradient(circle at 50% 18%,rgba(102,88,244,.10),transparent 30%),
+    rgba(246,247,251,.96)!important;
+  backdrop-filter:blur(10px)!important;-webkit-backdrop-filter:blur(10px)!important
+}
+.system-status-blocker .luma-motion-state.error{
+  width:min(760px,100%)!important;border:1px solid #e2e6ee!important;border-radius:20px!important;
+  background:#fff!important;box-shadow:0 26px 80px rgba(16,24,40,.13)!important;padding:24px!important
+}
+.system-status-banner{
+  position:sticky!important;top:62px!important;z-index:85!important;
+  display:flex!important;align-items:center!important;gap:10px!important;
+  padding:9px 14px!important;border:1px solid #f0d59b!important;border-radius:12px!important;
+  background:rgba(255,249,235,.96)!important;color:#7a4b00!important;
+  backdrop-filter:blur(12px)!important;box-shadow:0 8px 20px rgba(80,56,10,.06)!important
+}
+.system-status-banner b{font-size:9.5px!important}.system-status-banner span{flex:1;font-size:9px!important;line-height:1.45!important}
+.system-status-banner button{min-height:30px!important;padding:5px 9px!important;background:#fff!important;border:1px solid #efd79f!important;color:#7a4b00!important}
+.system-status-banner.mode-degraded{border-color:#f0d59b!important;background:rgba(255,249,235,.97)!important}
+.system-status-banner.mode-maintenance,.system-status-banner.mode-error{border-color:#f0c4c0!important;background:rgba(255,246,245,.97)!important;color:#9d2f25!important}
+.flash.error,.owner-inline-note.error{
+  border:1px solid #f2c6c2!important;border-radius:11px!important;background:#fff6f5!important;color:#a83228!important;
+  padding:10px 12px!important;font-size:9.5px!important;line-height:1.5!important
+}
+.flash.success{
+  border:1px solid #bce8d2!important;border-radius:11px!important;background:#f1fbf6!important;color:#13704e!important;
+  padding:10px 12px!important;font-size:9.5px!important;line-height:1.5!important
+}
+
 /* ------------------------------------------------------------------ */
 /* Mobile / tablet interaction                                        */
 /* ------------------------------------------------------------------ */
