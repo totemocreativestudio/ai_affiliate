@@ -171,7 +171,7 @@ export async function POST(req:NextRequest){
     const {data:existing}=await ctx.admin.from("luma_pdf_reports").select("id").eq("workspace_id",workspaceId).eq("user_id",ctx.user.id).eq("run_id",primaryRunId).order("created_at",{ascending:false}).limit(1).maybeSingle();
     let report:any=null;
     if(existing?.id){
-      const {data,error}=await ctx.admin.from("luma_pdf_reports").update({...reportPayload,updated_at:new Date().toISOString()}).eq("id",existing.id).select("id,title,page_count,created_at").single();
+      const {data,error}=await ctx.admin.from("luma_pdf_reports").update(reportPayload).eq("id",existing.id).select("id,title,page_count,created_at").single();
       if(error)throw error;
       report=data;
     }else{
