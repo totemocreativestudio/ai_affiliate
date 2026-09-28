@@ -365,6 +365,8 @@ async function saveListing() {
     setShowForm(false);
     setEditingId(null);
     setForm(EMPTY_FORM);
+    setCreatorSearch("");
+    setManualCreatorConfirmed(false);
 
     await loadData();
   }
@@ -559,6 +561,9 @@ async function saveListing() {
                 setCreatorSearch(creatorName);setManualCreatorConfirmed(false);
               }}
             />
+            {creatorSearch.trim()&&!form.creator_id&&<div className="creator-no-match-action">
+              {!manualCreatorConfirmed?<button type="button" className="secondary compact" onClick={()=>{commitManualCreator();setManualCreatorConfirmed(true)}}>+ Tambahkan “{creatorSearch.trim()}” sebagai creator baru</button>:<small className="field-note">Creator baru siap disimpan pada listing ini. Data Master Creator dapat dilengkapi setelahnya.</small>}
+            </div>}
           </label>
 
             <label>
