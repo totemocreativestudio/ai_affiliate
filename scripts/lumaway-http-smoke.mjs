@@ -3,7 +3,7 @@ const origin = process.env.LUMAWAY_SMOKE_ORIGIN || "http://127.0.0.1:3100";
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function request(pathname, host, options = {}) {
-  return fetch(`${origin}${pathname}`, { redirect: "manual", headers: { Host: host }, ...options });
+  return fetch(`${origin}${pathname}`, { redirect: "manual", headers: { Host: host, "x-forwarded-host": host }, ...options });
 }
 
 async function waitForServer() {
