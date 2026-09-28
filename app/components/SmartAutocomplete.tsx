@@ -11,6 +11,19 @@ export type ProductSearchResult={
   selling_price?:number|null; cost_price?:number|null; status?:string|null;
 };
 
+export async function resolveOrCreateCreator(workspaceId:string,value:string,platform:string){
+  const typed=String(value||"").trim();
+  if(!typed)return null;
+  const r=await fetch("/api/master-data/creators",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({workspace_id:workspaceId,creator:typed,platform})
+  });
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok||!d.ok)throw new Error(d.error||"Gagal membuat creator baru.");
+  return d.creator as CreatorSearchResult;
+}
+
 function useDebouncedSearch(endpoint:string,workspaceId:string,query:string,enabled:boolean){
   const [results,setResults]=useState<any[]>([]);
   const [loading,setLoading]=useState(false);
