@@ -1,4 +1,4 @@
-export const APP_BASE = "/app.lumaway";
+export const APP_BASE = "";
 
 const SECTION_ROUTES: Record<string, string> = {
   dashboard: "dashboard",
@@ -68,7 +68,7 @@ export function normalizeLumawayUrl(url: string) {
   if (value.startsWith("#")) return routeForSection(value.slice(1));
 
   try {
-    const parsed = new URL(value, "https://www.lumaway.online");
+    const parsed = new URL(value, "https://app.lumaway.online");
     if (parsed.pathname === "/" && parsed.searchParams.get("auth") === "signin") return `${APP_BASE}/login`;
     if (parsed.pathname === "/" && parsed.searchParams.get("auth") === "signup") return `${APP_BASE}/register`;
     if (parsed.hash) return routeForSection(parsed.hash.replace(/^#/, ""));

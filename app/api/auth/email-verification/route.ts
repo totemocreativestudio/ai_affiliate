@@ -5,7 +5,7 @@ import {getServerSecret} from "../../../../lib/server-secrets";
 
 export const runtime="nodejs";
 
-const APP_ORIGIN="https://www.lumaway.online";
+const APP_ORIGIN="https://app.lumaway.online";
 const SERVICE="auth_verification";
 
 function sha(value:string){

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../../lib/supabase-browser";
-import {CreatorAutocomplete,ProductAutocomplete,CreatorSearchResult,ProductSearchResult} from "./SmartAutocomplete";
+import {CreatorAutocomplete,ProductAutocomplete,CreatorSearchResult,ProductSearchResult,resolveOrCreateCreator} from "./SmartAutocomplete";
 
 type Creator = {
   id: number;
@@ -180,13 +180,20 @@ export default function Shipping({ workspaceId }: Props) {
     setSaving(true);
     setError("");
 
-    const creator = creators.find((c) => c.id === Number(form.creator_id));
+    let creator = creators.find((c) => c.id === Number(form.creator_id));
+    if (!creator && (form.creator_name.trim() || creatorSearch.trim())) {
+      if (!form.platform.trim()) { setSaving(false); setError("Pilih platform terlebih dahulu untuk creator baru."); return; }
+      try {
+        const resolved=await resolveOrCreateCreator(workspaceId,form.creator_name.trim()||creatorSearch.trim(),form.platform);
+        if(resolved){creator=resolved as Creator;setCreators(prev=>prev.some(x=>x.id===resolved.id)?prev:[resolved as Creator,...prev]);}
+      } catch(err) { setSaving(false); setError(err instanceof Error?err.message:"Gagal membuat creator baru."); return; }
+    }
     const product = products.find((p) => p.id === Number(form.product_master_id));
 
     const payload = {
       workspace_id: workspaceId,
       data_date: form.data_date || null,
-      creator_id: form.creator_id ? Number(form.creator_id) : null,
+      creator_id: creator?.id ?? (form.creator_id ? Number(form.creator_id) : null),
       creator_name: form.creator_name.trim() || creator?.name || creator?.username || creator?.creator_code || null,
       platform: form.platform || creator?.platform || null,
       product_master_id: form.product_master_id ? Number(form.product_master_id) : null,
@@ -254,7 +261,9 @@ export default function Shipping({ workspaceId }: Props) {
                   setForm(p=>({...p,creator_id:String(creator.id),creator_name:name,platform:creator.platform??p.platform}));
                   setCreatorSearch(name);setManualCreatorConfirmed(false);
                 }}
+                onCreate={(value)=>{setCreatorSearch(value);setManualCreatorConfirmed(true);setForm(p=>({...p,creator_id:"",creator_name:value}))}}
               />
+              {manualCreatorConfirmed&&!form.creator_id&&<small className="field-note">Creator baru akan dibuat otomatis saat data Shipping disimpan.</small>}
             </label>
 
             <label>Platform

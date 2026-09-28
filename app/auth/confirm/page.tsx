@@ -26,7 +26,7 @@ export default function EmailConfirmationPage(){
       return;
     }
     await supabase.auth.signOut().catch(()=>undefined);
-    window.location.assign("/app.lumaway/login?verified=1");
+    window.location.assign("/login?verified=1");
   }
 
   return <main className="standalone-auth">

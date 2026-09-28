@@ -48,7 +48,7 @@ function captureReferralCode(){
 }
 
 function verificationRedirectUrl(){
-  if(typeof window==="undefined")return "https://www.lumaway.online/app.lumaway/login?verified=1";
+  if(typeof window==="undefined")return "https://app.lumaway.online/login?verified=1";
   const url=new URL(`${window.location.origin}${APP_BASE}/login`);
   url.searchParams.set("verified","1");
   const code=captureReferralCode();

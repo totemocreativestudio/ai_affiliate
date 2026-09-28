@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "../../lib/supabase-browser";
-import {CreatorAutocomplete,ProductAutocomplete,CreatorSearchResult,ProductSearchResult} from "./SmartAutocomplete";
+import {CreatorAutocomplete,ProductAutocomplete,CreatorSearchResult,ProductSearchResult,resolveOrCreateCreator} from "./SmartAutocomplete";
 
 type Creator = {
   id: number;
@@ -283,9 +283,28 @@ async function saveListing() {
     setSaving(true);
     setError("");
 
-    const creator = creators.find(
+    let creator = creators.find(
       (item) => item.id === Number(form.creator_id)
     );
+
+    if (!creator && (form.creator_name.trim() || creatorSearch.trim())) {
+      if (!form.platform.trim()) {
+        setSaving(false);
+        setError("Pilih platform terlebih dahulu untuk creator baru.");
+        return;
+      }
+      try {
+        const resolved = await resolveOrCreateCreator(workspaceId, form.creator_name.trim() || creatorSearch.trim(), form.platform);
+        if (resolved) {
+          creator = resolved as Creator;
+          setCreators((prev)=>prev.some((x)=>x.id===resolved.id)?prev:[resolved as Creator,...prev]);
+        }
+      } catch (err) {
+        setSaving(false);
+        setError(err instanceof Error ? err.message : "Gagal membuat creator baru.");
+        return;
+      }
+    }
 
     const product = products.find(
       (item) => item.id === Number(form.product_master_id)
@@ -296,9 +315,7 @@ async function saveListing() {
 
       data_date: form.data_date || null,
 
-      creator_id: form.creator_id
-        ? Number(form.creator_id)
-        : null,
+      creator_id: creator?.id ?? (form.creator_id ? Number(form.creator_id) : null),
 
       creator_name:
       form.creator_name.trim() ||
@@ -560,10 +577,9 @@ async function saveListing() {
                 setForm(prev=>({...prev,creator_id:String(creator.id),creator_name:creatorName,platform:creator.platform??prev.platform,ratecard:String(creator.ratecard??prev.ratecard??"")}));
                 setCreatorSearch(creatorName);setManualCreatorConfirmed(false);
               }}
+              onCreate={(value)=>{setCreatorSearch(value);setManualCreatorConfirmed(true);setForm(prev=>({...prev,creator_id:"",creator_name:value}))}}
             />
-            {creatorSearch.trim()&&!form.creator_id&&<div className="creator-no-match-action">
-              {!manualCreatorConfirmed?<button type="button" className="secondary compact" onClick={()=>{commitManualCreator();setManualCreatorConfirmed(true)}}>+ Tambahkan “{creatorSearch.trim()}” sebagai creator baru</button>:<small className="field-note">Creator baru siap disimpan pada listing ini. Data Master Creator dapat dilengkapi setelahnya.</small>}
-            </div>}
+            {manualCreatorConfirmed&&!form.creator_id&&<small className="field-note">Creator baru akan otomatis ditambahkan ke Master Creator saat listing disimpan.</small>}
           </label>
 
             <label>
