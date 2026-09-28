@@ -1,0 +1,72 @@
+/* Lumaway Experience System V2.1 — interaction, resilience and perceived performance */
+:root{
+  --lw-navy:#101828;
+  --lw-ink:#101828;
+  --lw-muted:#667085;
+  --lw-surface:#ffffff;
+  --lw-soft:#f7f8fb;
+  --lw-line:#e4e7ec;
+  --lw-violet:#7568ff;
+  --lw-violet-2:#9b7cff;
+  --lw-blue:#5b8cff;
+  --lw-green:#16a36a;
+  --lw-amber:#d79000;
+  --lw-red:#d92d20;
+  --lw-focus:0 0 0 3px rgba(117,104,255,.18);
+  --lw-card-shadow:0 1px 2px rgba(16,24,40,.03),0 10px 30px rgba(16,24,40,.04);
+}
+html{scroll-behavior:smooth}
+body{background:var(--lw-soft)}
+button,a,input,select,textarea{transition:border-color .15s ease,background-color .15s ease,color .15s ease,box-shadow .15s ease,transform .1s ease,opacity .15s ease}
+button:active:not(:disabled),a.button:active{transform:scale(.98)}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{
+  outline:none!important;box-shadow:var(--lw-focus)!important;border-color:rgba(117,104,255,.65)!important
+}
+button:disabled{cursor:not-allowed;opacity:.58}
+.card,.dashboard-kpi-card,.filters{box-shadow:var(--lw-card-shadow)}
+.dashboard-kpi-card{transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}
+.dashboard-kpi-card:hover{transform:translateY(-1px);border-color:#d5d1ff!important;box-shadow:0 12px 30px rgba(16,24,40,.07)}
+.dashboard-kpi-card .kpi-delta{font-variant-numeric:tabular-nums}
+.primary{background:linear-gradient(135deg,#6f63ff,#7b70ff)!important;box-shadow:0 5px 14px rgba(111,99,255,.18)!important}
+.primary:hover:not(:disabled){box-shadow:0 8px 20px rgba(111,99,255,.25)!important;transform:translateY(-1px)}
+.secondary:hover:not(:disabled){border-color:#c6c1ff!important;background:#f8f7ff!important;color:#5147d9!important}
+.lumaway-route-progress{position:fixed;left:0;right:0;top:0;height:2px;z-index:10000;pointer-events:none;opacity:0;overflow:hidden;transition:opacity .12s ease}
+.lumaway-route-progress.is-active{opacity:1}
+.lumaway-route-progress span{display:block;height:100%;width:45%;background:linear-gradient(90deg,#5b8cff,#7568ff,#c06cf2,#f28a5b);transform:translateX(-120%)}
+.lumaway-route-progress.is-active span{animation:lwRouteProgress .58s ease-out infinite}
+@keyframes lwRouteProgress{0%{transform:translateX(-120%)}100%{transform:translateX(260%)}}
+.lumaway-connection-banner{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:9999;width:min(720px,calc(100vw - 28px));display:flex;align-items:center;padding:11px 14px;border-radius:12px;box-shadow:0 12px 40px rgba(16,24,40,.15);backdrop-filter:blur(18px)}
+.lumaway-connection-banner>div{display:grid;gap:2px}
+.lumaway-connection-banner strong{font-size:11px}
+.lumaway-connection-banner span{font-size:10px;line-height:1.45}
+.lumaway-connection-banner.state-offline{background:rgba(255,250,235,.96);border:1px solid #fedf89;color:#7a2e0e}
+.lumaway-connection-banner.state-reconnecting{background:rgba(245,243,255,.96);border:1px solid #d9d6fe;color:#42307d}
+.lumaway-connection-banner.state-slow{background:rgba(255,250,235,.96);border:1px solid #fec84b;color:#7a2e0e}
+.lumaway-back-online{position:fixed;right:18px;bottom:18px;z-index:9999;padding:10px 13px;border-radius:11px;background:#ecfdf3;border:1px solid #abefc6;color:#05603a;font-size:10px;font-weight:800;box-shadow:0 12px 30px rgba(16,24,40,.12);animation:lwToastIn .18s ease-out}
+@keyframes lwToastIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.lw-skeleton{position:relative;overflow:hidden;background:#eef1f5!important;color:transparent!important;border-color:transparent!important}
+.lw-skeleton:after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.72),transparent);animation:lwShimmer 1.15s infinite}
+@keyframes lwShimmer{100%{transform:translateX(100%)}}
+.lw-dashboard-skeleton{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}
+.lw-dashboard-skeleton span{height:106px;border-radius:14px}
+.lw-workspace-summary{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,.85fr);gap:14px;margin:16px 0 18px}
+.lw-summary-card,.lw-focus-card{background:#fff;border:1px solid var(--lw-line);border-radius:16px;padding:18px;box-shadow:var(--lw-card-shadow)}
+.lw-summary-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:13px}
+.lw-summary-head h2,.lw-focus-card h3{margin:0;color:var(--lw-ink)}
+.lw-summary-head p{margin:4px 0 0;font-size:10px;color:var(--lw-muted)}
+.lw-status-pill{display:inline-flex;align-items:center;gap:6px;min-height:26px;padding:5px 9px;border:1px solid #d0d5dd;border-radius:999px;color:#475467;font-size:9px;font-weight:800;white-space:nowrap}
+.lw-changes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.lw-change{padding:12px;border-radius:12px;background:#f8fafc;border:1px solid #edf0f4}
+.lw-change small{display:block;color:#667085;font-size:9px;margin-bottom:5px}.lw-change b{font-size:16px;color:#101828}.lw-change em{display:block;margin-top:4px;font-size:9px;font-style:normal;color:#667085}
+.lw-change.up b,.lw-change.up em{color:#067647}.lw-change.down b,.lw-change.down em{color:#b42318}
+.lw-focus-card{display:grid;align-content:start;gap:10px}.lw-focus-card>p{margin:0;font-size:10px;color:#667085}
+.lw-focus-list{display:grid;gap:8px}.lw-focus-item{display:grid;grid-template-columns:28px 1fr;gap:9px;align-items:start;padding:9px;border-radius:11px;background:#fbfbfd;border:1px solid #eef0f4}
+.lw-focus-number{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:#efedff;color:#5147d9;font-size:10px;font-weight:900}.lw-focus-item strong{font-size:10px;color:#344054;line-height:1.45}.lw-focus-item span{display:block;font-size:9px;color:#667085;margin-top:2px}
+.empty-state,.dashboard-period-empty{background:linear-gradient(180deg,#fff,#fbfbfd)!important}
+.flash.error{border-radius:12px!important}
+@media(max-width:900px){.lw-workspace-summary{grid-template-columns:1fr}.lw-dashboard-skeleton{grid-template-columns:repeat(2,minmax(0,1fr))}.lw-changes{grid-template-columns:1fr 1fr 1fr}}
+@media(max-width:560px){.lumaway-connection-banner{top:7px}.lw-changes{grid-template-columns:1fr}.lw-dashboard-skeleton{grid-template-columns:1fr 1fr}.lw-summary-card,.lw-focus-card{padding:14px}}
+@media(prefers-reduced-motion:reduce){
+ *,*:before,*:after{scroll-behavior:auto!important;animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+ .dashboard-kpi-card:hover,.primary:hover:not(:disabled){transform:none}
+}
