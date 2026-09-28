@@ -8,6 +8,7 @@ import "./luma-responsive.css";
 import "./luma-subscription.css";
 import "./luma-ux-polish.css";
 import "./luma-final-fixes.css";
+import "./lumaway-experience-v2.css";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../lib/supabase-browser";
 import { APP_BASE, isAuthPath, navigateToSection, routeForSection, sectionFromPath } from "../lib/luma-navigation";
@@ -33,6 +34,7 @@ import MobileQuickNav from "./components/MobileQuickNav";
 import SystemStatusGate from "./components/SystemStatusGate";
 import {LumaErrorMotion} from "./components/LumaMotionState";
 import TableSortEnhancer from "./components/TableSortEnhancer";
+import LumawayExperienceLayer from "./components/LumawayExperienceLayer";
 
 type Profile = { id: string; email: string | null; full_name: string | null; nickname: string | null; role: string; active: boolean; phone: string | null; phone_verified_at: string | null; email_verified_at: string | null; education: string | null; birth_date: string | null; bio: string | null; position_title: string | null; profile_completed: boolean; password_configured_at: string | null };
 type Workspace = { id: string; name: string; slug: string; status: string };
@@ -440,13 +442,14 @@ export default function LumawayWorkspaceApp() {
 
   if (!profile || !workspace) {
     return <main className="standalone-auth"><section className="auth-shell">
-      <aside className="auth-showcase"><BrandLockup light /><div className="auth-story"><span className="auth-kicker">AFFILIATE INTELLIGENCE WORKSPACE</span><h1>Turn affiliate data into clear decisions.</h1><p>Monitor creator performance, campaign support, product movement, and AI insights from one focused workspace.</p><div className="auth-insight-card"><div className="auth-insight-head"><span>Workspace intelligence</span><i>Live</i></div><div className="auth-spark-bars" aria-hidden="true"><span style={{ height: "34%" }} /><span style={{ height: "48%" }} /><span style={{ height: "42%" }} /><span style={{ height: "68%" }} /><span style={{ height: "58%" }} /><span style={{ height: "82%" }} /><span style={{ height: "72%" }} /><span style={{ height: "94%" }} /></div><div className="auth-insight-footer"><span>Creator performance</span><b>+24.8%</b></div></div></div></aside>
+      <aside className="auth-showcase"><BrandLockup light /><div className="auth-story"><span className="auth-kicker">AFFILIATE INTELLIGENCE WORKSPACE</span><h1>Turn affiliate data into clear decisions.</h1><p>Monitor creator performance, campaign support, product movement, and actionable insights from one focused workspace.</p><div className="auth-insight-card"><div className="auth-insight-head"><span>Workspace intelligence</span><i>Live</i></div><div className="auth-spark-bars" aria-hidden="true"><span style={{ height: "34%" }} /><span style={{ height: "48%" }} /><span style={{ height: "42%" }} /><span style={{ height: "68%" }} /><span style={{ height: "58%" }} /><span style={{ height: "82%" }} /><span style={{ height: "72%" }} /><span style={{ height: "94%" }} /></div><div className="auth-insight-footer"><span>Creator performance</span><b>+24.8%</b></div></div></div></aside>
       <section className="auth-form-pane"><div className="auth-form-wrap"><div className="auth-mode-switch"><button type="button" className={authMode === "signin" ? "active" : ""} onClick={() => switchAuthMode("signin")}>Sign in</button><button type="button" className={authMode === "signup" ? "active" : ""} onClick={() => switchAuthMode("signup")}>Create account</button></div><div className="auth-heading"><span className="auth-kicker dark">LUMAWAY WORKSPACE</span><h2>{authMode === "signin" ? "Welcome back" : "Create your Lumaway account"}</h2><p>{authMode === "signin" ? "Sign in to continue to Affiliate Intelligence." : "Your workspace is provisioned automatically after sign-up."}</p></div><div id="lumaway-google-button" className="google-gsi-host"><span>Memuat Google Sign-In...</span></div><div className="auth-divider"><span>or continue with email</span></div><div className="auth-fields"><label><span>Email address</span><input type="email" value={email} autoComplete="email" placeholder="name@company.com" onChange={(e) => setEmail(e.target.value)} /></label><label><span>Password</span><div className="password-field"><input type={showPassword ? "text" : "password"} value={password} autoComplete={authMode === "signin" ? "current-password" : "new-password"} placeholder="Minimum 8 characters" onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && authMode === "signin") void login(); }} /><button type="button" onClick={() => setShowPassword((value) => !value)}>{showPassword ? "Hide" : "Show"}</button></div></label></div>{authMode === "signup" && <label className="auth-consent"><input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} /><span>I agree to the Lumaway workspace terms and privacy flow.</span></label>}{error && <div className="auth-alert error"><span>!</span><p>{error}</p></div>}{authMessage && <div className="auth-alert success"><span>✓</span><p>{authMessage}</p></div>}{authMode === "signin" && needsEmailVerification && <button type="button" className="auth-resend-button" disabled={loading} onClick={() => void resendVerification()}>Kirim ulang email verifikasi</button>}<button type="button" className="auth-primary-button" onClick={() => authMode === "signin" ? void login() : void signup()}>{authMode === "signin" ? "Sign in to Lumaway" : "Create account"}<span>→</span></button></div></section>
     </section></main>;
   }
 
   const isAdmin = profile.role === "admin";
   return <div className="luma-app">
+    <LumawayExperienceLayer />
     <TableSortEnhancer />
     <SystemStatusGate workspaceId={workspace.id} isAdmin={isAdmin} />
     <LumaSidebar profile={profile} workspace={workspace} onLogout={logout} accessLocked={accessLocked} />
