@@ -22,3 +22,51 @@ html[data-theme="dark"] .lumaway-route-actions button,html[data-theme="dark"] .l
   .lumaway-route-state{padding:16px;min-height:100svh}
   .lumaway-route-card{padding:26px 20px;border-radius:16px}
 }
+
+
+/* PR56 premium system/error state shared by root error boundaries */
+.runtime-error-page{
+  min-height:100dvh;display:grid;place-items:center;padding:28px;
+  background:
+    radial-gradient(circle at 50% 18%,rgba(102,88,244,.08),transparent 31%),
+    linear-gradient(180deg,#f8f9fc,#f3f5f9);
+  color:#101828;
+}
+.runtime-error-page .luma-motion-state.error{
+  width:min(840px,100%);display:grid;grid-template-columns:220px minmax(0,1fr);
+  align-items:center;gap:26px;padding:26px;border:1px solid #e3e7ee;border-radius:22px;
+  background:#fff;box-shadow:0 24px 75px rgba(16,24,40,.11);
+}
+.runtime-error-page .luma-error-visual{
+  position:relative;min-height:180px;border-radius:18px;display:grid;place-items:center;overflow:hidden;
+  background:radial-gradient(circle at 48% 45%,rgba(102,88,244,.12),transparent 52%),#fafaff;
+}
+.runtime-error-page .luma-error-visual:before{
+  content:"";position:absolute;width:112px;height:112px;border:1px solid #dcd9ff;border-radius:30px;transform:rotate(12deg)
+}
+.runtime-error-page .luma-error-visual:after{
+  content:"";position:absolute;width:70px;height:70px;border:1px solid #ebe9ff;border-radius:22px;transform:rotate(-17deg)
+}
+.runtime-error-page .error-code{position:relative;z-index:2;font-size:46px;font-weight:850;letter-spacing:-.06em;color:#101828}
+.runtime-error-page .error-ring{position:absolute;border-radius:50%;border:1px solid rgba(102,88,244,.18)}
+.runtime-error-page .ring-one{width:136px;height:136px}.runtime-error-page .ring-two{width:92px;height:92px}
+.runtime-error-page .error-dot{position:absolute;width:7px;height:7px;border-radius:50%;background:#7568ff;box-shadow:0 0 0 5px rgba(117,104,255,.08)}
+.runtime-error-page .dot-one{left:24px;top:28px}.runtime-error-page .dot-two{right:28px;top:52px}.runtime-error-page .dot-three{right:45px;bottom:30px}
+.runtime-error-page .luma-error-copy .eyebrow{font-size:8px;font-weight:850;letter-spacing:.16em;color:#6658f4}
+.runtime-error-page .luma-error-copy h2{margin:7px 0;font-size:24px;letter-spacing:-.035em}
+.runtime-error-page .luma-error-copy p{margin:0;color:#667085;font-size:11px;line-height:1.65}
+.runtime-error-page .luma-error-copy small{display:block;margin-top:9px;padding:7px 9px;border-radius:8px;background:#f8f9fc;color:#7c8799;font-size:8.5px;word-break:break-word}
+.runtime-error-page .luma-error-copy .primary{
+  margin-top:14px;min-height:40px;padding:9px 15px;border:0;border-radius:10px;
+  background:linear-gradient(135deg,#6f62ff,#5a4ceb);color:#fff;font-weight:800;cursor:pointer;
+  box-shadow:0 8px 18px rgba(91,76,235,.18)
+}
+@media(max-width:620px){
+  .runtime-error-page{padding:12px;min-height:100svh}
+  .runtime-error-page .luma-motion-state.error{grid-template-columns:1fr;padding:18px;border-radius:18px}
+  .runtime-error-page .luma-error-visual{min-height:130px}
+  .runtime-error-page .luma-error-copy h2{font-size:21px}
+}
+@media(prefers-reduced-motion:reduce){
+  .runtime-error-page *{animation:none!important;transition:none!important}
+}
