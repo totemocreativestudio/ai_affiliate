@@ -43,7 +43,7 @@ export default async function PublicInsightDetail({params}:{params:Promise<{slug
     {post&&<PublicContentTracker contentId={post.id}/>}
     <header className="public-insights-nav">
       <Link href="/web/home" className="public-insights-brand"><img src="/luma-mark.png" alt=""/><strong>LUMAWAY<span>.</span></strong></Link>
-      <nav><Link href="/web/home">Home</Link><Link href="/web/insights" className="active">Insights</Link><Link href="/app.lumaway/login">Login</Link></nav>
+      <nav><Link href="/web/home">Home</Link><Link href="/web/insights" className="active">Insights</Link><Link href="https://app.lumaway.online/login">Login</Link></nav>
     </header>
 
     <article className="public-article">
@@ -64,11 +64,11 @@ export default async function PublicInsightDetail({params}:{params:Promise<{slug
           {post?.external_dofollow_url&&<aside className="public-reference"><strong>Referensi terkait</strong><a href={post.external_dofollow_url} target="_blank" rel="noopener noreferrer">{post.external_dofollow_url}</a></aside>}
           <aside className="public-context-note"><strong>Gunakan insight sebagai bahan keputusan.</strong><p>Sesuaikan periode, sumber, dan indikator dengan kondisi bisnis Anda. Temuan data perlu dibaca bersama konteks operasional.</p></aside>
         </div>
-        <aside className="public-article-side"><span>ARTIKEL LUMAWAY</span><strong>{category}</strong><small>Posted by {author}</small><Link href="/web/insights">← Semua Insights</Link><Link href="/app.lumaway/register">Coba Lumaway →</Link></aside>
+        <aside className="public-article-side"><span>ARTIKEL LUMAWAY</span><strong>{category}</strong><small>Posted by {author}</small><Link href="/web/insights">← Semua Insights</Link><Link href="https://app.lumaway.online/register">Coba Lumaway →</Link></aside>
       </div>
     </article>
 
-    <section className="public-insights-note compact"><div><span className="public-eyebrow">LANGKAH BERIKUTNYA</span><h2>Data Anda punya potensi.</h2><p>Satukan konteks, analisis, dan tindak lanjut di Lumaway.</p></div><Link href="/app.lumaway/register">Buat akun Lumaway →</Link></section>
+    <section className="public-insights-note compact"><div><span className="public-eyebrow">LANGKAH BERIKUTNYA</span><h2>Data Anda punya potensi.</h2><p>Satukan konteks, analisis, dan tindak lanjut di Lumaway.</p></div><Link href="https://app.lumaway.online/register">Buat akun Lumaway →</Link></section>
     <footer className="public-insights-footer"><span>© {new Date().getFullYear()} Lumaway · Light Up Your Potential.</span><Link href="/web/home">Lumaway Home</Link></footer>
     <script type="application/ld+json" dangerouslySetInnerHTML={{__html:safeJson(jsonLd)}}/>
   </main>;
