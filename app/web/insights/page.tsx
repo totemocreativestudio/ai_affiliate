@@ -16,7 +16,7 @@ export default async function PublicInsightsPage(){
   return <main>
     <header className="public-insights-nav">
       <Link href="/web/home" className="public-insights-brand"><img src="/luma-mark.png" alt=""/><strong>LUMAWAY<span>.</span></strong></Link>
-      <nav><Link href="/web/home">Home</Link><Link href="/web/insights" className="active">Insights</Link><Link href="/app.lumaway/login">Login</Link><Link className="primary-link" href="/app.lumaway/register">Buat Akun</Link></nav>
+      <nav><Link href="/web/home">Home</Link><Link href="/web/insights" className="active">Insights</Link><Link href="https://app.lumaway.online/login">Login</Link><Link className="primary-link" href="https://app.lumaway.online/register">Buat Akun</Link></nav>
     </header>
 
     <section className="public-insights-hero">
@@ -38,7 +38,7 @@ export default async function PublicInsightsPage(){
 
     <section className="public-insights-note">
       <div><span className="public-eyebrow">FROM DATA TO DIRECTION</span><h2>Insight bukan akhir dari analisis.</h2><p>Gunakan temuan sebagai bahan untuk menentukan tindakan, pemilik pekerjaan, dan indikator evaluasi.</p></div>
-      <Link href="/app.lumaway/register">Mulai dengan Lumaway →</Link>
+      <Link href="https://app.lumaway.online/register">Mulai dengan Lumaway →</Link>
     </section>
 
     <footer className="public-insights-footer"><span>© {new Date().getFullYear()} Lumaway · Light Up Your Potential.</span><Link href="/web/home">Kembali ke Lumaway</Link></footer>
