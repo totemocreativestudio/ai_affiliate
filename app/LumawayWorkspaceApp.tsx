@@ -35,6 +35,7 @@ import SystemStatusGate from "./components/SystemStatusGate";
 import {LumaErrorMotion} from "./components/LumaMotionState";
 import TableSortEnhancer from "./components/TableSortEnhancer";
 import LumawayExperienceLayer from "./components/LumawayExperienceLayer";
+import BackgroundTaskCenter from "./components/BackgroundTaskCenter";
 
 type Profile = { id: string; email: string | null; full_name: string | null; nickname: string | null; role: string; active: boolean; phone: string | null; phone_verified_at: string | null; email_verified_at: string | null; education: string | null; birth_date: string | null; bio: string | null; position_title: string | null; profile_completed: boolean; password_configured_at: string | null };
 type Workspace = { id: string; name: string; slug: string; status: string };
@@ -456,7 +457,7 @@ export default function LumawayWorkspaceApp() {
     <div className="app-shell">
       <header className="topbar">
         <div className="topbar-brand-copy"><span className="topbar-kicker">{isAdmin ? "LUMAWAY OWNER" : "LUMAWAY WORKSPACE"}</span><span className="topbar-title">{isAdmin ? "Business Control Center" : "Affiliate Intelligence"}</span></div>
-        <div className="topbar-right"><PWAInstallButton compact /><NotificationCenter workspaceId={workspace.id} userId={profile.id} /><span className="connection-pill"><i />{workspace.name} · Active</span></div>
+        <div className="topbar-right"><PWAInstallButton compact /><BackgroundTaskCenter /><NotificationCenter workspaceId={workspace.id} userId={profile.id} /><span className="connection-pill"><i />{workspace.name} · Active</span></div>
       </header>
       <main className="content">
         {isAdmin ? <RestoredLegacyModules workspaceId={workspace.id} userId={profile.id} isAdmin /> : <>
