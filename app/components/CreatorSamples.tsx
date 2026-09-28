@@ -167,6 +167,7 @@ export default function CreatorSamples({workspaceId}:Props){
                 workspaceId={workspaceId}
                 value={creatorSearch}
                 selectedId={form.creator_id}
+                createPlatform={form.platform}
                 placeholder="Ketik username atau nama creator"
                 onTextChange={(value)=>{setCreatorSearch(value);setManualCreatorConfirmed(false);setForm(p=>({...p,creator_id:"",creator_name:value}))}}
                 onSelect={(creator:CreatorSearchResult)=>{
