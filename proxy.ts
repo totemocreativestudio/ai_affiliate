@@ -34,12 +34,12 @@ export function proxy(request:NextRequest){
   const host=cleanHost(request.headers.get("host")||request.nextUrl.hostname);
   const pathname=request.nextUrl.pathname;
 
-  if(pathname==="/app.lumaway"||pathname.startsWith("/app.lumaway/")){
-    const clean=pathname.replace(/^\/app\.lumaway/,"")||"/";
-    return NextResponse.redirect(appUrl(request,clean==="/"?"/login":clean),308);
-  }
-
   if(host===APP_HOST){
+    // Internal rewrites use the legacy catch-all route. Let that target pass
+    // through instead of redirecting it again and creating a rewrite loop.
+    if(pathname==="/app.lumaway"||pathname.startsWith("/app.lumaway/")){
+      return NextResponse.next();
+    }
     if(pathname.startsWith("/web")){
       const url=request.nextUrl.clone();
       url.protocol="https:";
@@ -51,6 +51,11 @@ export function proxy(request:NextRequest){
     const internal=request.nextUrl.clone();
     internal.pathname=pathname==="/"?"/app.lumaway/login":`/app.lumaway${pathname}`;
     return NextResponse.rewrite(internal);
+  }
+
+  if(pathname==="/app.lumaway"||pathname.startsWith("/app.lumaway/")){
+    const clean=pathname.replace(/^\/app\.lumaway/,"")||"/";
+    return NextResponse.redirect(appUrl(request,clean==="/"?"/login":clean),308);
   }
 
   if(PUBLIC_HOSTS.has(host)){
