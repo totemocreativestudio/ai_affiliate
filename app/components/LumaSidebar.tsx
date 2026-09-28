@@ -46,6 +46,7 @@ const ownerNav: Array<[string, IconName, string]> = [
 const integrationNav: Array<[string, IconName, string]> = [
   ["owner-integration-google", "integration", "Google Cloud"],
   ["owner-integration-openai", "ai", "OpenAI"],
+  ["owner-integration-resend", "content", "Resend Email"],
   ["owner-integration-whatsapp", "community", "WhatsApp CRM & OTP"],
 ];
 
