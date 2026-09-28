@@ -321,7 +321,7 @@ export default function ProductMaster({
   }
 
   function renderProductEditor(mode:"add"|"edit"){
-    return <div style={{
+    return <div className="product-editor-v4" style={{
       padding:18,border:"1px solid #cfd5df",borderRadius:10,background:"#f8fafc",
       boxShadow:"0 8px 24px rgba(15,23,42,.06)"
     }}>
@@ -351,6 +351,7 @@ export default function ProductMaster({
 
   return (
     <section
+      className="product-master-v4"
       style={{
         marginTop: 30,
         padding: 20,
@@ -360,6 +361,7 @@ export default function ProductMaster({
       }}
     >
       <div
+        className="product-master-v4-head"
         style={{
           display: "flex",
           justifyContent: "space-between",
@@ -406,7 +408,7 @@ export default function ProductMaster({
         </button>
       </div>
 
-      <div style={{ marginTop: 18 }}>
+      <div className="product-master-v4-search" style={{ marginTop: 18 }}>
         <input
           type="text"
           placeholder="Cari SKU, nama produk, kategori, kode Shopee/TikTok, atau variasi..."
@@ -442,6 +444,7 @@ export default function ProductMaster({
       {showForm&&editingId===null&&<div style={{marginTop:16}}>{renderProductEditor("add")}</div>}
 
       <div
+        className="product-master-v4-table"
         style={{
           marginTop: 20,
           overflowX: "auto",
@@ -451,6 +454,7 @@ export default function ProductMaster({
           <p>Memuat Product Master...</p>
         ) : filteredProducts.length === 0 ? (
           <div
+            className="product-master-v4-empty"
             style={{
               padding: 30,
               textAlign: "center",
