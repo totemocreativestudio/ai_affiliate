@@ -6,6 +6,7 @@ type IconName =
   | "dashboard"
   | "data"
   | "creator"
+  | "performance"
   | "ai"
   | "sparkles"
   | "kanban"
@@ -55,6 +56,8 @@ export default function LumaIcon({ name, ...props }: Props) {
         return <><ellipse cx="12" cy="5" rx="7.5" ry="3"/><path d="M4.5 5v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3V5"/><path d="M4.5 11v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-6"/></>;
       case "creator":
         return <><circle cx="9" cy="8" r="3"/><path d="M3.5 19c.8-3.3 2.7-5 5.5-5s4.7 1.7 5.5 5"/><circle cx="17.5" cy="9" r="2.2"/><path d="M15.5 14.8c2.9-.4 4.7 1 5 4.2"/></>;
+      case "performance":
+        return <><path d="M4 18V9M10 18V5M16 18v-7M22 18V7"/><path d="M3 21h20"/><path d="m4 8 6-4 6 6 6-4"/></>;
       case "ai":
         return <><path d="M12 3 9.8 8.3 4.5 10.5l5.3 2.2L12 18l2.2-5.3 5.3-2.2-5.3-2.2L12 3Z"/><path d="m18.5 16 .8 2 .2.5.5.2 2 .8-2 .8-.5.2-.2.5-.8 2-.8-2-.2-.5-.5-.2-2-.8 2-.8.5-.2.2-.5.8-2Z"/></>;
       case "sparkles":
