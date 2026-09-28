@@ -31,7 +31,8 @@ function isAssetOrService(pathname:string){
 }
 
 export function proxy(request:NextRequest){
-  const host=cleanHost(request.headers.get("host")||request.nextUrl.hostname);
+  const forwarded=String(request.headers.get("x-forwarded-host")||"").split(",")[0].trim();
+  const host=cleanHost(forwarded||request.headers.get("host")||request.nextUrl.hostname);
   const pathname=request.nextUrl.pathname;
 
   if(host===APP_HOST){
