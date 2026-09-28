@@ -52,6 +52,7 @@ export function CreatorAutocomplete({
   const {results,loading,setResults}=useDebouncedSearch("/api/search/creators",workspaceId,value,!disabled&&!selectedId);
   const typed=value.trim();
   const normalized=typed.replace(/^@+/,"").trim().toLowerCase();
+  const createLabel=typed.startsWith("@")?typed:`@${typed}`;
   const exactMatch=results.some((c:CreatorSearchResult)=>
     [c.name,c.username,c.creator_code].some(v=>String(v||"").replace(/^@+/,"").trim().toLowerCase()===normalized)
   );
@@ -86,10 +87,10 @@ export function CreatorAutocomplete({
         </button>
       })}
       {!loading&&onCreate&&!exactMatch&&<button type="button" className="smart-autocomplete-create" onMouseDown={e=>{e.preventDefault();createTyped()}}>
-        <strong>+ Tambahkan “{typed}” sebagai creator baru</strong>
-        <span>Username baru akan dibuat di Master Creator saat data disimpan.</span>
+        <strong>+ Gunakan “{createLabel}” sebagai creator baru</strong>
+        <span>Tidak wajib sudah terdaftar. Creator baru otomatis dibuat di Master Creator saat data disimpan.</span>
       </button>}
-      {!loading&&!results.length&&!onCreate&&<div className="smart-autocomplete-empty">Tidak ada creator yang cocok.</div>}
+      {!loading&&!results.length&&!onCreate&&<div className="smart-autocomplete-empty">Creator belum terdaftar. Username tetap bisa diketik manual.</div>}
     </div>}
   </div>;
 }
