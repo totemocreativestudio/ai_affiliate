@@ -13,7 +13,17 @@ export async function GET(req:NextRequest){
     const {data:tickets,error}=await q;if(error)throw error;
     const selected=ticketId?(tickets||[])[0]:(tickets||[]).find((x:any)=>["ai_assist","escalated","open","awaiting_user"].includes(x.status))||(tickets||[])[0];
     let messages:any[]=[];
-    if(selected?.id){const {data,error:msgError}=await ctx.admin.from("luma_support_messages").select("id,sender_type,body,metadata,created_at").eq("ticket_id",selected.id).eq("user_id",ctx.user.id).order("created_at",{ascending:true}).limit(200);if(msgError)throw msgError;messages=data||[];}
+    if(selected?.id){
+      const {data,error:msgError}=await ctx.admin.from("luma_support_messages").select("id,sender_type,body,metadata,created_at").eq("ticket_id",selected.id).eq("user_id",ctx.user.id).order("created_at",{ascending:true}).limit(200);
+      if(msgError)throw msgError;
+      messages=await Promise.all((data||[]).map(async(message:any)=>{
+        const attachment=message?.metadata?.attachment;
+        if(!attachment?.path)return message;
+        const bucket=String(attachment.bucket||"luma-support");
+        const {data:signed}=await ctx.admin.storage.from(bucket).createSignedUrl(String(attachment.path),3600);
+        return {...message,metadata:{...(message.metadata||{}),attachment_url:signed?.signedUrl||null}};
+      }));
+    }
     return NextResponse.json({ok:true,tickets:tickets||[],active_ticket:selected||null,messages});
   }catch(error:any){return NextResponse.json({ok:false,error:error?.message||"Unable to load support tickets."},{status:400});}
 }
