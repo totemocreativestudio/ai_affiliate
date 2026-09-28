@@ -1,0 +1,7 @@
+# Vercel Production Deploy Trigger
+
+Lumaway production redeploy marker for PR56 UI System V4.
+
+Source commit before trigger: `e4a60a964ea37bc6b073ecb8d7996b08224cfb45`
+
+Triggered: 2026-09-28
