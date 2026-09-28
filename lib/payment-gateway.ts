@@ -70,41 +70,14 @@ async function providerConfigured(admin:any,provider:PaymentProvider){
 async function markHealth(admin:any,provider:PaymentProvider,ok:boolean,error?:string){
   try{await admin.rpc("luma_payment_provider_health",{p_provider:provider,p_ok:ok,p_error:error||null})}catch{}
 }
-async function routingOrder(admin:any,orderCode:string){
-  const [{data:settings},{data:routing}]=await Promise.all([
-    admin.from("luma_payment_provider_settings").select("provider,enabled,priority,weight,health_status,last_error_at").eq("enabled",true),
-    admin.from("luma_payment_routing").select("mode").eq("id",1).maybeSingle()
-  ]);
-  const rows=((settings||[]) as any[]).filter(x=>["mayar","xendit","midtrans"].includes(String(x.provider)));
-  const ready:any[]=[];
-  for(const row of rows){
-    const provider=String(row.provider) as PaymentProvider;
-    if(await providerConfigured(admin,provider))ready.push({...row,provider});
-  }
-  ready.sort((a,b)=>Number(a.priority||999)-Number(b.priority||999));
-
-  // Circuit breaker: a provider that failed in the last 5 minutes is not used as
-  // the primary route while another configured provider is available. It remains
-  // at the very end as a last-resort fallback and automatically rejoins after cooldown.
-  const cooldownMs=5*60*1000;
-  const recentError=(row:any)=>String(row.health_status||"")==="error"&&row.last_error_at&&(Date.now()-new Date(row.last_error_at).getTime())<cooldownMs;
-  const primary=ready.filter(row=>!recentError(row));
-  const cooling=ready.filter(row=>recentError(row));
-  const pool=primary.length?primary:ready;
-
-  let ordered:PaymentProvider[]=[];
-  if(String(routing?.mode||"priority_fallback")==="weighted"&&pool.length>=2){
-    const total=pool.reduce((s,x)=>s+Math.max(1,Number(x.weight||1)),0);
-    let pick=hashInt(orderCode)%Math.max(1,total),first=0;
-    for(let i=0;i<pool.length;i++){pick-=Math.max(1,Number(pool[i].weight||1));if(pick<0){first=i;break}}
-    ordered=[...pool.slice(first),...pool.slice(0,first)].map(x=>x.provider) as PaymentProvider[];
-  }else{
-    ordered=pool.map(x=>x.provider) as PaymentProvider[];
-  }
-  if(primary.length){
-    for(const row of cooling){if(!ordered.includes(row.provider))ordered.push(row.provider)}
-  }
-  return ordered;
+async function routingOrder(admin:any,_orderCode:string){
+  const {data:mayar}=await admin.from("luma_payment_provider_settings")
+    .select("provider,enabled,priority,health_status,last_error_at")
+    .eq("provider","mayar")
+    .maybeSingle();
+  if(!mayar?.enabled)return [] as PaymentProvider[];
+  if(!(await providerConfigured(admin,"mayar")))return [] as PaymentProvider[];
+  return ["mayar"] as PaymentProvider[];
 }
 
 async function customerInfo(admin:any,user:any){
@@ -254,7 +227,7 @@ export async function createPaymentCheckout(input:CheckoutInput):Promise<Checkou
 
 export async function getPaymentProviderStatus(admin:any){
   const [{data:settings},{data:routing}]=await Promise.all([
-    admin.from("luma_payment_provider_settings").select("*").order("priority"),
+    admin.from("luma_payment_provider_settings").select("*").eq("provider","mayar").order("priority"),
     admin.from("luma_payment_routing").select("*").eq("id",1).maybeSingle()
   ]);
   const result=[] as any[];

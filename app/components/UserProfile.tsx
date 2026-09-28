@@ -12,6 +12,7 @@ export default function UserProfile({workspaceId,userId}:{workspaceId:string;use
   const [form,setForm]=useState<Row>({full_name:"",nickname:"",position_title:"",bio:"",education:"",birth_date:""});
   const [socialAlias,setSocialAlias]=useState("");
   const [socialBusy,setSocialBusy]=useState(false);
+  const [communityStatus,setCommunityStatus]=useState("");
   const [newEmail,setNewEmail]=useState("");
   const [newPhone,setNewPhone]=useState("");
   const [newPassword,setNewPassword]=useState("");
@@ -75,15 +76,16 @@ export default function UserProfile({workspaceId,userId}:{workspaceId:string;use
     await load();
   }
 
-  async function uploadAvatar(file:File|null){if(!file)return;if(!file.type.startsWith("image/"))return setStatus("Avatar harus berupa gambar.");if(file.size>5*1024*1024)return setStatus("Avatar maksimal 5 MB.");setBusy(true);const ext=file.name.split(".").pop()?.toLowerCase()||"jpg";const path=`${userId}/avatar-${Date.now()}.${ext}`;const {error}=await supabase.storage.from("luma-avatars").upload(path,file,{upsert:true,contentType:file.type});if(error){setBusy(false);return setStatus(error.message)}const {data}=supabase.storage.from("luma-avatars").getPublicUrl(path);const {error:u}=await supabase.from("profiles").update({avatar_url:data.publicUrl,updated_at:new Date().toISOString()}).eq("id",userId);setBusy(false);if(u)return setStatus(u.message);setStatus("Foto profil diperbarui.");await load();}
+  async function uploadAvatar(file:File|null){if(!file)return;if(!file.type.startsWith("image/"))return setStatus("Avatar harus berupa gambar.");if(file.size>5*1024*1024)return setStatus("Avatar maksimal 5 MB.");setBusy(true);const ext=file.name.split(".").pop()?.toLowerCase()||"jpg";const path=`${userId}/avatar-${Date.now()}.${ext}`;const {error}=await supabase.storage.from("luma-avatars").upload(path,file,{upsert:false,contentType:file.type});if(error){setBusy(false);return setStatus(error.message)}const {data}=supabase.storage.from("luma-avatars").getPublicUrl(path);const {error:u}=await supabase.from("profiles").update({avatar_url:data.publicUrl,updated_at:new Date().toISOString()}).eq("id",userId);setBusy(false);if(u)return setStatus(u.message);setStatus("Foto profil diperbarui.");await load();}
 
   async function saveCommunityProfile(){
     const alias=socialAlias.trim();
     if(alias.length<3||alias.length>30)return setStatus("Nama Community harus 3-30 karakter.");
-    setSocialBusy(true);
+    setSocialBusy(true);setCommunityStatus("");
     const {error}=await supabase.rpc("luma_update_social_identity",{p_alias:alias,p_avatar_url:null});
     setSocialBusy(false);
-    if(error)return setStatus(error.message);
+    if(error){setCommunityStatus(error.message);return setStatus(error.message)}
+    setCommunityStatus("Nama Community berhasil disimpan.");
     setStatus("Profil Community berhasil diperbarui.");
     window.dispatchEvent(new Event("lumaway-social-profile-updated"));
     await load();
@@ -94,15 +96,16 @@ export default function UserProfile({workspaceId,userId}:{workspaceId:string;use
     if(!["image/png","image/jpeg","image/webp"].includes(file.type))return setStatus("Foto Community harus JPG, PNG, atau WEBP.");
     if(file.size>5*1024*1024)return setStatus("Foto Community maksimal 5 MB.");
     const alias=(socialAlias||profile?.social_alias||"LumaUser").trim();
-    setSocialBusy(true);
+    setSocialBusy(true);setCommunityStatus("Mengunggah foto Community...");
     const ext=file.name.split(".").pop()?.toLowerCase()||"jpg";
     const path=`${userId}/community-${Date.now()}.${ext}`;
-    const {error}=await supabase.storage.from("luma-avatars").upload(path,file,{upsert:true,contentType:file.type});
-    if(error){setSocialBusy(false);return setStatus(error.message)}
+    const {error}=await supabase.storage.from("luma-avatars").upload(path,file,{upsert:false,contentType:file.type});
+    if(error){setSocialBusy(false);setCommunityStatus("Foto belum dapat diunggah. "+error.message);return setStatus(error.message)}
     const {data}=supabase.storage.from("luma-avatars").getPublicUrl(path);
     const {error:updateError}=await supabase.rpc("luma_update_social_identity",{p_alias:alias,p_avatar_url:data.publicUrl});
     setSocialBusy(false);
-    if(updateError)return setStatus(updateError.message);
+    if(updateError){setCommunityStatus(updateError.message);return setStatus(updateError.message)}
+    setCommunityStatus("Foto Community berhasil disimpan.");
     setStatus("Foto profil Community berhasil diperbarui.");
     window.dispatchEvent(new Event("lumaway-social-profile-updated"));
     await load();
@@ -197,7 +200,7 @@ export default function UserProfile({workspaceId,userId}:{workspaceId:string;use
       </div>
       <div>
         <div className="card"><div className="profile-card-head"><div><h3>Personal Information</h3>{profile?.profile_completed&&!editingProfile&&<span className="profile-complete-badge">Profil lengkap ✓</span>}</div>{profile?.profile_completed&&!editingProfile&&<button type="button" className="secondary" onClick={()=>{setEditingProfile(true);setStatus("")}}>Edit</button>}</div><div className="grid"><label>Nama Lengkap<input disabled={Boolean(profile?.profile_completed&&!editingProfile)} value={form.full_name||""} onChange={e=>setForm({...form,full_name:e.target.value})}/></label><label>Nama Panggilan<input disabled={Boolean(profile?.profile_completed&&!editingProfile)} value={form.nickname||""} onChange={e=>setForm({...form,nickname:e.target.value})} placeholder="Nama yang dipakai Luma"/></label><label>Posisi / Profesi<input disabled={Boolean(profile?.profile_completed&&!editingProfile)} value={form.position_title||""} onChange={e=>setForm({...form,position_title:e.target.value})} placeholder="Contoh: Marketing Specialist"/></label><label>Pendidikan<input disabled={Boolean(profile?.profile_completed&&!editingProfile)} value={form.education||""} onChange={e=>setForm({...form,education:e.target.value})} placeholder="Contoh: S1 Marketing"/></label><label>Tanggal Lahir<input disabled={Boolean(profile?.profile_completed&&!editingProfile)} type="date" value={form.birth_date||""} onChange={e=>setForm({...form,birth_date:e.target.value})}/></label></div><label>Bio Singkat<textarea disabled={Boolean(profile?.profile_completed&&!editingProfile)} value={form.bio||""} onChange={e=>setForm({...form,bio:e.target.value})} placeholder="Ceritakan fokus pekerjaan, pengalaman, atau minat profesional Anda."/></label>{(!profile?.profile_completed||editingProfile)&&<div className="button-row"><button className="primary" disabled={busy} onClick={saveProfile}>{busy?"Saving...":profile?.profile_completed?"Save Change":"Save Profile"}</button>{profile?.profile_completed&&<button type="button" className="secondary" disabled={busy} onClick={()=>{setEditingProfile(false);setStatus("");void load()}}>Cancel</button>}</div>}</div>
-        <div className="card community-profile-card"><div className="profile-card-head"><div><span className="eyebrow">LUMAWAY SOCIAL</span><h3>Community Profile</h3><p className="muted">Nama dan foto ini yang tampil pada feed Community. Data login dan kontak pribadi tetap tersembunyi.</p></div></div><div className="community-profile-editor"><div className="community-avatar-preview">{profile?.social_avatar_url?<img src={profile.social_avatar_url} alt="Community Profile"/>:<span>{String(profile?.social_alias||"L").slice(0,1).toUpperCase()}</span>}</div><div className="community-profile-fields"><label>Nama Community<input value={socialAlias} maxLength={30} onChange={e=>setSocialAlias(e.target.value)} placeholder="Nama yang tampil di Lumaway Social"/></label><div className="button-row"><label className="avatar-upload">Ganti foto Community<input type="file" accept="image/png,image/jpeg,image/webp" onChange={e=>void uploadCommunityAvatar(e.target.files?.[0]||null)}/></label><button type="button" className="primary" disabled={socialBusy} onClick={()=>void saveCommunityProfile()}>{socialBusy?"Saving...":"Simpan Community Profile"}</button></div><small>3-30 karakter. Jangan gunakan email, nomor telepon, atau link sebagai nama Community.</small></div></div></div>
+        <div className="card community-profile-card"><div className="profile-card-head"><div><span className="eyebrow">LUMAWAY SOCIAL</span><h3>Community Profile</h3><p className="muted">Nama dan foto ini yang tampil pada feed Community. Data login dan kontak pribadi tetap tersembunyi.</p></div></div><div className="community-profile-editor"><div className="community-avatar-preview">{profile?.social_avatar_url?<img src={profile.social_avatar_url} alt="Community Profile"/>:<span>{String(profile?.social_alias||"L").slice(0,1).toUpperCase()}</span>}</div><div className="community-profile-fields"><label>Nama Community<input value={socialAlias} maxLength={30} onChange={e=>setSocialAlias(e.target.value)} placeholder="Nama yang tampil di Lumaway Social"/></label><div className="button-row"><label className="avatar-upload">Ganti foto Community<input type="file" accept="image/png,image/jpeg,image/webp" onChange={e=>void uploadCommunityAvatar(e.target.files?.[0]||null)}/></label><button type="button" className="primary" disabled={socialBusy} onClick={()=>void saveCommunityProfile()}>{socialBusy?"Saving...":"Simpan Community Profile"}</button></div><small>3-30 karakter. Jangan gunakan email, nomor telepon, atau link sebagai nama Community.</small>{communityStatus&&<div className={`community-profile-status ${/berhasil|mengunggah/i.test(communityStatus)?"success":"error"}`}>{communityStatus}</div>}</div></div></div>
         <div className="grid profile-security-grid">
           <div className="card"><h3>Email & Password Login</h3><p className="muted">{profile?.password_configured_at?"Password sudah aktif. Anda dapat login dengan Google atau email + password.":"Wajib dibuat meskipun akun pertama kali masuk lewat Google. Password ini menambah opsi login tanpa menghapus login Google."}</p><label>Password baru<input type="password" autoComplete="new-password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} placeholder="Minimal 8 karakter"/></label><label>Konfirmasi Password<input type="password" autoComplete="new-password" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} placeholder="Ulangi password"/></label><button type="button" className="primary" disabled={passwordBusy} onClick={()=>void setAccountPassword()}>{passwordBusy?"Saving...":profile?.password_configured_at?"Ganti Password":"Buat Password Login"}</button></div>
           <div className="card"><h3>Change Email</h3><p className="muted">Email baru wajib diverifikasi melalui link keamanan sebelum menjadi email login aktif.</p><label>Email baru<input type="email" value={newEmail} onChange={e=>setNewEmail(e.target.value)} placeholder="new@email.com"/></label><button type="button" className="secondary" disabled={emailBusy} onClick={()=>void changeEmail()}>{emailBusy?"Sending...":"Send Verification"}</button></div>

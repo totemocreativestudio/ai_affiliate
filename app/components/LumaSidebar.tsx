@@ -13,12 +13,10 @@ type Props = {
 };
 
 const aiNav = [
-  ["performance", "Performance Analysis"],
-  ["creator", "Creator Analysis"],
-  ["product", "Product Analysis"],
-  ["trend", "Trend Analysis"],
-  ["anomaly", "Anomaly Detection"],
-  ["recommendation", "Recommendations"],
+  ["recommendation", "Rekomendasi"],
+  ["performance", "Performa Analisis"],
+  ["product", "Produk Analisis"],
+  ["creator", "Creator Analisis"],
 ] as const;
 
 const masterNav: Array<[string, IconName, string]> = [
@@ -48,7 +46,6 @@ const ownerNav: Array<[string, IconName, string]> = [
 const integrationNav: Array<[string, IconName, string]> = [
   ["owner-integration-google", "integration", "Google Cloud"],
   ["owner-integration-openai", "ai", "OpenAI"],
-  ["owner-integration-xendit", "billing", "Xendit"],
   ["owner-integration-whatsapp", "community", "WhatsApp CRM & OTP"],
 ];
 

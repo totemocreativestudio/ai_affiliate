@@ -35,15 +35,15 @@ function renderReview(variant:ReviewVariant,index=0){
 }
 function renderChat(variant:ChatVariant,offset=0,index=0){
   const canvas=document.createElement("canvas");canvas.width=720;canvas.height=1280;const ctx=canvas.getContext("2d")!;
-  ctx.fillStyle="#0b141a";ctx.fillRect(0,0,720,1280);
-  ctx.fillStyle="#202c33";ctx.fillRect(0,0,720,116);
+  ctx.fillStyle="#efeae2";ctx.fillRect(0,0,720,1280);
+  ctx.fillStyle="#075e54";ctx.fillRect(0,0,720,116);
   ctx.fillStyle="#d9fdd3";ctx.beginPath();ctx.arc(43,57,28,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle="#111b21";ctx.font="800 20px Arial";ctx.textAlign="center";ctx.fillText((variant.contact_name||"C").slice(0,1).toUpperCase(),43,64);ctx.textAlign="left";
-  ctx.fillStyle="#f0f2f5";ctx.font="700 24px Arial";ctx.fillText(variant.contact_name||"Contact",82,49);
-  ctx.fillStyle="#aebac1";ctx.font="500 15px Arial";ctx.fillText("online",82,76);
-  ctx.fillStyle="#aebac1";ctx.font="700 17px Arial";ctx.textAlign="right";ctx.fillText(`${String(index+1).padStart(2,"0")}`,690,65);ctx.textAlign="left";
+  ctx.fillStyle="#17322d";ctx.font="800 20px Arial";ctx.textAlign="center";ctx.fillText((variant.contact_name||"C").slice(0,1).toUpperCase(),43,64);ctx.textAlign="left";
+  ctx.fillStyle="#ffffff";ctx.font="700 24px Arial";ctx.fillText(variant.contact_name||"Contact",82,49);
+  ctx.fillStyle="#d7f4ed";ctx.font="500 15px Arial";ctx.fillText("online",82,76);
+  ctx.fillStyle="#d7f4ed";ctx.font="700 17px Arial";ctx.textAlign="right";ctx.fillText(`${String(index+1).padStart(2,"0")}`,690,65);ctx.textAlign="left";
 
-  ctx.globalAlpha=.16;ctx.fillStyle="#d1d7db";
+  ctx.globalAlpha=.12;ctx.fillStyle="#7c8b86";
   for(let y=140;y<1210;y+=82)for(let x=22;x<700;x+=90){ctx.beginPath();ctx.arc(x+(y%164?18:0),y,4,0,Math.PI*2);ctx.fill()}
   ctx.globalAlpha=1;
 
@@ -52,12 +52,12 @@ function renderChat(variant:ChatVariant,offset=0,index=0){
   let total=0;for(const b of bubbles)total+=b.height+12;const maxOffset=Math.max(0,total-(1280-210));let y=145-Math.min(maxOffset,offset);
   for(const b of bubbles){
     const bw=478,bx=b.side==="outgoing"?720-bw-24:24;
-    ctx.fillStyle=b.side==="outgoing"?"#005c4b":"#202c33";ctx.beginPath();ctx.roundRect(bx,y,bw,b.height,12);ctx.fill();
-    ctx.fillStyle="#e9edef";ctx.font="500 20px Arial";b.lines.forEach((line,i)=>ctx.fillText(line,bx+16,y+30+i*28));
+    ctx.fillStyle=b.side==="outgoing"?"#d9fdd3":"#ffffff";ctx.beginPath();ctx.roundRect(bx,y,bw,b.height,12);ctx.fill();
+    ctx.fillStyle="#111b21";ctx.font="500 20px Arial";b.lines.forEach((line,i)=>ctx.fillText(line,bx+16,y+30+i*28));
     ctx.fillStyle="#8696a0";ctx.font="500 12px Arial";ctx.textAlign="right";ctx.fillText("20."+String(6+(bubbles.indexOf(b)%4)).padStart(2,"0"),bx+bw-12,y+b.height-9);ctx.textAlign="left";
     y+=b.height+12;
   }
-  ctx.fillStyle="#202c33";ctx.beginPath();ctx.roundRect(18,1220,620,44,22);ctx.fill();ctx.fillStyle="#8696a0";ctx.font="500 17px Arial";ctx.fillText("Ketik pesan",50,1248);
+  ctx.fillStyle="#ffffff";ctx.beginPath();ctx.roundRect(18,1220,620,44,22);ctx.fill();ctx.fillStyle="#667781";ctx.font="500 17px Arial";ctx.fillText("Ketik pesan",50,1248);
   drawLumawayMark(ctx,720,1280,index);return {canvas,maxOffset};
 }
 async function downloadChatVideo(variant:ChatVariant,index:number){
@@ -95,7 +95,7 @@ export default function LumaAffiliateCenter({workspaceId,userId}:{workspaceId:st
       <div className="generator-form grid"><label>Produk / layanan<input value={brief.product} onChange={e=>setBrief({...brief,product:e.target.value})} placeholder="Contoh: Lumaway Affiliate Intelligence"/></label><label>Target audience<input value={brief.audience} onChange={e=>setBrief({...brief,audience:e.target.value})} placeholder="Contoh: seller & affiliate specialist"/></label><label>Gaya bahasa<select value={brief.tone} onChange={e=>setBrief({...brief,tone:e.target.value})}><option value="friendly">Friendly & natural</option><option value="professional">Professional</option><option value="casual">Casual</option><option value="educational">Educational</option></select></label><label>Rating mockup<select value={brief.rating} onChange={e=>setBrief({...brief,rating:Number(e.target.value)})}>{[5,4,3,2,1].map(x=><option key={x} value={x}>{x} bintang</option>)}</select></label></div>
       <label>Konteks / poin utama<textarea value={brief.context} onChange={e=>setBrief({...brief,context:e.target.value})} placeholder="Tuliskan fakta produk, situasi percakapan, benefit yang benar, dan konteks yang ingin disimulasikan."/></label>
       <button className="primary" disabled={genBusy} onClick={generateMockups}>{genBusy?"Generating...":"✦ Generate 5 Chat + 5 Review"}</button>{genStatus&&<div className={`owner-inline-note ${genStatus.startsWith("error")?"error":""}`}>{genStatus}</div>}
-      {chats.length>0&&<><h3 className="generator-result-title">Chat WhatsApp</h3><div className="generator-scroll">{chats.map((chat,i)=><article className="wa-mockup" key={i} style={{background:"#0b141a",border:"1px solid #2a3942",color:"#e9edef",minWidth:330,maxWidth:390,borderRadius:16,overflow:"hidden"}}><div className="wa-mockup-head" style={{background:"#202c33",padding:"12px 14px"}}><div><b>{chat.contact_name}</b><small style={{display:"block",color:"#aebac1"}}>online</small></div><span style={{fontWeight:800}}>{String(i+1).padStart(2,"0")}</span></div><div className="wa-messages" style={{padding:14,background:"#0b141a"}}>{chat.messages.map((m,j)=><p key={j} className={m.side} style={{display:"flex",justifyContent:m.side==="outgoing"?"flex-end":"flex-start",margin:"7px 0"}}><span style={{display:"inline-block",maxWidth:"86%",background:m.side==="outgoing"?"#005c4b":"#202c33",padding:"9px 11px",borderRadius:10,lineHeight:1.45}}>{m.text}</span></p>)}</div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",fontSize:11,color:"#8696a0"}}><span>Contoh {String(i+1).padStart(2,"0")}</span><span>LUMAWAY.</span></div><div className="button-row" style={{padding:"0 12px 12px"}}><button onClick={()=>downloadCanvas(renderChat(chat,0,i).canvas,`lumaway-chat-${i+1}.png`)}>Download PNG</button><button onClick={()=>void downloadChatVideo(chat,i)}>Download Video</button></div></article>)}</div></>}
+      {chats.length>0&&<><h3 className="generator-result-title">Chat WhatsApp</h3><div className="generator-scroll">{chats.map((chat,i)=><article className="wa-mockup" key={i} style={{background:"#efeae2",border:"1px solid #d5ddd9",color:"#111b21",minWidth:330,maxWidth:390,borderRadius:16,overflow:"hidden"}}><div className="wa-mockup-head" style={{background:"#075e54",padding:"12px 14px",color:"#fff"}}><div><b style={{color:"#fff"}}>{chat.contact_name}</b><small style={{display:"block",color:"#d7f4ed"}}>online</small></div><span style={{fontWeight:800,color:"#d7f4ed"}}>{String(i+1).padStart(2,"0")}</span></div><div className="wa-messages" style={{padding:14,background:"#efeae2"}}>{chat.messages.map((m,j)=><p key={j} className={m.side} style={{display:"flex",justifyContent:m.side==="outgoing"?"flex-end":"flex-start",margin:"7px 0"}}><span style={{display:"inline-block",maxWidth:"86%",background:m.side==="outgoing"?"#d9fdd3":"#fff",color:"#111b21",padding:"9px 11px",borderRadius:10,lineHeight:1.45,boxShadow:"0 1px 1px rgba(0,0,0,.08)"}}>{m.text}</span></p>)}</div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",fontSize:11,color:"#667781",background:"#f7f7f7"}}><span>Contoh {String(i+1).padStart(2,"0")}</span><span>LUMAWAY.</span></div><div className="button-row" style={{padding:"0 12px 12px"}}><button onClick={()=>downloadCanvas(renderChat(chat,0,i).canvas,`lumaway-chat-${i+1}.png`)}>Download PNG</button><button onClick={()=>void downloadChatVideo(chat,i)}>Download Video</button></div></article>)}</div></>}
       {reviews.length>0&&<><h3 className="generator-result-title">Review</h3><div className="generator-scroll">{reviews.map((review,i)=><article className="review-mockup" key={i} style={{minWidth:300,maxWidth:360,borderRadius:16,padding:18,background:"#fff",border:"1px solid #e5e7eb"}}><span style={{fontSize:11,fontWeight:800,color:"#667085"}}>REVIEW {String(i+1).padStart(2,"0")}</span><div className="review-user"><i>{review.username.slice(0,1).toUpperCase()}</i><div><b>{review.username}</b><span>{"★".repeat(Math.max(1,Math.min(5,review.rating)))}</span></div></div><p style={{lineHeight:1.55}}>{review.review}</p><small style={{display:"block",color:"#98a2b3",marginBottom:10}}>Materi konsep · LUMAWAY.</small><button onClick={()=>downloadCanvas(renderReview(review,i),`lumaway-review-${i+1}.png`)}>Download PNG</button></article>)}</div></>}
     </div>
 
