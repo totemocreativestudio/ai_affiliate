@@ -53,7 +53,9 @@ async function expectLegacyRedirect() {
     throw new Error(`legacy route: expected redirect, received HTTP ${response.status}`);
   }
   const location = response.headers.get("location") || "";
-  if (!location.includes("app.lumaway.online/login")) {
+  let parsed = null;
+  try { parsed = new URL(location); } catch {}
+  if (!parsed || parsed.hostname !== "app.lumaway.online" || parsed.pathname !== "/login") {
     throw new Error(`legacy route: expected app.lumaway.online/login, received ${location || "(missing)"}`);
   }
 }
