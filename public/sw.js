@@ -1,4 +1,4 @@
-const CACHE = "lumaway-shell-v4";
+const CACHE = "lumaway-shell-v5";
 const STATIC = ["/luma-mark.png", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
