@@ -7,10 +7,10 @@ import { createClient } from "../../lib/supabase-browser";
 
 type Row = Record<string, any>;
 const TYPES = [
-  ["recommendation", "Rekomendasi", "Ringkas seluruh data periode menjadi prioritas aksi 7-30 hari yang bisa langsung dibawa ke meeting atau Kanban."],
-  ["performance", "Performa Analisis", "Analisa menyeluruh GMV, order, qty, komisi, refund, creator, produk, platform, dan perubahan performa pada periode yang dipilih."],
-  ["product", "Produk Analisis", "Fokus pada performa produk/SKU serta hubungan produk dengan creator untuk mencari produk pendorong omzet dan peluang scale."],
-  ["creator", "Creator Analisis", "Fokus pada seluruh data creator di periode terpilih untuk melihat kontribusi, konsentrasi, produktivitas, dan peluang follow-up."],
+  ["recommendation", "Recommendations", "Ringkas seluruh data periode menjadi prioritas aksi 7-30 hari yang bisa langsung dibawa ke meeting atau Kanban."],
+  ["performance", "Performance Insights", "Analisa menyeluruh GMV, order, qty, komisi, refund, creator, produk, platform, dan perubahan performa pada periode yang dipilih."],
+  ["product", "Product Insights", "Fokus pada performa produk/SKU serta hubungan produk dengan creator untuk mencari produk pendorong omzet dan peluang scale."],
+  ["creator", "Creator Insights", "Fokus pada seluruh data creator di periode terpilih untuk melihat kontribusi, konsentrasi, produktivitas, dan peluang follow-up."],
 ] as const;
 const PAGE_SIZE = 10;
 
@@ -110,16 +110,19 @@ export default function AIAnalytics({ workspaceId }: { workspaceId: string }) {
   }
 
   async function run() {
-    if(runningCount>=3)return setStatus("Maksimal 3 analisis AI dapat berjalan bersamaan.");
+    if(runningCount>=3)return setStatus("Maksimal 3 proses analisis dapat berjalan bersamaan.");
     const requestedType=type;
     const requestedStart=start;
     const requestedEnd=end;
     if(requestedStart&&requestedEnd&&requestedStart>requestedEnd)return setStatus("Start Date tidak boleh melewati End Date.");
 
+    const taskId=`analysis-${requestedType}-${Date.now()}`;
+    window.dispatchEvent(new CustomEvent("lumaway-background-task",{detail:{id:taskId,title:TYPES.find(x=>x[0]===requestedType)?.[1]||"Analysis",detail:"Menyiapkan data workspace",status:"running",progress:10}}));
     setRunningCount(value=>value+1);
     setTaskAdded({});
     setStatus(`Menjalankan ${TYPES.find(x=>x[0]===requestedType)?.[1]||"AI Analysis"} · proses dapat berjalan bersamaan maksimal 3.`);
     try {
+      window.dispatchEvent(new CustomEvent("lumaway-background-task",{detail:{id:taskId,detail:"Menganalisis perubahan dan pola performa",status:"running",progress:38}}));
       const response=await fetch("/api/ai/analyze",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
@@ -137,9 +140,11 @@ export default function AIAnalytics({ workspaceId }: { workspaceId: string }) {
         setRunId(data.run_id||"");
       }
       setStatus(`${TYPES.find(x=>x[0]===requestedType)?.[1]||"Analisis"} selesai dan disimpan ke history.`);
+      window.dispatchEvent(new CustomEvent("lumaway-background-task",{detail:{id:taskId,title:TYPES.find(x=>x[0]===requestedType)?.[1]||"Analysis",detail:"Insight siap dibuka",status:"success",progress:100}}));
       await loadHistory();
     } catch(error:any) {
-      setStatus(error?.message||"AI sementara tidak dapat memproses analisis. Silakan coba kembali.");
+      window.dispatchEvent(new CustomEvent("lumaway-background-task",{detail:{id:taskId,title:TYPES.find(x=>x[0]===requestedType)?.[1]||"Analysis",detail:error?.message||"Analisis belum berhasil",status:"error"}}));
+      setStatus(error?.message||"Analisis sementara tidak dapat diproses. Silakan coba kembali.");
     } finally {
       setRunningCount(value=>Math.max(0,value-1));
     }
@@ -154,13 +159,21 @@ export default function AIAnalytics({ workspaceId }: { workspaceId: string }) {
 
   async function generateDocument(targetRun = runId) {
     if (!targetRun) return;
+    const taskId=`report-${targetRun}`;
+    window.dispatchEvent(new CustomEvent("lumaway-background-task",{detail:{id:taskId,title:"Smart Report",detail:"Menyiapkan struktur laporan",status:"running",progress:12}}));
     setGeneratingReport(targetRun);
     try {
+      window.dispatchEvent(new CustomEvent("lumaway-background-task",{detail:{id:taskId,title:"Smart Report",detail:"Menyusun insight dan visual laporan",status:"running",progress:52}}));
       const response = await fetch("/api/ai/report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspace_id: workspaceId, run_id: targetRun }) });
       const data = await response.json();
       if (!response.ok || !data.ok) throw new Error();
-      setStatus("Dokumen berhasil dibuat dan disimpan ke history."); await loadHistory();
-    } catch { setStatus("error, terjadi kesalahan."); } finally { setGeneratingReport(""); }
+      setStatus("Dokumen berhasil dibuat dan disimpan ke history.");
+      window.dispatchEvent(new CustomEvent("lumaway-background-task",{detail:{id:taskId,title:"Smart Report",detail:"Dokumen siap dibuka",status:"success",progress:100}}));
+      await loadHistory();
+    } catch {
+      window.dispatchEvent(new CustomEvent("lumaway-background-task",{detail:{id:taskId,title:"Smart Report",detail:"Dokumen belum berhasil dibuat",status:"error"}}));
+      setStatus("Dokumen belum berhasil dibuat. Silakan coba kembali.");
+    } finally { setGeneratingReport(""); }
   }
 
   function tokenUpdated() { window.dispatchEvent(new Event("luma-token-updated")); }
@@ -224,11 +237,11 @@ export default function AIAnalytics({ workspaceId }: { workspaceId: string }) {
   const menuRow = menu?.row || null;
 
   return <section id="ai-analytics" className="legacy-page-anchor ai-page ai-v2">
-    <div className="ai-page-head"><div><div className="eyebrow">LUMA AFFILIATE INTELLIGENCE · AI ANALYTICS</div><h1>{active[1]}</h1><p className="muted">{active[2]}. Analisis mengacu pada database workspace dari file yang diupload dan menggunakan empat mode analisis dengan seluruh data yang tersedia pada periode terpilih.</p></div></div>
+    <div className="ai-page-head"><div><div className="eyebrow">LUMA AFFILIATE INTELLIGENCE · INSIGHTS</div><h1>{active[1]}</h1><p className="muted">{active[2]}. Analisis menggunakan data workspace yang sudah diupload untuk membantu melihat perubahan, peluang, dan tindakan berikutnya pada periode terpilih.</p></div></div>
     <div className="ai-type-grid">{TYPES.map(([key, label, description]) => <button key={key} className={`ai-type-card ${type === key ? "active" : ""}`} onClick={() => { setType(key); setResult(null); setRunId(""); }}><strong>{label}</strong><span>{description}</span></button>)}</div>
-    <div className="card ai-control-card"><div className="filters"><label>Start <span className="field-note">Opsional</span><input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></label><label>End <span className="field-note">Opsional</span><input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></label><button className="primary" onClick={run} disabled={runningCount>=3}>{runningCount>=3 ? "3/3 AI berjalan" : runningCount>0 ? `✦ Generate AI · ${runningCount}/3 berjalan` : "✦ Analisis dengan AI"}</button><button className="secondary" onClick={() => { setStart(""); setEnd(""); }}>Reset Date</button></div><div className="ai-status">{status}</div></div>
+    <div className="card ai-control-card"><div className="filters"><label>Start <span className="field-note">Opsional</span><input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></label><label>End <span className="field-note">Opsional</span><input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></label><button className="primary" onClick={run} disabled={runningCount>=3}>{runningCount>=3 ? "3/3 proses berjalan" : runningCount>0 ? `Analisis · ${runningCount}/3 berjalan` : "Mulai Analisis"}</button><button className="secondary" onClick={() => { setStart(""); setEnd(""); }}>Reset Date</button></div><div className="ai-status">{status}</div></div>
 
-    {(runningCount>0||generatingReport)&&<div className="ai-generation-loading"><LumaLoadingMotion compact label={generatingReport?"Menyusun dokumen AI":`Lumaway AI sedang menganalisis · ${runningCount}/3 proses`} detail={generatingReport?"Menyiapkan struktur, insight, dan dokumen laporan.":"Data dihitung di server agar lebih cepat dan stabil. Anda dapat menjalankan hingga 3 analisis bersamaan."}/></div>}
+    {(runningCount>0||generatingReport)&&<div className="ai-generation-loading"><LumaLoadingMotion compact label={generatingReport?"Menyusun dokumen":`Lumaway sedang menganalisis · ${runningCount}/3 proses`} detail={generatingReport?"Menyiapkan struktur, insight, dan dokumen laporan.":"Data dihitung di server agar lebih cepat dan stabil. Anda dapat menjalankan hingga 3 analisis bersamaan."}/></div>}
 
     {result && <div className="ai-result-grid">
       <div className="card ai-summary-card" style={{gridColumn:"1 / -1"}}>
