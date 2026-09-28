@@ -24,16 +24,19 @@ async function sender(admin:any){
   return String(process.env.LUMA_EMAIL_FROM||data?.setting_value||"Lumaway <marketing@lumaway.online>").trim();
 }
 
-function tokenHashFromGenerateLink(data:any){
+function verificationFromGenerateLink(data:any){
   const props=data?.properties||{};
-  const direct=String(props.hashed_token||props.hashedToken||"").trim();
-  if(direct)return direct;
   const action=String(props.action_link||props.actionLink||"").trim();
-  if(!action)return "";
-  try{
-    const u=new URL(action);
-    return String(u.searchParams.get("token")||u.searchParams.get("token_hash")||"").trim();
-  }catch{return ""}
+  let tokenHash=String(props.hashed_token||props.hashedToken||"").trim();
+  let type=String(props.verification_type||props.verificationType||"").trim();
+  if(action){
+    try{
+      const u=new URL(action);
+      if(!tokenHash)tokenHash=String(u.searchParams.get("token")||u.searchParams.get("token_hash")||"").trim();
+      if(!type)type=String(u.searchParams.get("type")||"").trim();
+    }catch{}
+  }
+  return {tokenHash,type:type||"email"};
 }
 
 async function rateLimited(admin:any,emailHash:string,ipHash:string){
@@ -122,13 +125,13 @@ export async function POST(req:NextRequest){
     return NextResponse.json({ok:false,error:"Email verifikasi belum dapat dibuat. Coba beberapa saat lagi."},{status:400});
   }
 
-  const tokenHash=tokenHashFromGenerateLink(linkData);
+  const {tokenHash,type}=verificationFromGenerateLink(linkData);
   if(!tokenHash){
     await audit(admin,"error",action,emailHash,ipHash,undefined,"missing token hash");
     return NextResponse.json({ok:false,error:"Token verifikasi belum dapat dibuat."},{status:500});
   }
 
-  const confirmUrl=`${APP_ORIGIN}/auth/confirm?token_hash=${encodeURIComponent(tokenHash)}&type=email`;
+  const confirmUrl=`${APP_ORIGIN}/auth/confirm?token_hash=${encodeURIComponent(tokenHash)}&type=${encodeURIComponent(type)}`;
   const from=await sender(admin);
   const response=await fetch("https://api.resend.com/emails",{
     method:"POST",
