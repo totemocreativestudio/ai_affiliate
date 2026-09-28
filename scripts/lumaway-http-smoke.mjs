@@ -2,11 +2,15 @@ const origin = process.env.LUMAWAY_SMOKE_ORIGIN || "http://127.0.0.1:3100";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+async function request(pathname, host, options = {}) {
+  return fetch(`${origin}${pathname}`, { redirect: "manual", headers: { Host: host }, ...options });
+}
+
 async function waitForServer() {
   let lastError = null;
   for (let attempt = 0; attempt < 40; attempt += 1) {
     try {
-      const response = await fetch(`${origin}/app.lumaway/login`, { redirect: "manual" });
+      const response = await request("/login", "app.lumaway.online");
       if (response.status >= 200 && response.status < 500) return;
     } catch (error) {
       lastError = error;
@@ -16,53 +20,60 @@ async function waitForServer() {
   throw lastError || new Error("Lumaway server did not become ready.");
 }
 
-async function expectRoute(pathname, { status = 200, contains } = {}) {
-  const response = await fetch(`${origin}${pathname}`, { redirect: "manual" });
+async function expectRoute(pathname, { status = 200, contains, host = "app.lumaway.online" } = {}) {
+  const response = await request(pathname, host);
   if (response.status !== status) {
-    throw new Error(`${pathname}: expected HTTP ${status}, received ${response.status}`);
+    throw new Error(`${host}${pathname}: expected HTTP ${status}, received ${response.status}`);
   }
   const body = await response.text();
   if (contains && !body.includes(contains)) {
-    throw new Error(`${pathname}: response did not contain expected marker: ${contains}`);
+    throw new Error(`${host}${pathname}: response did not contain expected marker: ${contains}`);
   }
 }
 
-async function expectRootLoginRedirect() {
-  const response = await fetch(`${origin}/`, { redirect: "manual" });
+async function expectPublicLanding() {
+  const response = await request("/", "www.lumaway.online");
   if ([307, 308].includes(response.status)) {
     const location = response.headers.get("location") || "";
-    if (!location.endsWith("/app.lumaway/login")) {
-      throw new Error(`/: expected redirect to /app.lumaway/login, received ${location || "(missing)"}`);
+    if (!location.endsWith("/web/home")) {
+      throw new Error(`www root: expected redirect to /web/home, received ${location || "(missing)"}`);
     }
     return;
   }
-
-  // Next.js may prerender a server-component redirect as an HTTP 200 shell
-  // containing the redirect instruction. Accept that only if the target path
-  // is explicitly present in the generated response.
   if (response.status === 200) {
     const body = await response.text();
-    if (body.includes("/app.lumaway/login")) return;
+    if (body.includes("/web/home")) return;
   }
+  throw new Error(`www root: expected landing redirect, received HTTP ${response.status}`);
+}
 
-  throw new Error(`/: expected redirect to /app.lumaway/login, received HTTP ${response.status}`);
+async function expectLegacyRedirect() {
+  const response = await request("/app.lumaway/login", "www.lumaway.online");
+  if (![307, 308].includes(response.status)) {
+    throw new Error(`legacy route: expected redirect, received HTTP ${response.status}`);
+  }
+  const location = response.headers.get("location") || "";
+  if (!location.includes("app.lumaway.online/login")) {
+    throw new Error(`legacy route: expected app.lumaway.online/login, received ${location || "(missing)"}`);
+  }
 }
 
 async function main() {
   await waitForServer();
-  await expectRootLoginRedirect();
+  await expectPublicLanding();
+  await expectLegacyRedirect();
 
   for (const route of [
-    "/app.lumaway/login",
-    "/app.lumaway/dashboard",
-    "/app.lumaway/ai-analytics",
-    "/app.lumaway/billing",
-    "/app.lumaway/profile",
+    "/login",
+    "/dashboard",
+    "/ai-analytics",
+    "/billing",
+    "/profile",
   ]) {
     await expectRoute(route, { contains: "Lumaway" });
   }
 
-  console.log("Lumaway HTTP route smoke checks passed.");
+  console.log("Lumaway host-aware HTTP route smoke checks passed.");
 }
 
 main().catch((error) => {
