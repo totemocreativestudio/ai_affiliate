@@ -8,9 +8,7 @@ const publicSiteUrl=rawSiteUrl==='https://lumaway.online'?'https://www.lumaway.o
 const configuredSiteUrl = new URL(publicSiteUrl);
 const marketingUrl = `${configuredSiteUrl.origin}${marketingBasePath}`;
 const configuredAppUrl=(process.env.NEXT_PUBLIC_APP_URL||'').replace(/\/$/,'');
-const appUrl=!configuredAppUrl||configuredAppUrl==='https://app.lumaway.online'
- ? 'https://www.lumaway.online/app.lumaway'
- : configuredAppUrl;
+const appUrl=configuredAppUrl||'https://app.lumaway.online';
 export const site = {
  name: 'Lumaway', tagline: 'Light Up Your Potential.',
  url: marketingUrl,
