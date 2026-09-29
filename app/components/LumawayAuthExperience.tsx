@@ -99,9 +99,9 @@ export default function LumawayAuthExperience({onAuthenticated}:{onAuthenticated
     setView(next);setError("");setMessage("");
     const url=new URL(window.location.href);
     if(next==="signup"){
-      url.pathname="/app.lumaway/register";url.searchParams.delete("view");
+      url.pathname="/register";url.searchParams.delete("view");
     }else{
-      url.pathname="/app.lumaway/login";
+      url.pathname="/login";
       if(next==="signin")url.searchParams.delete("view");
       else if(next==="forgot"||next==="whatsapp")url.searchParams.set("view",next);
     }
