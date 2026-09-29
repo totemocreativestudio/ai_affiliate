@@ -303,3 +303,325 @@
 @media(prefers-reduced-motion:reduce){
   .viz-rank-track i,.dashboard-kpi-card,.side-nav a,.side-nav button{transition:none!important}
 }
+
+
+/* -------- PR69 readability recovery --------
+   Flat, functional UI. Remove decorative "AI" cues and prioritize real data. */
+.luma-app,.app-shell,.content{
+  background:#f6f8fc!important;
+}
+.sidebar{
+  background:#0b1733!important;
+}
+.nav-ico{
+  background:transparent!important;
+  border:1px solid rgba(255,255,255,.10)!important;
+  box-shadow:none!important;
+}
+.nav-ico svg,.side-subnav svg{
+  stroke-width:1.7!important;
+}
+.side-group[open]>summary{
+  background:rgba(255,255,255,.045)!important;
+  border-color:rgba(255,255,255,.07)!important;
+}
+.side-subnav a.active,.side-subnav button.active{
+  background:rgba(89,104,226,.16)!important;
+  border-color:rgba(125,137,238,.16)!important;
+}
+.side-nav a,.side-nav button,.side-group summary{
+  font-size:11px!important;
+}
+.side-subnav a,.side-subnav button{
+  font-size:10.5px!important;
+}
+
+.dashboard-page>.eyebrow,.legacy-page-anchor>.eyebrow{
+  background:#eef2ff!important;
+  border-color:#dfe5ff!important;
+  color:#4155b8!important;
+}
+.dashboard-intro{
+  font-size:12px!important;
+}
+.dashboard-period-presets button{
+  font-size:10px!important;
+}
+.filters label{
+  font-size:10px!important;
+}
+.dashboard-kpi-card{
+  background:#fff!important;
+  box-shadow:0 4px 16px rgba(26,38,68,.045)!important;
+}
+.dashboard-kpi-card:after{
+  display:none!important;
+}
+.dashboard-kpi-card small{
+  font-size:10px!important;
+}
+.dashboard-kpi-card>b{
+  font-size:18px!important;
+}
+.kpi-delta{
+  font-size:9px!important;
+}
+.kpi-delta.baseline-missing{
+  color:#7a8495!important;
+}
+.viz-mini-bars i{background:#dce3f3!important}
+.viz-mini-bars b{background:#4d66d9!important}
+
+.lw-chart-card{
+  background:#fff!important;
+  box-shadow:0 5px 20px rgba(24,36,65,.05)!important;
+}
+.lw-chart-card:before{
+  background:#5369d8!important;
+  opacity:.9!important;
+}
+.lw-chart-head h3{
+  font-size:14px!important;
+}
+.lw-chart-head p{
+  font-size:10px!important;
+}
+.lw-chart-badge{
+  background:#f5f7fb!important;
+  border-color:#e4e8f0!important;
+  color:#566174!important;
+  font-size:9px!important;
+}
+.viz-axis-label{
+  font-size:10px!important;
+}
+.viz-line-primary{stroke:#456fe8!important}
+.viz-line-secondary{stroke:#14a0a0!important}
+.primary-dot{background:#456fe8!important}
+.secondary-dot{background:#14a0a0!important}
+
+.viz-single-period{
+  min-height:220px;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  align-items:center;
+  gap:12px;
+  padding:28px 20px;
+}
+.viz-single-period>div{
+  min-width:0;
+  padding:18px;
+  border:1px solid #e5e9f1;
+  border-radius:14px;
+  background:#fafbfe;
+}
+.viz-single-period span{
+  display:block;
+  margin-bottom:7px;
+  color:#7b8698;
+  font-size:10px;
+  font-weight:700;
+}
+.viz-single-period strong{
+  display:block;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  color:#182230;
+  font-size:19px;
+  letter-spacing:-.025em;
+}
+
+.viz-rank-track i{
+  background:#5369d8!important;
+}
+.viz-rank-index{
+  background:#eef2ff!important;
+  color:#4155b8!important;
+}
+
+.scroll thead th{
+  font-size:10px!important;
+}
+.scroll tbody td{
+  font-size:11px!important;
+}
+.table-sort{
+  font-size:10px!important;
+}
+
+.dashboard-data-warning{
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+  margin:10px 0 12px;
+  padding:10px 12px;
+  border:1px solid #f1d99a;
+  border-radius:10px;
+  background:#fffaf0;
+  color:#6c5a2e;
+  font-size:10px;
+  line-height:1.5;
+}
+.dashboard-data-warning strong{white-space:nowrap}
+.dashboard-data-warning span{color:#766947}
+
+/* Product Ranking V6: marketplace-style information hierarchy without copying marketplace branding. */
+.product-ranking-v6{
+  padding:0!important;
+  overflow:hidden;
+}
+.product-ranking-v6>.section-head{
+  padding:18px 18px 10px!important;
+  margin:0!important;
+}
+.product-ranking-tabs{
+  display:flex;
+  gap:28px;
+  overflow-x:auto;
+  padding:0 18px;
+  border-bottom:1px solid #e6e9ef;
+  scrollbar-width:thin;
+}
+.product-ranking-tabs button{
+  position:relative;
+  flex:none;
+  min-height:42px;
+  padding:0 0 10px;
+  border:0;
+  background:transparent;
+  color:#4d5869;
+  font-size:10.5px;
+  font-weight:650;
+  cursor:pointer;
+}
+.product-ranking-tabs button:after{
+  content:"";
+  position:absolute;
+  left:0;right:0;bottom:-1px;
+  height:2px;
+  background:transparent;
+}
+.product-ranking-tabs button.active{
+  color:#3348b8;
+  font-weight:800;
+}
+.product-ranking-tabs button.active:after{
+  background:#5369d8;
+}
+.product-ranking-note{
+  padding:10px 18px;
+  background:#fbfcfe;
+  border-bottom:1px solid #edf0f4;
+  color:#788396;
+  font-size:9.5px;
+  line-height:1.45;
+}
+.product-ranking-scroll{
+  margin:0!important;
+  border:0!important;
+  border-radius:0!important;
+}
+.product-ranking-table{
+  min-width:980px!important;
+}
+.product-ranking-table thead th{
+  height:38px!important;
+  background:#f7f8fa!important;
+}
+.product-ranking-table tbody td{
+  min-height:62px!important;
+  height:auto!important;
+  padding-top:12px!important;
+  padding-bottom:12px!important;
+}
+.product-ranking-table th:first-child,
+.product-ranking-table td:first-child{
+  width:80px;
+  text-align:center;
+}
+.product-rank-number{
+  display:inline-grid;
+  place-items:center;
+  width:26px;
+  height:26px;
+  border-radius:8px;
+  background:#f1f3f8;
+  color:#374151;
+  font-weight:850;
+  font-size:10px;
+}
+.product-info-cell{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:320px;
+  max-width:520px;
+}
+.product-thumb-fallback{
+  flex:none;
+  display:grid;
+  place-items:center;
+  width:42px;
+  height:42px;
+  border:1px solid #e0e5ed;
+  border-radius:9px;
+  background:#f6f8fb;
+  color:#5369d8;
+  font-weight:850;
+  font-size:13px;
+}
+.product-info-cell>div{
+  min-width:0;
+}
+.product-info-cell b{
+  display:block;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#182230;
+  font-size:11px;
+  line-height:1.4;
+}
+.product-info-cell small{
+  display:block;
+  margin-top:3px;
+  color:#8a94a4;
+  font-size:9px;
+}
+.platform-chip{
+  display:inline-flex;
+  align-items:center;
+  min-height:24px;
+  padding:4px 8px;
+  border:1px solid #e2e6ed;
+  border-radius:999px;
+  background:#fafbfc;
+  color:#5f6b7c;
+  font-size:9px;
+  font-weight:700;
+}
+.product-summary-line{
+  color:#667085;
+  white-space:nowrap;
+  font-size:9.5px;
+}
+
+@media(max-width:680px){
+  .viz-single-period{
+    grid-template-columns:1fr;
+    min-height:0;
+    padding:10px 0 2px;
+  }
+  .viz-single-period>div{
+    padding:12px 14px;
+  }
+  .product-ranking-tabs{
+    gap:20px;
+    padding:0 14px;
+  }
+  .product-ranking-v6>.section-head,
+  .product-ranking-note{
+    padding-left:14px!important;
+    padding-right:14px!important;
+  }
+}
