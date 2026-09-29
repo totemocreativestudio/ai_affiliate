@@ -60,7 +60,7 @@ const ownerNav: Array<[string, IconName, string]> = [
 
 const integrationNav: Array<[string, IconName, string]> = [
   ["owner-integration-google", "integration", "Google Cloud"],
-  ["owner-integration-openai", "ai", "OpenAI"],
+  ["owner-integration-openai", "integration", "OpenAI"],
   ["owner-integration-resend", "content", "Resend Email"],
   ["owner-integration-whatsapp", "community", "WhatsApp CRM & OTP"],
 ];
@@ -237,7 +237,7 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
                   <span><NavIcon name="performance" /><span className="nav-label">Insights & Analysis</span></span><LumaIcon name="chevron" className="chevron" />
                 </summary>
                 <div className="side-subnav">
-                  {aiNav.map(([key, label]) => <button type="button" key={key} onClick={() => openAi(key)}><LumaIcon name={key==="recommendation"?"sparkles":"performance"} /><span>{label}</span></button>)}
+                  {aiNav.map(([key, label]) => <button type="button" key={key} onClick={() => openAi(key)}><LumaIcon name={key==="recommendation"?"recommendation":"performance"} /><span>{label}</span></button>)}
                 </div>
               </details>
 
