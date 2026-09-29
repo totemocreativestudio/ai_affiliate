@@ -1,571 +1,362 @@
-﻿"use client";
+"use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
-import { createClient } from "../../lib/supabase-browser";
+import {Fragment,useEffect,useMemo,useState} from "react";
+import {createClient} from "../../lib/supabase-browser";
 
-type Product = {
-  id: number;
-  workspace_id: string;
-  sku: string;
-  sku_normalized: string;
-  product_name: string | null;
-  category: string | null;
-  selling_price: number | null;
-  cost_price: number | null;
-  point_per_unit: number | null;
-  status: string | null;
-  notes: string | null;
+type ViewMode="table"|"grid"|"list";
+
+type Product={
+  id:number;
+  workspace_id:string;
+  sku:string;
+  sku_normalized:string;
+  product_name:string|null;
+  category:string|null;
+  selling_price:number|null;
+  cost_price:number|null;
+  point_per_unit:number|null;
+  status:string|null;
+  notes:string|null;
+  image_url:string|null;
+  image_alt:string|null;
+  gallery_images:any;
+  updated_at:string|null;
 };
 
-type PlatformItem = {
-  id: number;
-  product_master_id: number;
-  sku: string;
-  platform: string;
-  product_code: string;
-  product_name: string | null;
-  category: string | null;
-  variant_slot: number | null;
-  variant_name: string | null;
+type PlatformItem={
+  id:number;
+  product_master_id:number;
+  sku:string;
+  platform:string;
+  product_code:string;
+  product_name:string|null;
+  category:string|null;
+  variant_slot:number|null;
+  variant_name:string|null;
+  image_url:string|null;
 };
 
-type ProductVariant = {
-  id: number;
-  product_master_id: number;
-  sku: string;
-  slot: number;
-  variant_name: string;
-  hpp: number | null;
-  selling_price: number | null;
+type ProductVariant={
+  id:number;
+  product_master_id:number;
+  sku:string;
+  slot:number;
+  variant_name:string;
+  hpp:number|null;
+  selling_price:number|null;
+  image_url:string|null;
 };
 
-type ProductForm = {
-  sku: string;
-  product_name: string;
-  category: string;
-  selling_price: string;
-  cost_price: string;
-  point_per_unit: string;
-  status: string;
-  notes: string;
+type ProductForm={
+  sku:string;
+  product_name:string;
+  category:string;
+  selling_price:string;
+  cost_price:string;
+  point_per_unit:string;
+  status:string;
+  notes:string;
+  image_url:string;
+  image_alt:string;
 };
 
-const EMPTY_FORM: ProductForm = {
-  sku: "",
-  product_name: "",
-  category: "",
-  selling_price: "",
-  cost_price: "",
-  point_per_unit: "",
-  status: "Active",
-  notes: "",
+const EMPTY_FORM:ProductForm={
+  sku:"",product_name:"",category:"",selling_price:"",cost_price:"",point_per_unit:"",
+  status:"Active",notes:"",image_url:"",image_alt:""
 };
 
-type ProductMasterProps = {
-  workspaceId: string;
-};
+const money=(value:number|null)=>new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(Number(value||0));
+const number=(value:number|null)=>new Intl.NumberFormat("id-ID").format(Number(value||0));
 
-export default function ProductMaster({
-  workspaceId,
-}: ProductMasterProps) {
-  const supabase = createClient();
+function ProductImage({product,size="md"}:{product:Product;size?:"sm"|"md"|"lg"}){
+  const label=String(product.product_name||product.sku||"P").trim();
+  if(product.image_url)return <img className={"pm72-image pm72-image-"+size} src={product.image_url} alt={product.image_alt||label}/>;
+  return <span className={"pm72-image pm72-image-"+size+" pm72-image-fallback"} aria-label={"Belum ada gambar "+label}>{label.slice(0,2).toUpperCase()}</span>;
+}
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [platformItems, setPlatformItems] = useState<PlatformItem[]>([]);
-  const [variants, setVariants] = useState<ProductVariant[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [search, setSearch] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState<ProductForm>(EMPTY_FORM);
+function platformLabel(items:PlatformItem[]){
+  return [...new Set(items.map(item=>String(item.platform||"").trim()).filter(Boolean))];
+}
 
-  async function loadProducts() {
-    setLoading(true);
-    setError("");
+export default function ProductMaster({workspaceId}:{workspaceId:string}){
+  const supabase=useMemo(()=>createClient(),[]);
+  const [products,setProducts]=useState<Product[]>([]);
+  const [platformItems,setPlatformItems]=useState<PlatformItem[]>([]);
+  const [variants,setVariants]=useState<ProductVariant[]>([]);
+  const [loading,setLoading]=useState(true);
+  const [saving,setSaving]=useState(false);
+  const [uploadingImage,setUploadingImage]=useState(false);
+  const [error,setError]=useState("");
+  const [search,setSearch]=useState("");
+  const [categoryFilter,setCategoryFilter]=useState("");
+  const [platformFilter,setPlatformFilter]=useState("");
+  const [statusFilter,setStatusFilter]=useState("");
+  const [sort,setSort]=useState("name");
+  const [view,setView]=useState<ViewMode>("table");
+  const [showForm,setShowForm]=useState(false);
+  const [editingId,setEditingId]=useState<number|null>(null);
+  const [expanded,setExpanded]=useState<Set<number>>(new Set());
+  const [form,setForm]=useState<ProductForm>(EMPTY_FORM);
 
-    const [productsResult, platformResult, variantsResult] = await Promise.all([
-      supabase
-        .from("product_master")
-        .select("id,workspace_id,sku,sku_normalized,product_name,category,selling_price,cost_price,point_per_unit,status,notes")
-        .eq("workspace_id", workspaceId)
-        .order("sku", { ascending: true }),
-      supabase
-        .from("product_platform_items")
-        .select("id,product_master_id,sku,platform,product_code,product_name,category,variant_slot,variant_name")
-        .eq("workspace_id", workspaceId)
-        .order("platform", { ascending: true })
-        .order("product_code", { ascending: true }),
-      supabase
-        .from("product_variants")
-        .select("id,product_master_id,sku,slot,variant_name,hpp,selling_price")
-        .eq("workspace_id", workspaceId)
-        .order("slot", { ascending: true }),
+  async function loadProducts(){
+    setLoading(true);setError("");
+    const [productsResult,platformResult,variantsResult]=await Promise.all([
+      supabase.from("product_master").select("id,workspace_id,sku,sku_normalized,product_name,category,selling_price,cost_price,point_per_unit,status,notes,image_url,image_alt,gallery_images,updated_at").eq("workspace_id",workspaceId).order("updated_at",{ascending:false}),
+      supabase.from("product_platform_items").select("id,product_master_id,sku,platform,product_code,product_name,category,variant_slot,variant_name,image_url").eq("workspace_id",workspaceId).order("platform",{ascending:true}).order("product_code",{ascending:true}),
+      supabase.from("product_variants").select("id,product_master_id,sku,slot,variant_name,hpp,selling_price,image_url").eq("workspace_id",workspaceId).order("slot",{ascending:true})
     ]);
-
-    const firstError = productsResult.error || platformResult.error || variantsResult.error;
-    if (firstError) {
-      setError(firstError.message);
-      setProducts([]);
-      setPlatformItems([]);
-      setVariants([]);
-    } else {
-      setProducts((productsResult.data ?? []) as Product[]);
-      setPlatformItems((platformResult.data ?? []) as PlatformItem[]);
-      setVariants((variantsResult.data ?? []) as ProductVariant[]);
+    const firstError=productsResult.error||platformResult.error||variantsResult.error;
+    if(firstError){
+      setError(firstError.message);setProducts([]);setPlatformItems([]);setVariants([]);
+    }else{
+      setProducts((productsResult.data||[]) as Product[]);
+      setPlatformItems((platformResult.data||[]) as PlatformItem[]);
+      setVariants((variantsResult.data||[]) as ProductVariant[]);
     }
-
     setLoading(false);
   }
 
-  useEffect(() => {
+  useEffect(()=>{
+    const saved=window.localStorage.getItem("lumaway_product_master_view") as ViewMode|null;
+    if(saved&&["table","grid","list"].includes(saved))setView(saved);
     void loadProducts();
-  }, [workspaceId]);
+  },[workspaceId]);
 
-  useEffect(() => {
-    const refresh = () => { void loadProducts(); };
-    window.addEventListener("lumaway-database-updated", refresh as EventListener);
-    return () => window.removeEventListener("lumaway-database-updated", refresh as EventListener);
-  }, [workspaceId]);
+  useEffect(()=>{
+    const refresh=()=>void loadProducts();
+    window.addEventListener("lumaway-database-updated",refresh as EventListener);
+    return()=>window.removeEventListener("lumaway-database-updated",refresh as EventListener);
+  },[workspaceId]);
 
-  function openAdd() {
-    setEditingId(null);
-    setForm(EMPTY_FORM);
-    setError("");
-    setShowForm(true);
+  function changeView(next:ViewMode){
+    setView(next);
+    try{window.localStorage.setItem("lumaway_product_master_view",next)}catch{}
   }
 
-  function openEdit(product: Product) {
-    setEditingId(product.id);
+  const mappingsByProduct=useMemo(()=>{
+    const map=new Map<number,PlatformItem[]>();
+    for(const item of platformItems){const list=map.get(item.product_master_id)||[];list.push(item);map.set(item.product_master_id,list)}
+    return map;
+  },[platformItems]);
 
-    setForm({
-      sku: product.sku ?? "",
-      product_name: product.product_name ?? "",
-      category: product.category ?? "",
-      selling_price:
-        product.selling_price !== null
-          ? String(product.selling_price)
-          : "",
-      cost_price:
-        product.cost_price !== null
-          ? String(product.cost_price)
-          : "",
-      point_per_unit:
-        product.point_per_unit !== null
-          ? String(product.point_per_unit)
-          : "",
-      status: product.status ?? "Active",
-      notes: product.notes ?? "",
+  const variantsByProduct=useMemo(()=>{
+    const map=new Map<number,ProductVariant[]>();
+    for(const item of variants){const list=map.get(item.product_master_id)||[];list.push(item);map.set(item.product_master_id,list)}
+    return map;
+  },[variants]);
+
+  const categories=useMemo(()=>[...new Set([...products.map(x=>String(x.category||"").trim()),...platformItems.map(x=>String(x.category||"").trim())].filter(Boolean))].sort((a,b)=>a.localeCompare(b,"id")),[products,platformItems]);
+  const platforms=useMemo(()=>[...new Set(platformItems.map(x=>String(x.platform||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"id")),[platformItems]);
+
+  const filteredProducts=useMemo(()=>{
+    const keyword=search.trim().toLowerCase();
+    const rows=products.filter(product=>{
+      const mappings=mappingsByProduct.get(product.id)||[];
+      const productVariants=variantsByProduct.get(product.id)||[];
+      const matchesSearch=!keyword||
+        product.sku.toLowerCase().includes(keyword)||
+        String(product.product_name||"").toLowerCase().includes(keyword)||
+        String(product.category||"").toLowerCase().includes(keyword)||
+        mappings.some(item=>[item.platform,item.product_code,item.product_name,item.variant_name].some(value=>String(value||"").toLowerCase().includes(keyword)))||
+        productVariants.some(item=>item.variant_name.toLowerCase().includes(keyword));
+      const matchesCategory=!categoryFilter||String(product.category||"").toLowerCase()===categoryFilter.toLowerCase()||mappings.some(item=>String(item.category||"").toLowerCase()===categoryFilter.toLowerCase());
+      const matchesPlatform=!platformFilter||mappings.some(item=>String(item.platform||"").toLowerCase()===platformFilter.toLowerCase());
+      const matchesStatus=!statusFilter||String(product.status||"").toLowerCase()===statusFilter.toLowerCase();
+      return matchesSearch&&matchesCategory&&matchesPlatform&&matchesStatus;
     });
+    return [...rows].sort((a,b)=>{
+      if(sort==="sku")return a.sku.localeCompare(b.sku,"id",{numeric:true});
+      if(sort==="price-desc")return Number(b.selling_price||0)-Number(a.selling_price||0);
+      if(sort==="price-asc")return Number(a.selling_price||0)-Number(b.selling_price||0);
+      if(sort==="hpp-desc")return Number(b.cost_price||0)-Number(a.cost_price||0);
+      if(sort==="updated")return new Date(b.updated_at||0).getTime()-new Date(a.updated_at||0).getTime();
+      return String(a.product_name||a.sku).localeCompare(String(b.product_name||b.sku),"id",{numeric:true,sensitivity:"base"});
+    });
+  },[products,mappingsByProduct,variantsByProduct,search,categoryFilter,platformFilter,statusFilter,sort]);
 
-    setError("");
-    setShowForm(true);
+  const stats=useMemo(()=>({
+    total:products.length,
+    active:products.filter(x=>String(x.status||"").toLowerCase()==="active").length,
+    withImage:products.filter(x=>Boolean(x.image_url)).length,
+    variants:variants.length
+  }),[products,variants]);
+
+  function openAdd(){setEditingId(null);setForm(EMPTY_FORM);setError("");setShowForm(true)}
+  function openEdit(product:Product){
+    setEditingId(product.id);setError("");setShowForm(true);
+    setForm({
+      sku:product.sku||"",product_name:product.product_name||"",category:product.category||"",
+      selling_price:product.selling_price==null?"":String(product.selling_price),
+      cost_price:product.cost_price==null?"":String(product.cost_price),
+      point_per_unit:product.point_per_unit==null?"":String(product.point_per_unit),
+      status:product.status||"Active",notes:product.notes||"",image_url:product.image_url||"",image_alt:product.image_alt||""
+    });
+  }
+  function closeForm(){setShowForm(false);setEditingId(null);setForm(EMPTY_FORM);setError("")}
+  function updateField(field:keyof ProductForm,value:string){setForm(current=>({...current,[field]:value}))}
+
+  async function uploadImage(file:File){
+    if(!["image/jpeg","image/png","image/webp"].includes(file.type))return setError("Gunakan gambar JPG, PNG, atau WebP.");
+    if(file.size>5*1024*1024)return setError("Ukuran gambar maksimal 5 MB.");
+    setUploadingImage(true);setError("");
+    try{
+      const ext=(file.name.split(".").pop()||"jpg").toLowerCase();
+      const safe=String(form.sku||editingId||"draft").replace(/[^a-zA-Z0-9_-]/g,"-").slice(0,60);
+      const path=`${workspaceId}/${editingId||"draft"}/${safe}-${Date.now()}.${ext}`;
+      const {error:uploadError}=await supabase.storage.from("luma-products").upload(path,file,{cacheControl:"3600",upsert:true,contentType:file.type});
+      if(uploadError)throw uploadError;
+      const {data}=supabase.storage.from("luma-products").getPublicUrl(path);
+      setForm(current=>({...current,image_url:data.publicUrl,image_alt:current.image_alt||current.product_name||current.sku}));
+    }catch(e:any){setError(e?.message||"Gambar produk belum dapat diupload.");}
+    finally{setUploadingImage(false)}
   }
 
-  function updateField(
-    field: keyof ProductForm,
-    value: string
-  ) {
-    setForm((current) => ({
-      ...current,
-      [field]: value,
-    }));
-  }
-
-  async function saveProduct() {
-    if (!form.sku.trim()) {
-      setError("SKU wajib diisi.");
-      return;
-    }
-
-    setSaving(true);
-    setError("");
-
-    const payload = {
-      workspace_id: workspaceId,
-      sku: form.sku.trim(),
-      sku_normalized: form.sku.trim().toLowerCase(),
-      product_name: form.product_name.trim() || null,
-      category: form.category.trim() || null,
-      selling_price: form.selling_price
-        ? Number(form.selling_price)
-        : 0,
-      cost_price: form.cost_price
-        ? Number(form.cost_price)
-        : 0,
-      point_per_unit: form.point_per_unit
-        ? Number(form.point_per_unit)
-        : 0,
-      status: form.status || "Active",
-      notes: form.notes.trim() || null,
+  async function saveProduct(){
+    if(!form.sku.trim())return setError("SKU Produk / SKU Induk wajib diisi.");
+    setSaving(true);setError("");
+    const payload={
+      workspace_id:workspaceId,
+      sku:form.sku.trim(),
+      sku_normalized:form.sku.trim().toLowerCase(),
+      product_name:form.product_name.trim()||null,
+      category:form.category.trim()||null,
+      selling_price:form.selling_price?Number(form.selling_price):0,
+      cost_price:form.cost_price?Number(form.cost_price):0,
+      point_per_unit:form.point_per_unit?Number(form.point_per_unit):0,
+      status:form.status||"Active",
+      notes:form.notes.trim()||null,
+      image_url:form.image_url.trim()||null,
+      image_alt:form.image_alt.trim()||form.product_name.trim()||form.sku.trim(),
+      updated_at:new Date().toISOString()
     };
-
-    let result;
-
-    if (editingId !== null) {
-      const original = products.find((product) => product.id === editingId);
-      result = await supabase
-        .from("product_master")
-        .update(payload)
-        .eq("id", editingId)
-        .eq("workspace_id", workspaceId);
-
-      if (!result.error && original && original.sku_normalized !== payload.sku_normalized) {
-        const oldSku = original.sku;
+    let result:any;
+    if(editingId!==null){
+      const original=products.find(x=>x.id===editingId);
+      result=await supabase.from("product_master").update(payload).eq("id",editingId).eq("workspace_id",workspaceId);
+      if(!result.error&&original&&original.sku_normalized!==payload.sku_normalized){
+        const oldSku=original.sku;
         await Promise.all([
-          supabase.from("product_platform_items").update({ sku: payload.sku }).eq("workspace_id", workspaceId).eq("product_master_id", editingId),
-          supabase.from("product_variants").update({ sku: payload.sku }).eq("workspace_id", workspaceId).eq("product_master_id", editingId),
-          supabase.from("product_hpp_history").update({ sku: payload.sku }).eq("workspace_id", workspaceId).eq("product_master_id", editingId),
-          supabase.from("sales").update({ sku: payload.sku }).eq("workspace_id", workspaceId).eq("sku", oldSku),
+          supabase.from("product_platform_items").update({sku:payload.sku}).eq("workspace_id",workspaceId).eq("product_master_id",editingId),
+          supabase.from("product_variants").update({sku:payload.sku}).eq("workspace_id",workspaceId).eq("product_master_id",editingId),
+          supabase.from("product_hpp_history").update({sku:payload.sku}).eq("workspace_id",workspaceId).eq("product_master_id",editingId),
+          supabase.from("sales").update({sku:payload.sku}).eq("workspace_id",workspaceId).eq("sku",oldSku)
         ]);
       }
-    } else {
-      result = await supabase
-        .from("product_master")
-        .insert(payload);
-    }
+    }else result=await supabase.from("product_master").insert(payload);
+    if(result.error){setError(result.error.message);setSaving(false);return}
+    setSaving(false);closeForm();await loadProducts();
+  }
 
-    if (result.error) {
-      setError(result.error.message);
-      setSaving(false);
-      return;
-    }
-
-    setSaving(false);
-    setShowForm(false);
-    setEditingId(null);
-    setForm(EMPTY_FORM);
-
+  async function deleteProduct(id:number){
+    if(!window.confirm("Hapus produk ini dari Product Master? Mapping variasi dan marketplace yang terkait juga dapat terdampak."))return;
+    const {error}=await supabase.from("product_master").delete().eq("id",id).eq("workspace_id",workspaceId);
+    if(error)return setError(error.message);
     await loadProducts();
   }
 
-  async function deleteProduct(id: number) {
-    const confirmed = window.confirm(
-      "Hapus produk ini dari Product Master?"
-    );
-
-    if (!confirmed) return;
-
-    setError("");
-
-    const { error } = await supabase
-      .from("product_master")
-      .delete()
-      .eq("id", id)
-      .eq("workspace_id", workspaceId);
-
-    if (error) {
-      setError(error.message);
-      return;
-    }
-
-    await loadProducts();
+  function toggleExpanded(id:number){
+    setExpanded(current=>{const next=new Set(current);if(next.has(id))next.delete(id);else next.add(id);return next});
   }
 
-  const mappingsByProduct = useMemo(() => {
-    const map = new Map<number, PlatformItem[]>();
-    for (const item of platformItems) {
-      const list = map.get(item.product_master_id) || [];
-      list.push(item);
-      map.set(item.product_master_id, list);
-    }
-    return map;
-  }, [platformItems]);
-
-  const variantsByProduct = useMemo(() => {
-    const map = new Map<number, ProductVariant[]>();
-    for (const variant of variants) {
-      const list = map.get(variant.product_master_id) || [];
-      list.push(variant);
-      map.set(variant.product_master_id, list);
-    }
-    return map;
-  }, [variants]);
-
-  const marketplaceCategories = useMemo(() => {
-    return [...new Set(platformItems.map(item=>String(item.category||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"id"));
-  }, [platformItems]);
-
-  const filteredProducts = products.filter((product) => {
-    const keyword = search.trim().toLowerCase();
-
-    if (!keyword) return true;
-
-    return (
-      product.sku?.toLowerCase().includes(keyword) ||
-      product.product_name?.toLowerCase().includes(keyword) ||
-      product.category?.toLowerCase().includes(keyword) ||
-      (mappingsByProduct.get(product.id) || []).some((item) =>
-        [item.platform, item.product_code, item.variant_name].filter(Boolean).some((value) =>
-          String(value).toLowerCase().includes(keyword)
-        )
-      ) ||
-      (variantsByProduct.get(product.id) || []).some((variant) =>
-        variant.variant_name.toLowerCase().includes(keyword)
-      )
-    );
-  });
-
-  const formatNumber = (value: number | null) => {
-    if (value === null || value === undefined) return "-";
-
-    return new Intl.NumberFormat("id-ID").format(Number(value));
-  };
-
-  function closeForm(){
-    setShowForm(false);
-    setEditingId(null);
-    setForm(EMPTY_FORM);
-    setError("");
+  function renderPlatforms(product:Product){
+    const labels=platformLabel(mappingsByProduct.get(product.id)||[]);
+    return labels.length?<div className="pm72-platforms">{labels.map(label=><span key={label}>{label}</span>)}</div>:<span className="pm72-muted">Belum dipetakan</span>;
   }
 
-  function renderProductEditor(mode:"add"|"edit"){
-    return <div className="product-editor-v4" style={{
-      padding:18,border:"1px solid #cfd5df",borderRadius:10,background:"#f8fafc",
-      boxShadow:"0 8px 24px rgba(15,23,42,.06)"
-    }}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:14}}>
-        <div>
-          <h3 style={{margin:0}}>{mode==="edit"?"Edit Product":"Tambah Product"}</h3>
-          <small style={{color:"#667085"}}>{mode==="edit"?"Form berada tepat di bawah produk yang sedang diedit.":"Tambahkan SKU induk baru. Product ID marketplace tetap terhubung terpisah per platform."}</small>
+  function renderEditor(){
+    return <section className="pm72-editor">
+      <div className="pm72-editor-head"><div><h3>{editingId===null?"Tambah Produk":"Edit Produk"}</h3><p>Form tampil di konteks produk, bukan popup tengah layar.</p></div><button type="button" onClick={closeForm} aria-label="Tutup editor">×</button></div>
+      <div className="pm72-editor-grid">
+        <div className="pm72-image-editor">
+          <div className="pm72-upload-preview">
+            {form.image_url?<img src={form.image_url} alt={form.image_alt||form.product_name||"Preview produk"}/>:<span>{String(form.product_name||form.sku||"IMG").slice(0,2).toUpperCase()}</span>}
+          </div>
+          <label className="pm72-upload-button">{uploadingImage?"Mengupload...":"Upload Gambar"}<input type="file" accept="image/png,image/jpeg,image/webp" disabled={uploadingImage} onChange={e=>{const file=e.target.files?.[0];if(file)void uploadImage(file);e.currentTarget.value=""}}/></label>
+          <small>JPG, PNG, WebP · maksimal 5 MB</small>
+          <label>URL gambar<input value={form.image_url} onChange={e=>updateField("image_url",e.target.value)} placeholder="https://..."/></label>
+          <label>Alt text<input value={form.image_alt} onChange={e=>updateField("image_alt",e.target.value)} placeholder="Deskripsi singkat gambar"/></label>
         </div>
-        <button type="button" aria-label="Tutup" onClick={closeForm} style={{width:34,height:34,borderRadius:"50%"}}>×</button>
+        <div className="pm72-fields">
+          <label>SKU Produk / SKU Induk *<input value={form.sku} onChange={e=>updateField("sku",e.target.value)} placeholder="Contoh: GRS-01"/></label>
+          <label>Nama Produk<input value={form.product_name} onChange={e=>updateField("product_name",e.target.value)} placeholder="Nama produk yang mudah dikenali"/></label>
+          <label>Kategori<input list="pm72-categories" value={form.category} onChange={e=>updateField("category",e.target.value)} placeholder="Contoh: Peralatan Dapur"/><datalist id="pm72-categories">{categories.map(x=><option key={x} value={x}/>)}</datalist></label>
+          <label>Selling Price<input type="number" min="0" value={form.selling_price} onChange={e=>updateField("selling_price",e.target.value)} placeholder="0"/></label>
+          <label>HPP / Cost Price<input type="number" min="0" value={form.cost_price} onChange={e=>updateField("cost_price",e.target.value)} placeholder="0"/></label>
+          <label>Point per Unit<input type="number" min="0" value={form.point_per_unit} onChange={e=>updateField("point_per_unit",e.target.value)} placeholder="0"/></label>
+          <label>Status<select value={form.status} onChange={e=>updateField("status",e.target.value)}><option>Active</option><option>Inactive</option></select></label>
+          <label className="wide">Catatan<input value={form.notes} onChange={e=>updateField("notes",e.target.value)} placeholder="Catatan internal produk"/></label>
+        </div>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:12}}>
-        <label style={{display:"grid",gap:6}}><span>SKU Produk / SKU Induk *</span><input placeholder="Contoh: GRS-01" value={form.sku} onChange={(e)=>updateField("sku",e.target.value)}/></label>
-        <label style={{display:"grid",gap:6}}><span>Nama Produk</span><input placeholder="Nama produk yang mudah dikenali" value={form.product_name} onChange={(e)=>updateField("product_name",e.target.value)}/></label>
-        <label style={{display:"grid",gap:6}}><span>Kategori Marketplace</span><input list="product-category-options" placeholder="Contoh: Peralatan Dapur" value={form.category} onChange={(e)=>updateField("category",e.target.value)}/><datalist id="product-category-options">{marketplaceCategories.map(category=><option key={category} value={category}/>)}</datalist></label>
-        <label style={{display:"grid",gap:6}}><span>Selling Price</span><input type="number" min="0" placeholder="Harga jual produk" value={form.selling_price} onChange={(e)=>updateField("selling_price",e.target.value)}/></label>
-        <label style={{display:"grid",gap:6}}><span>HPP / Cost Price</span><input type="number" min="0" placeholder="Harga pokok produk" value={form.cost_price} onChange={(e)=>updateField("cost_price",e.target.value)}/></label>
-        <label style={{display:"grid",gap:6}}><span>Point per Unit</span><input type="number" min="0" placeholder="Point per produk terjual" value={form.point_per_unit} onChange={(e)=>updateField("point_per_unit",e.target.value)}/></label>
-        <label style={{display:"grid",gap:6}}><span>Status</span><select value={form.status} onChange={(e)=>updateField("status",e.target.value)}><option value="Active">Active</option><option value="Inactive">Inactive</option></select></label>
-        <label style={{display:"grid",gap:6}}><span>Catatan</span><input placeholder="Catatan internal produk (opsional)" value={form.notes} onChange={(e)=>updateField("notes",e.target.value)}/></label>
-      </div>
-      <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
-        <button type="button" onClick={closeForm}>Batal</button>
-        <button type="button" className="primary" onClick={saveProduct} disabled={saving}>{saving?"Menyimpan...":"Simpan"}</button>
-      </div>
+      <div className="pm72-editor-actions"><button type="button" className="secondary" onClick={closeForm}>Batal</button><button type="button" className="primary" disabled={saving||uploadingImage} onClick={()=>void saveProduct()}>{saving?"Menyimpan...":"Simpan Produk"}</button></div>
+    </section>;
+  }
+
+  function renderDetail(product:Product){
+    const mappings=mappingsByProduct.get(product.id)||[];
+    const productVariants=variantsByProduct.get(product.id)||[];
+    return <div className="pm72-detail">
+      <div><h4>Variasi</h4>{productVariants.length?<div className="pm72-detail-list">{productVariants.map(v=><div key={v.id}><span>{v.image_url?<img src={v.image_url} alt=""/>:<i/>}<b>{v.slot}. {v.variant_name}</b></span><small>{money(v.selling_price)} · HPP {money(v.hpp)}</small></div>)}</div>:<p>Belum ada variasi.</p>}</div>
+      <div><h4>Mapping Marketplace</h4>{mappings.length?<div className="pm72-detail-list">{mappings.map(item=><div key={item.id}><span>{item.image_url?<img src={item.image_url} alt=""/>:<i/>}<b>{item.platform}</b> · {item.product_code}</span><small>{item.variant_name||item.product_name||"Tanpa variasi"}</small></div>)}</div>:<p>Belum ada kode produk Shopee/TikTok.</p>}</div>
     </div>;
   }
 
-  return (
-    <section
-      className="product-master-v4"
-      style={{
-        marginTop: 30,
-        padding: 20,
-        border: "1px solid #e5e7eb",
-        borderRadius: 10,
-        background: "#fff",
-      }}
-    >
-      <div
-        className="product-master-v4-head"
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 15,
-          flexWrap: "wrap",
-        }}
-      >
-        <div>
-          <h2
-            style={{
-              margin: 0,
-              fontSize: 22,
-            }}
-          >
-            Product Master
-          </h2>
+  const activeFilters=[categoryFilter,platformFilter,statusFilter].filter(Boolean).length;
 
-          <p
-            style={{
-              margin: "6px 0 0",
-              color: "#777",
-              fontSize: 13,
-            }}
-          >
-            Master produk dikelompokkan berdasarkan SKU induk. Satu SKU dapat memiliki banyak kode produk Shopee/TikTok dan variasi.
-          </p>
-        </div>
+  return <section className="pm72">
+    <header className="pm72-head">
+      <div><span className="pm72-kicker">MASTER DATA · VISUAL CATALOG</span><h2>Product Master</h2><p>Kelola SKU induk, gambar, variasi, kode marketplace, harga, HPP, dan status dalam tampilan yang lebih mudah dibedakan.</p></div>
+      <div className="pm72-head-actions"><button type="button" className="secondary" onClick={()=>window.dispatchEvent(new CustomEvent("lumaway-routechange",{detail:{section:"upload"}}))}>Import</button><button type="button" className="primary" onClick={openAdd}>+ Tambah Produk</button></div>
+    </header>
 
-        <button
-          type="button"
-          onClick={openAdd}
-          style={{
-            padding: "10px 16px",
-            border: "none",
-            borderRadius: 6,
-            cursor: "pointer",
-            background: "#111827",
-            color: "#fff",
-            fontWeight: 600,
-          }}
-        >
-          + Tambah Produk
-        </button>
-      </div>
+    <div className="pm72-stats">
+      <div><span>Total SKU Induk</span><b>{number(stats.total)}</b></div>
+      <div><span>Produk Active</span><b>{number(stats.active)}</b></div>
+      <div><span>Dengan Gambar</span><b>{number(stats.withImage)}</b></div>
+      <div><span>Total Variasi</span><b>{number(stats.variants)}</b></div>
+    </div>
 
-      <div className="product-master-v4-search" style={{ marginTop: 18 }}>
-        <input
-          type="text"
-          placeholder="Cari SKU, nama produk, kategori, kode Shopee/TikTok, atau variasi..."
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          style={{
-            width: "100%",
-            boxSizing: "border-box",
-            padding: "10px 12px",
-            border: "1px solid #d1d5db",
-            borderRadius: 6,
-            fontSize: 14,
-          }}
-        />
-      </div>
+    <div className="pm72-toolbar">
+      <label className="pm72-search"><span aria-hidden="true">⌕</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Cari SKU, nama produk, kode Shopee/TikTok, kategori, atau variasi..."/></label>
+      <select value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)} aria-label="Filter kategori"><option value="">Semua kategori</option>{categories.map(x=><option key={x}>{x}</option>)}</select>
+      <select value={platformFilter} onChange={e=>setPlatformFilter(e.target.value)} aria-label="Filter platform"><option value="">Semua platform</option>{platforms.map(x=><option key={x}>{x}</option>)}</select>
+      <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} aria-label="Filter status"><option value="">Semua status</option><option>Active</option><option>Inactive</option></select>
+      <select value={sort} onChange={e=>setSort(e.target.value)} aria-label="Urutkan produk"><option value="name">Nama A–Z</option><option value="sku">SKU</option><option value="updated">Terakhir diperbarui</option><option value="price-desc">Harga tertinggi</option><option value="price-asc">Harga terendah</option><option value="hpp-desc">HPP tertinggi</option></select>
+      <div className="pm72-view-switch" aria-label="Mode tampilan"><button type="button" className={view==="table"?"active":""} onClick={()=>changeView("table")}>Table</button><button type="button" className={view==="grid"?"active":""} onClick={()=>changeView("grid")}>Grid</button><button type="button" className={view==="list"?"active":""} onClick={()=>changeView("list")}>List</button></div>
+    </div>
 
-      {error && (
-        <div
-          style={{
-            marginTop: 15,
-            padding: 12,
-            border: "1px solid #ef4444",
-            borderRadius: 6,
-            color: "#b91c1c",
-            background: "#fef2f2",
-            fontSize: 13,
-          }}
-        >
-          {error}
-        </div>
-      )}
+    {activeFilters>0&&<div className="pm72-filter-info"><span>{activeFilters} filter aktif</span><button type="button" onClick={()=>{setCategoryFilter("");setPlatformFilter("");setStatusFilter("")}}>Reset filter</button></div>}
+    {error&&<div className="pm72-alert">{error}</div>}
+    {showForm&&editingId===null&&renderEditor()}
 
-      {showForm&&editingId===null&&<div style={{marginTop:16}}>{renderProductEditor("add")}</div>}
+    {loading?<div className="pm72-loading">{Array.from({length:6}).map((_,i)=><i key={i}/>)}</div>:filteredProducts.length===0?<div className="pm72-empty"><strong>Produk tidak ditemukan.</strong><span>Coba ubah pencarian/filter atau tambahkan SKU induk baru.</span><button type="button" onClick={openAdd}>+ Tambah Produk</button></div>:<>
+      {view==="table"&&<div className="pm72-table-wrap"><table className="pm72-table"><thead><tr><th>Produk</th><th>SKU</th><th>Kategori</th><th>Platform</th><th>Variasi</th><th>Selling Price</th><th>HPP</th><th>Status</th><th>Action</th></tr></thead><tbody>
+        {filteredProducts.map(product=><Fragment key={product.id}>
+          <tr>
+            <td><div className="pm72-product-cell"><ProductImage product={product} size="sm"/><div><b title={product.product_name||product.sku}>{product.product_name||"Produk tanpa nama"}</b><small>{product.image_url?"Gambar tersedia":"Belum ada gambar"}</small></div></div></td>
+            <td><code>{product.sku}</code></td>
+            <td>{product.category||"-"}</td>
+            <td>{renderPlatforms(product)}</td>
+            <td><button type="button" className="pm72-link" onClick={()=>toggleExpanded(product.id)}>{number((variantsByProduct.get(product.id)||[]).length)} variasi</button></td>
+            <td><b>{money(product.selling_price)}</b></td>
+            <td>{money(product.cost_price)}</td>
+            <td><span className={"pm72-status "+(String(product.status||"").toLowerCase()==="active"?"active":"inactive")}>{product.status||"-"}</span></td>
+            <td><div className="pm72-actions"><button type="button" onClick={()=>toggleExpanded(product.id)}>Detail</button><button type="button" onClick={()=>openEdit(product)}>Edit</button><button type="button" className="danger" onClick={()=>void deleteProduct(product.id)}>Hapus</button></div></td>
+          </tr>
+          {expanded.has(product.id)&&<tr className="pm72-expanded-row"><td colSpan={9}>{renderDetail(product)}</td></tr>}
+          {showForm&&editingId===product.id&&<tr className="pm72-expanded-row"><td colSpan={9}>{renderEditor()}</td></tr>}
+        </Fragment>)}
+      </tbody></table></div>}
 
-      <div
-        className="product-master-v4-table"
-        style={{
-          marginTop: 20,
-          overflowX: "auto",
-        }}
-      >
-        {loading ? (
-          <p>Memuat Product Master...</p>
-        ) : filteredProducts.length === 0 ? (
-          <div
-            className="product-master-v4-empty"
-            style={{
-              padding: 30,
-              textAlign: "center",
-              color: "#777",
-              border: "1px dashed #d1d5db",
-              borderRadius: 8,
-            }}
-          >
-            Belum ada Product Master.
-          </div>
-        ) : (
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              fontSize: 13,
-            }}
-          >
-            <thead>
-              <tr>
-                {[
-                  "SKU Produk",
-                  "Produk",
-                  "Shopee",
-                  "TikTok",
-                  "Variasi",
-                  "Kategori",
-                  "Selling Price",
-                  "HPP",
-                  "Point",
-                  "Status",
-                  "Action",
-                ].map((header) => (
-                  <th
-                    key={header}
-                    style={{
-                      textAlign: "left",
-                      padding: 10,
-                      borderBottom:
-                        "1px solid #e5e7eb",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
+      {view==="grid"&&<div className="pm72-grid">{filteredProducts.map(product=><Fragment key={product.id}><article className="pm72-card">
+        <div className="pm72-card-media"><ProductImage product={product} size="lg"/><span className={"pm72-status "+(String(product.status||"").toLowerCase()==="active"?"active":"inactive")}>{product.status||"-"}</span></div>
+        <div className="pm72-card-body"><h3 title={product.product_name||product.sku}>{product.product_name||"Produk tanpa nama"}</h3><code>{product.sku}</code><div className="pm72-card-tags">{product.category&&<span>{product.category}</span>}{renderPlatforms(product)}</div><div className="pm72-card-prices"><span><small>Selling Price</small><b>{money(product.selling_price)}</b></span><span><small>HPP</small><b>{money(product.cost_price)}</b></span></div><div className="pm72-card-foot"><button type="button" onClick={()=>toggleExpanded(product.id)}>Detail · {number((variantsByProduct.get(product.id)||[]).length)} variasi</button><button type="button" onClick={()=>openEdit(product)}>Edit</button></div></div>
+      </article>{expanded.has(product.id)&&<div className="pm72-grid-span">{renderDetail(product)}</div>}{showForm&&editingId===product.id&&<div className="pm72-grid-span">{renderEditor()}</div>}</Fragment>)}</div>}
 
-            <tbody>
-              {filteredProducts.map((product) => (
-                <Fragment key={product.id}>
-                  <tr>
-                    <td style={{ padding: 10 }}>{product.sku}</td>
-                    <td style={{ padding: 10 }}>{product.product_name || "-"}</td>
-                    <td style={{ padding: 10, minWidth: 180 }}>
-                      {(mappingsByProduct.get(product.id) || []).filter((item) => item.platform.toLowerCase() === "shopee").length ? (
-                        <div style={{ display: "grid", gap: 5 }}>
-                          {(mappingsByProduct.get(product.id) || []).filter((item) => item.platform.toLowerCase() === "shopee").map((item) => (
-                            <span key={item.id} style={{ display: "block" }}><b>{item.product_code}</b>{item.variant_name ? <small style={{ display: "block", color: "#667085" }}>{item.variant_name}</small> : null}</span>
-                          ))}
-                        </div>
-                      ) : "-"}
-                    </td>
-                    <td style={{ padding: 10, minWidth: 180 }}>
-                      {(mappingsByProduct.get(product.id) || []).filter((item) => item.platform.toLowerCase() === "tiktok").length ? (
-                        <div style={{ display: "grid", gap: 5 }}>
-                          {(mappingsByProduct.get(product.id) || []).filter((item) => item.platform.toLowerCase() === "tiktok").map((item) => (
-                            <span key={item.id} style={{ display: "block" }}><b>{item.product_code}</b>{item.variant_name ? <small style={{ display: "block", color: "#667085" }}>{item.variant_name}</small> : null}</span>
-                          ))}
-                        </div>
-                      ) : "-"}
-                    </td>
-                    <td style={{ padding: 10, minWidth: 160 }}>
-                      {(variantsByProduct.get(product.id) || []).length ? <div style={{ display: "grid", gap: 4 }}>{(variantsByProduct.get(product.id) || []).map((variant) => <span key={variant.id}>{variant.slot}. {variant.variant_name}</span>)}</div> : "-"}
-                    </td>
-                    <td style={{ padding: 10, minWidth: 170 }}>
-                      {(()=>{
-                        const categories=(mappingsByProduct.get(product.id)||[]).filter(item=>item.category).map(item=>({platform:item.platform,category:String(item.category)})).filter((item,index,list)=>list.findIndex(x=>x.platform.toLowerCase()===item.platform.toLowerCase()&&x.category.toLowerCase()===item.category.toLowerCase())===index);
-                        return categories.length?<div style={{display:"grid",gap:3}}>{categories.map(item=><small key={item.platform+"|"+item.category}><b>{item.platform}:</b> {item.category}</small>)}</div>:product.category||"-";
-                      })()}
-                    </td>
-                    <td style={{ padding: 10 }}>Rp {formatNumber(product.selling_price)}</td>
-                    <td style={{ padding: 10 }}>Rp {formatNumber(product.cost_price)}</td>
-                    <td style={{ padding: 10 }}>{formatNumber(product.point_per_unit)}</td>
-                    <td style={{ padding: 10 }}>{product.status || "-"}</td>
-                    <td style={{ padding: 10 }}>
-                      <div style={{display:"flex",gap:6}}>
-                        <button type="button" onClick={()=>openEdit(product)}>{editingId===product.id?"Editing":"Edit"}</button>
-                        <button type="button" onClick={()=>deleteProduct(product.id)}>Hapus</button>
-                      </div>
-                    </td>
-                  </tr>
-                  {showForm&&editingId===product.id&&<tr><td colSpan={11} style={{padding:"8px 10px 18px",background:"#f8fafc"}}>{renderProductEditor("edit")}</td></tr>}
-                </Fragment>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      {view==="list"&&<div className="pm72-list">{filteredProducts.map(product=><Fragment key={product.id}><article className="pm72-list-row">
+        <ProductImage product={product} size="md"/><div className="pm72-list-main"><h3>{product.product_name||"Produk tanpa nama"}</h3><p><code>{product.sku}</code> · {product.category||"Tanpa kategori"} · {number((variantsByProduct.get(product.id)||[]).length)} variasi</p>{renderPlatforms(product)}</div><div className="pm72-list-price"><small>Selling Price</small><b>{money(product.selling_price)}</b><span>HPP {money(product.cost_price)}</span></div><span className={"pm72-status "+(String(product.status||"").toLowerCase()==="active"?"active":"inactive")}>{product.status||"-"}</span><div className="pm72-actions"><button type="button" onClick={()=>toggleExpanded(product.id)}>Detail</button><button type="button" onClick={()=>openEdit(product)}>Edit</button></div>
+      </article>{expanded.has(product.id)&&renderDetail(product)}{showForm&&editingId===product.id&&renderEditor()}</Fragment>)}</div>}
+    </>}
 
-      <div
-        style={{
-          marginTop: 12,
-          fontSize: 12,
-          color: "#777",
-        }}
-      >
-        Menampilkan {filteredProducts.length} dari{" "}
-        {products.length} produk
-      </div>
-    </section>
-  );
+    <footer className="pm72-footer"><span>Menampilkan <b>{number(filteredProducts.length)}</b> dari <b>{number(products.length)}</b> produk</span><span>View: {view}</span></footer>
+  </section>;
 }
