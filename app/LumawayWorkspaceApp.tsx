@@ -12,6 +12,7 @@ import "./lumaway-experience-v2.css";
 import "./lumaway-premium-v4.css";
 import "./lumaway-visual-system-v5.css";
 import "./lumaway-auth-access-v6.css";
+import "./lumaway-auth-v7.css";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../lib/supabase-browser";
 import { APP_BASE, isAuthPath, navigateToSection, routeForSection, sectionFromPath } from "../lib/luma-navigation";
