@@ -10,7 +10,7 @@ import type { SVGProps } from "react";
  * while preserving Lumaway's existing IconName API.
  */
 type IconName =
-  | "dashboard" | "data" | "creator" | "performance" | "ai" | "sparkles"
+  | "dashboard" | "data" | "creator" | "performance" | "recommendation" | "ai" | "sparkles"
   | "kanban" | "ticket" | "billing" | "content" | "community" | "master"
   | "product" | "listing" | "shipping" | "sample" | "ratecard" | "bell"
   | "install" | "theme" | "logout" | "settings" | "finance" | "referral"
@@ -40,10 +40,12 @@ export default function LumaIcon({ name, ...props }: Props) {
         return <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></>;
       case "performance":
         return <><path d="M5 21v-6"/><path d="M12 21V9"/><path d="M19 21V3"/></>;
+      case "recommendation":
+        return <><path d="M9 18h6"/><path d="M10 22h4"/><path d="M8.5 14.5A6 6 0 1 1 15.5 14.5C14.55 15.18 14 16.1 14 17h-4c0-.9-.55-1.82-1.5-2.5Z"/></>;
       case "ai":
-        return <><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/></>;
+        return <><path d="m8 9-3 3 3 3"/><path d="m16 9 3 3-3 3"/><path d="m14 5-4 14"/></>;
       case "sparkles":
-        return <><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></>;
+        return <><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/><circle cx="18" cy="18" r="2"/></>;
       case "kanban":
         return <><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/></>;
       case "ticket":
