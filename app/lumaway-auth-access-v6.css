@@ -1,0 +1,49 @@
+/* Lumaway V6 — Google OAuth continuity + scoped access-state UX */
+.google-oauth-button{
+  width:100%;
+  min-height:46px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  border:1px solid #d9dee8;
+  border-radius:11px;
+  background:#fff;
+  color:#182230;
+  font:700 13px/1.2 "DM Sans","Inter",ui-sans-serif,system-ui,sans-serif;
+  box-shadow:0 5px 18px rgba(16,24,40,.045);
+  cursor:pointer;
+  transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease,background .18s ease;
+}
+.google-oauth-button:hover{
+  transform:translateY(-1px);
+  border-color:#c8c0ff;
+  background:#fcfbff;
+  box-shadow:0 8px 24px rgba(71,55,170,.08);
+}
+.google-oauth-button:focus-visible{
+  outline:3px solid rgba(102,88,244,.18);
+  outline-offset:2px;
+}
+.google-oauth-button:disabled{
+  opacity:.62;
+  cursor:wait;
+  transform:none;
+}
+.google-oauth-mark{
+  width:24px;
+  height:24px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  border:1px solid #e3e6ed;
+  background:#fff;
+  color:#4285f4;
+  font:800 15px/1 Arial,sans-serif;
+}
+@media(max-width:680px){
+  .google-oauth-button{min-height:48px;font-size:13px}
+}
+@media(prefers-reduced-motion:reduce){
+  .google-oauth-button{transition:none}
+}

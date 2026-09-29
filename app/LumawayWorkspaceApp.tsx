@@ -11,6 +11,7 @@ import "./luma-final-fixes.css";
 import "./lumaway-experience-v2.css";
 import "./lumaway-premium-v4.css";
 import "./lumaway-visual-system-v5.css";
+import "./lumaway-auth-access-v6.css";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../lib/supabase-browser";
 import { APP_BASE, isAuthPath, navigateToSection, routeForSection, sectionFromPath } from "../lib/luma-navigation";
@@ -76,26 +77,6 @@ function BrandLockup({ light = false }: { light?: boolean }) {
       </div>
     </div>
   );
-}
-
-function loadGoogleIdentity() {
-  return new Promise<void>((resolve, reject) => {
-    if ((window as any).google?.accounts?.id) return resolve();
-    const existing = document.querySelector<HTMLScriptElement>('script[data-lumaway-google]');
-    if (existing) {
-      existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener("error", () => reject(), { once: true });
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    script.dataset.lumawayGoogle = "1";
-    script.onload = () => resolve();
-    script.onerror = () => reject();
-    document.head.appendChild(script);
-  });
 }
 
 function cleanAuthErrorQuery() {
@@ -227,56 +208,6 @@ export default function LumawayWorkspaceApp() {
     };
   }, [profile?.id]);
 
-  useEffect(() => {
-    if (loading || profile || workspace) return;
-    let cancelled = false;
-    async function mountGoogle() {
-      const host = document.getElementById("lumaway-google-button");
-      if (!host) return;
-      try {
-        const cfg = await fetch("/api/auth/google-config", { cache: "no-store" }).then((response) => response.json());
-        if (!cfg?.ok || !cfg.client_id) throw new Error();
-        await loadGoogleIdentity();
-        if (cancelled) return;
-        const google = (window as any).google;
-        google.accounts.id.initialize({
-          client_id: cfg.client_id,
-          callback: async (response: any) => {
-            setError("");
-            setAuthMessage("");
-            setLoading(true);
-            try {
-              const { data, error: idError } = await supabase.auth.signInWithIdToken({
-                provider: "google",
-                token: String(response?.credential || ""),
-              });
-              if (idError || !data.user) throw idError || new Error();
-              await loadLumaData(data.user.id);
-            } catch {
-              setError("error, terjadi kesalahan.");
-            } finally {
-              setLoading(false);
-            }
-          },
-        });
-        host.innerHTML = "";
-        google.accounts.id.renderButton(host, {
-          type: "standard",
-          theme: "outline",
-          size: "large",
-          text: "continue_with",
-          shape: "rectangular",
-          logo_alignment: "left",
-          width: Math.max(260, Math.min(420, host.clientWidth || 420)),
-        });
-      } catch {
-        host.innerHTML = '<span class="google-auth-unavailable">Google Sign-In sementara tidak tersedia.</span>';
-      }
-    }
-    void mountGoogle();
-    return () => { cancelled = true; };
-  }, [loading, profile, workspace, authMode, supabase]);
-
   async function loadSession() {
     setError("");
     try {
@@ -347,20 +278,37 @@ export default function LumawayWorkspaceApp() {
       if(!referralError&&referralApplied)window.localStorage.removeItem(REFERRAL_STORAGE_KEY);
     }
 
-    const { data: subscriptionRows } = await supabase
-      .from("luma_user_subscriptions")
-      .select("status,starts_at,ends_at")
-      .eq("user_id", userId)
-      .order("ends_at", { ascending: false })
-      .limit(10);
-    const now = Date.now();
-    const activeSubscription = (subscriptionRows || []).find((item: any) =>
-      ["active", "trialing"].includes(String(item.status || "").toLowerCase()) &&
-      item.ends_at &&
-      new Date(item.ends_at).getTime() > now
-    );
-    setAccessLocked(Boolean((subscriptionRows || []).length && !activeSubscription));
-    setSubscriptionEndsAt(activeSubscription?.ends_at || (subscriptionRows || [])[0]?.ends_at || null);
+    // Access state is resolved server-side from auth.uid(), so one user's billing
+    // status can never lock another user's workspace. Admin access is never subscription-locked.
+    const { data: accessRows, error: accessStateError } = await supabase.rpc("luma_my_access_state_v1");
+    const accessState = Array.isArray(accessRows) ? accessRows[0] : accessRows;
+    if (!accessStateError && accessState) {
+      setAccessLocked(typedProfile.role !== "admin" && Boolean(accessState.locked));
+      setSubscriptionEndsAt(accessState.effective_ends_at || null);
+    } else {
+      // Safe per-user fallback during a billing/RPC incident. Never derive lock state globally.
+      const { data: subscriptionRows, error: subscriptionError } = await supabase
+        .from("luma_user_subscriptions")
+        .select("status,starts_at,ends_at")
+        .eq("user_id", userId)
+        .order("ends_at", { ascending: false })
+        .limit(10);
+      if (subscriptionError) {
+        setAccessLocked(false);
+        setSubscriptionEndsAt(null);
+      } else {
+        const now = Date.now();
+        const activeSubscription = (subscriptionRows || []).find((item: any) =>
+          ["active", "trialing"].includes(String(item.status || "").toLowerCase()) &&
+          item.starts_at &&
+          new Date(item.starts_at).getTime() <= now &&
+          item.ends_at &&
+          new Date(item.ends_at).getTime() > now
+        );
+        setAccessLocked(typedProfile.role !== "admin" && Boolean((subscriptionRows || []).length && !activeSubscription));
+        setSubscriptionEndsAt(activeSubscription?.ends_at || (subscriptionRows || [])[0]?.ends_at || null);
+      }
+    }
 
     const currentSection = sectionFromPath(window.location.pathname);
     const needsProfile = typedProfile.role !== "admin" && !profileComplete(typedProfile);
@@ -375,6 +323,28 @@ export default function LumawayWorkspaceApp() {
     if (needsProfile) {
       window.history.replaceState(null, "", `${APP_BASE}/profile?complete=true`);
       window.dispatchEvent(new Event("lumaway-routechange"));
+    }
+  }
+
+  async function loginWithGoogle() {
+    setError("");
+    setAuthMessage("");
+    setLoading(true);
+    try {
+      const next = "/dashboard";
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo,
+          skipBrowserRedirect: true,
+        },
+      });
+      if (oauthError || !data?.url) throw oauthError || new Error("OAuth URL unavailable");
+      window.location.assign(data.url);
+    } catch {
+      setLoading(false);
+      setError("Login Google belum dapat dimulai. Silakan coba lagi atau gunakan email dan password.");
     }
   }
 
@@ -468,7 +438,7 @@ export default function LumawayWorkspaceApp() {
   if (!profile || !workspace) {
     return <main className="standalone-auth"><section className="auth-shell">
       <aside className="auth-showcase"><BrandLockup light /><div className="auth-story"><span className="auth-kicker">AFFILIATE INTELLIGENCE WORKSPACE</span><h1>Turn affiliate data into clear decisions.</h1><p>Monitor creator performance, campaign support, product movement, and actionable insights from one focused workspace.</p><div className="auth-insight-card"><div className="auth-insight-head"><span>Workspace intelligence</span><i>Live</i></div><div className="auth-spark-bars" aria-hidden="true"><span style={{ height: "34%" }} /><span style={{ height: "48%" }} /><span style={{ height: "42%" }} /><span style={{ height: "68%" }} /><span style={{ height: "58%" }} /><span style={{ height: "82%" }} /><span style={{ height: "72%" }} /><span style={{ height: "94%" }} /></div><div className="auth-insight-footer"><span>Creator performance</span><b>+24.8%</b></div></div></div></aside>
-      <section className="auth-form-pane"><div className="auth-form-wrap"><div className="auth-mode-switch"><button type="button" className={authMode === "signin" ? "active" : ""} onClick={() => switchAuthMode("signin")}>Sign in</button><button type="button" className={authMode === "signup" ? "active" : ""} onClick={() => switchAuthMode("signup")}>Create account</button></div><div className="auth-heading"><span className="auth-kicker dark">LUMAWAY WORKSPACE</span><h2>{authMode === "signin" ? "Welcome back" : "Create your Lumaway account"}</h2><p>{authMode === "signin" ? "Sign in to continue to Affiliate Intelligence." : "Your workspace is provisioned automatically after sign-up."}</p></div><div id="lumaway-google-button" className="google-gsi-host"><span>Memuat Google Sign-In...</span></div><div className="auth-divider"><span>or continue with email</span></div><div className="auth-fields"><label><span>Email address</span><input type="email" value={email} autoComplete="email" placeholder="name@company.com" onChange={(e) => setEmail(e.target.value)} /></label><label><span>Password</span><div className="password-field"><input type={showPassword ? "text" : "password"} value={password} autoComplete={authMode === "signin" ? "current-password" : "new-password"} placeholder="Minimum 8 characters" onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && authMode === "signin") void login(); }} /><button type="button" onClick={() => setShowPassword((value) => !value)}>{showPassword ? "Hide" : "Show"}</button></div></label></div>{authMode === "signup" && <label className="auth-consent"><input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} /><span>I agree to the Lumaway workspace terms and privacy flow.</span></label>}{error && <div className="auth-alert error"><span>!</span><p>{error}</p></div>}{authMessage && <div className="auth-alert success"><span>✓</span><p>{authMessage}</p></div>}{authMode === "signin" && needsEmailVerification && <button type="button" className="auth-resend-button" disabled={loading} onClick={() => void resendVerification()}>Kirim ulang email verifikasi</button>}<button type="button" className="auth-primary-button" onClick={() => authMode === "signin" ? void login() : void signup()}>{authMode === "signin" ? "Sign in to Lumaway" : "Create account"}<span>→</span></button></div></section>
+      <section className="auth-form-pane"><div className="auth-form-wrap"><div className="auth-mode-switch"><button type="button" className={authMode === "signin" ? "active" : ""} onClick={() => switchAuthMode("signin")}>Sign in</button><button type="button" className={authMode === "signup" ? "active" : ""} onClick={() => switchAuthMode("signup")}>Create account</button></div><div className="auth-heading"><span className="auth-kicker dark">LUMAWAY WORKSPACE</span><h2>{authMode === "signin" ? "Welcome back" : "Create your Lumaway account"}</h2><p>{authMode === "signin" ? "Sign in to continue to Affiliate Intelligence." : "Your workspace is provisioned automatically after sign-up."}</p></div><button type="button" className="google-oauth-button" disabled={loading} onClick={() => void loginWithGoogle()}><span className="google-oauth-mark" aria-hidden="true">G</span><span>Lanjutkan dengan Google</span></button><div className="auth-divider"><span>or continue with email</span></div><div className="auth-fields"><label><span>Email address</span><input type="email" value={email} autoComplete="email" placeholder="name@company.com" onChange={(e) => setEmail(e.target.value)} /></label><label><span>Password</span><div className="password-field"><input type={showPassword ? "text" : "password"} value={password} autoComplete={authMode === "signin" ? "current-password" : "new-password"} placeholder="Minimum 8 characters" onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && authMode === "signin") void login(); }} /><button type="button" onClick={() => setShowPassword((value) => !value)}>{showPassword ? "Hide" : "Show"}</button></div></label></div>{authMode === "signup" && <label className="auth-consent"><input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} /><span>I agree to the Lumaway workspace terms and privacy flow.</span></label>}{error && <div className="auth-alert error"><span>!</span><p>{error}</p></div>}{authMessage && <div className="auth-alert success"><span>✓</span><p>{authMessage}</p></div>}{authMode === "signin" && needsEmailVerification && <button type="button" className="auth-resend-button" disabled={loading} onClick={() => void resendVerification()}>Kirim ulang email verifikasi</button>}<button type="button" className="auth-primary-button" onClick={() => authMode === "signin" ? void login() : void signup()}>{authMode === "signin" ? "Sign in to Lumaway" : "Create account"}<span>→</span></button></div></section>
     </section></main>;
   }
 
