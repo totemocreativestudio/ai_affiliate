@@ -116,6 +116,8 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
     };
   }, [isOwner]);
 
+  const subActive=(section:string)=>activeSection===section?"active":"";
+
   function go(event: React.MouseEvent<HTMLAnchorElement>, section: string) {
     event.preventDefault();
     if (accessLocked && !["dashboard", "billing", "profile"].includes(section)) {
@@ -224,10 +226,10 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
               </a>
 
               <Group icon="data" label="Data & Intelligence" open>
-                <a href={routeForSection("upload")} onClick={(e) => go(e, "upload")}><LumaIcon name="data" />Upload Center</a>
-                <a href={routeForSection("database")} onClick={(e) => go(e, "database")}><LumaIcon name="master" />Database</a>
-                <a href={routeForSection("excel-sync")} onClick={(e) => go(e, "excel-sync")}><LumaIcon name="listing" />Excel Sync</a>
-                <a href={routeForSection("tutorial")} onClick={(e) => go(e, "tutorial")}><LumaIcon name="content" />Tutorial Upload</a>
+                <a className={subActive("upload")} href={routeForSection("upload")} onClick={(e) => go(e, "upload")}><LumaIcon name="data" />Upload Center</a>
+                <a className={subActive("database")} href={routeForSection("database")} onClick={(e) => go(e, "database")}><LumaIcon name="master" />Database</a>
+                <a className={subActive("excel-sync")} href={routeForSection("excel-sync")} onClick={(e) => go(e, "excel-sync")}><LumaIcon name="listing" />Excel Sync</a>
+                <a className={subActive("tutorial")} href={routeForSection("tutorial")} onClick={(e) => go(e, "tutorial")}><LumaIcon name="content" />Tutorial Upload</a>
               </Group>
 
               <details className="side-group" open>
@@ -240,27 +242,27 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
               </details>
 
               <Group icon="creator" label="Affiliate & Creator">
-                {creatorOpsNav.map(([section,icon,label])=><a key={section} href={routeForSection(section)} onClick={(e)=>go(e,section)}><LumaIcon name={icon}/><span>{label}</span></a>)}
+                {creatorOpsNav.map(([section,icon,label])=><a className={subActive(section)} key={section} href={routeForSection(section)} onClick={(e)=>go(e,section)}><LumaIcon name={icon}/><span>{label}</span></a>)}
               </Group>
 
               <Group icon="product" label="Product & Commerce">
-                {commerceNav.map(([section,icon,label])=><a key={section} href={routeForSection(section)} onClick={(e)=>go(e,section)}><LumaIcon name={icon}/><span>{label}</span></a>)}
+                {commerceNav.map(([section,icon,label])=><a className={subActive(section)} key={section} href={routeForSection(section)} onClick={(e)=>go(e,section)}><LumaIcon name={icon}/><span>{label}</span></a>)}
               </Group>
 
               <Group icon="kanban" label="Growth & Workflow">
-                <a href={routeForSection("promo-studio")} onClick={(e) => go(e, "promo-studio")}><LumaIcon name="broadcast" />Promo Studio</a>
-                <a href={routeForSection("kanban")} onClick={(e) => go(e, "kanban")}><LumaIcon name="kanban" />Kanban</a>
+                <a className={subActive("promo-studio")} href={routeForSection("promo-studio")} onClick={(e) => go(e, "promo-studio")}><LumaIcon name="broadcast" />Promo Studio</a>
+                <a className={subActive("kanban")} href={routeForSection("kanban")} onClick={(e) => go(e, "kanban")}><LumaIcon name="kanban" />Kanban</a>
               </Group>
 
               <Group icon="ticket" label="Support & Billing">
-                <a href={routeForSection("support-tickets")} onClick={(e) => go(e, "support-tickets")}><LumaIcon name="ticket" />Status & Riwayat Tiket</a>
-                <a href={routeForSection("billing")} onClick={(e) => go(e, "billing")}><LumaIcon name="billing" />Billing & Token</a>
-                <a href={routeForSection("luma-affiliate")} onClick={(e) => go(e, "luma-affiliate")}><LumaIcon name="referral" />Luma Affiliate</a>
+                <a className={subActive("support-tickets")} href={routeForSection("support-tickets")} onClick={(e) => go(e, "support-tickets")}><LumaIcon name="ticket" />Status & Riwayat Tiket</a>
+                <a className={subActive("billing")} href={routeForSection("billing")} onClick={(e) => go(e, "billing")}><LumaIcon name="billing" />Billing & Token</a>
+                <a className={subActive("luma-affiliate")} href={routeForSection("luma-affiliate")} onClick={(e) => go(e, "luma-affiliate")}><LumaIcon name="referral" />Luma Affiliate</a>
               </Group>
 
               <Group icon="content" label="Content & Community">
-                <a href={routeForSection("content-hub")} onClick={(e) => go(e, "content-hub")}><LumaIcon name="content" />Insight & Blog</a>
-                <a href={routeForSection("social-lumaway")} onClick={(e) => go(e, "social-lumaway")}><LumaIcon name="community" />Social Lumaway</a>
+                <a className={subActive("content-hub")} href={routeForSection("content-hub")} onClick={(e) => go(e, "content-hub")}><LumaIcon name="content" />Insight & Blog</a>
+                <a className={subActive("social-lumaway")} href={routeForSection("social-lumaway")} onClick={(e) => go(e, "social-lumaway")}><LumaIcon name="community" />Social Lumaway</a>
               </Group>
             </nav>
           </>
