@@ -17,26 +17,32 @@ export default function EmailConfirmationPage(){
   },[]);
 
   async function confirm(){
-    if(!tokenHash)return setStatus("Link verifikasi tidak lengkap. Kirim ulang email verifikasi dari halaman Sign in.");
+    if(!tokenHash)return setStatus("Link verifikasi tidak lengkap. Minta link baru dari halaman Lumaway.");
     setBusy(true);setStatus("");
     const {error}=await supabase.auth.verifyOtp({token_hash:tokenHash,type:type as any});
     if(error){
       setBusy(false);
-      setStatus("Link verifikasi sudah tidak berlaku atau sudah pernah digunakan. Kirim ulang email verifikasi untuk mendapatkan link baru.");
+      setStatus("Link sudah tidak berlaku atau sudah pernah digunakan. Minta link baru lalu coba lagi.");
+      return;
+    }
+    if(type==="recovery"){
+      window.location.assign("/auth/reset-password");
       return;
     }
     await supabase.auth.signOut().catch(()=>undefined);
-    window.location.assign("/login?verified=1");
+    window.location.assign("/app.lumaway/login?verified=1");
   }
 
-  return <main className="standalone-auth">
-    <section className="auth-shell" style={{maxWidth:620,margin:"0 auto"}}>
-      <div className="auth-form-panel" style={{width:"100%"}}>
-        <div className="lumaway-lockup"><img src="/luma-mark.png" alt=""/><div><strong>LUMAWAY<span>.</span></strong><small>Light Up Your Potential.</small></div></div>
-        <div className="auth-heading"><span className="auth-kicker">EMAIL VERIFICATION</span><h1>Konfirmasi email Lumaway</h1><p>Tekan tombol di bawah untuk menyelesaikan verifikasi. Link tidak dijalankan otomatis agar tetap aman dari email security scanner.</p></div>
-        <button className="primary auth-submit" type="button" disabled={busy||!tokenHash} onClick={()=>void confirm()}>{busy?"Memverifikasi...":"Konfirmasi email saya"}</button>
-        {status&&<div className="auth-status error">{status}</div>}
-        <a className="secondary auth-resend-button" href="/app.lumaway/login">Kembali ke Sign in</a>
+  const recovery=type==="recovery";
+  return <main className="auth-static-page">
+    <section className="auth-static-card">
+      <div className="auth-static-brand"><img src="/luma-logo.png" alt="Lumaway"/></div>
+      <h1>{recovery?"Lanjutkan reset password":"Konfirmasi email Lumaway"}</h1>
+      <p>{recovery?"Tekan tombol di bawah untuk memvalidasi link reset password sebelum membuat password baru.":"Tekan tombol di bawah untuk menyelesaikan verifikasi email. Link dijalankan manual agar tidak otomatis terpakai oleh email security scanner."}</p>
+      {status&&<div className="auth-static-status">{status}</div>}
+      <div className="auth-static-actions">
+        <button className="primary" type="button" disabled={busy||!tokenHash} onClick={()=>void confirm()}>{busy?"Memverifikasi...":recovery?"Lanjutkan":"Konfirmasi email saya"}</button>
+        <a className="secondary" href="/app.lumaway/login">Kembali ke Login</a>
       </div>
     </section>
   </main>;
