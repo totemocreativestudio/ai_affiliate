@@ -24,6 +24,14 @@ export function AreaTrendChart({
   secondaryFormatter?:(value:number)=>string;
 }){
   if(!data.length)return <div className="viz-empty">Belum ada data tren untuk periode ini.</div>;
+  if(data.length===1){
+    const row=data[0];
+    return <div className="viz-single-period" role="img" aria-label={`Ringkasan ${row.label}: ${primaryLabel} ${primaryFormatter(row.primary)}, ${secondaryLabel} ${secondaryFormatter(row.secondary||0)}`}>
+      <div><span>Periode</span><strong>{row.label}</strong></div>
+      <div><span>{primaryLabel}</span><strong>{primaryFormatter(row.primary)}</strong></div>
+      <div><span>{secondaryLabel}</span><strong>{secondaryFormatter(row.secondary||0)}</strong></div>
+    </div>;
+  }
   const width=760,height=268,left=48,right=18,top=22,bottom=42;
   const plotW=width-left-right,plotH=height-top-bottom;
   const primaryMax=safeMax(data.map(x=>x.primary));
@@ -40,15 +48,14 @@ export function AreaTrendChart({
     <div className="viz-legend"><span><i className="primary-dot"/>{primaryLabel}</span><span><i className="secondary-dot"/>{secondaryLabel}</span></div>
     <svg className="viz-area-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`Grafik tren ${primaryLabel} dan ${secondaryLabel}`}>
       <defs>
-        <linearGradient id="lumawayAreaGradient" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#6658f4" stopOpacity=".26"/><stop offset="100%" stopColor="#6658f4" stopOpacity=".02"/></linearGradient>
-        <filter id="lumawayGlow"><feDropShadow dx="0" dy="4" stdDeviation="5" floodColor="#6658f4" floodOpacity=".12"/></filter>
+        <linearGradient id="lumawayAreaGradient" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#456fe8" stopOpacity=".16"/><stop offset="100%" stopColor="#456fe8" stopOpacity=".015"/></linearGradient>
       </defs>
       {[0,.25,.5,.75,1].map((ratio)=><g key={ratio}>
         <line x1={left} x2={width-right} y1={top+plotH*ratio} y2={top+plotH*ratio} className="viz-grid-line"/>
         <text x={left-8} y={top+plotH*ratio+3} textAnchor="end" className="viz-axis-label">{primaryFormatter(primaryMax*(1-ratio))}</text>
       </g>)}
       <path d={area} fill="url(#lumawayAreaGradient)"/>
-      <path d={linePath(p1)} className="viz-line viz-line-primary" filter="url(#lumawayGlow)"/>
+      <path d={linePath(p1)} className="viz-line viz-line-primary"/>
       <path d={linePath(p2)} className="viz-line viz-line-secondary"/>
       {p1.map(([cx,cy],i)=>i%pointStep===0||i===p1.length-1?<circle key={i} cx={cx} cy={cy} r="3.2" className="viz-point viz-point-primary"><title>{data[i].label} · {primaryLabel}: {primaryFormatter(data[i].primary)} · {secondaryLabel}: {secondaryFormatter(data[i].secondary||0)}</title></circle>:null)}
       {labelIndexes.map(i=><text key={i} x={x(i)} y={height-12} textAnchor={i===0?"start":i===data.length-1?"end":"middle"} className="viz-axis-label viz-x-label">{data[i].label}</text>)}
