@@ -219,7 +219,7 @@ export default function LumawayWorkspaceApp() {
         const currentParams=new URLSearchParams(window.location.search);
         const sessionRequestedMode=currentParams.get("auth");
         const requestedView=String(currentParams.get("view")||"");
-        const authPath=sessionRequestedMode==="signup"||window.location.pathname===`${APP_BASE}/register`
+        const authPath=sessionRequestedMode==="signup"||window.location.pathname.endsWith("/register")
           ? `${APP_BASE}/register`
           : `${APP_BASE}/login`;
         setAuthMode(authPath===`${APP_BASE}/register`?"signup":"signin");
