@@ -73,6 +73,11 @@
 .side-subnav a:hover,.side-subnav button:hover{
   border-color:rgba(255,255,255,.04)!important
 }
+.side-subnav a.active,.side-subnav button.active{
+  color:#fff!important;background:linear-gradient(90deg,rgba(109,93,252,.20),rgba(109,93,252,.07))!important;
+  border-color:rgba(133,120,255,.13)!important
+}
+.side-subnav a.active:before,.side-subnav button.active:before{background:#8b7fff!important;height:2px!important}
 .nav-ico{
   background:linear-gradient(145deg,rgba(255,255,255,.06),rgba(255,255,255,.025))!important;
   border-color:rgba(255,255,255,.055)!important
