@@ -91,6 +91,7 @@ export default function LumawayAuthExperience({onAuthenticated}:{onAuthenticated
     if(["forgot","whatsapp"].includes(queryView))setView(queryView as AuthView);
     else if(window.location.pathname.endsWith("/register"))setView("signup");
     else setView("signin");
+    if(params.get("verified")==="1")setMessage("Email berhasil diverifikasi. Silakan masuk menggunakan email dan password Anda.");
     void fetch("/api/auth/google-config",{cache:"no-store"}).then(r=>setGoogleEnabled(r.ok)).catch(()=>setGoogleEnabled(false));
   },[]);
 
