@@ -13,6 +13,7 @@ type RankRow={rank:number;creator_id:number;creator_code:string|null;creator_nam
 type ProductRankRow={rank:number;sku:string|null;product_name:string|null;platform:string|null;qty:number;orders:number;gmv:number;commission:number;clicks:number;buyers:number;new_buyers:number;refund:number;refund_qty:number;roi:number;total_rows:number};
 type StoreRow={store_name:string;platform:string;total_affiliates:number;active_affiliates:number;inactive_affiliates:number;gmv:number;orders:number;qty:number;spend:number;roi:number};
 type TrendRow={data_date:string;gmv:number;orders:number;qty:number;commission:number;refund:number};
+type PlatformMixRow={platform:string;gmv:number;orders:number;qty:number;commission:number};
 const zero:KPI={total_creators:0,total_sales_records:0,total_qty:0,total_orders:0,total_gmv:0,total_commission:0,total_products:0,total_cost_product:0,total_shipping:0,total_ads_spend:0,total_spend:0,roi:0,aov:0,avg_daily_creator_sales:0,referral_commission:0,total_live_streams:0,total_videos:0};
 const money=(v:any)=>new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(Number(v||0));
 const number=(v:any)=>new Intl.NumberFormat("id-ID").format(Number(v||0));
@@ -31,8 +32,8 @@ function presetRange(kind:Exclude<PeriodPreset,""|"custom">,anchorIso:string){
 
 export default function LegacyDashboard({workspaceId}:Props){
  const supabase=createClient();const [start,setStart]=useState("");const [end,setEnd]=useState("");const [platform,setPlatform]=useState("");const [store,setStore]=useState("");const [storeOptions,setStoreOptions]=useState<Row[]>([]);
- const [kpi,setKpi]=useState<KPI>(zero);const [prev,setPrev]=useState<KPI|null>(null);const [trend,setTrend]=useState<TrendRow[]>([]);const [rankSummary,setRankSummary]=useState({total:0,active:0});const [adsInput,setAdsInput]=useState("0");const [adsSaving,setAdsSaving]=useState(false);const [adsMessage,setAdsMessage]=useState("");const [ranking,setRanking]=useState<RankRow[]>([]);const [productRanking,setProductRanking]=useState<ProductRankRow[]>([]);const [stores,setStores]=useState<StoreRow[]>([]);const [page,setPage]=useState(1);const [total,setTotal]=useState(0);const [busy,setBusy]=useState(false);const [error,setError]=useState("");const [dataWarnings,setDataWarnings]=useState<string[]>([]);const [selectedCreator,setSelectedCreator]=useState<number|null>(null);const [rankSort,setRankSort]=useState({key:"rank",asc:true});const [productSort,setProductSort]=useState({key:"gmv",asc:false});const [productMetric,setProductMetric]=useState<keyof ProductRankRow>("gmv");const [storeSort,setStoreSort]=useState({key:"gmv",asc:false});const [periodPreset,setPeriodPreset]=useState<PeriodPreset>("");const [periodApplied,setPeriodApplied]=useState(false);
- function clearDashboardData(){setKpi(zero);setPrev(null);setTrend([]);setRankSummary({total:0,active:0});setRanking([]);setProductRanking([]);setStores([]);setDataWarnings([]);setTotal(0);setPage(1)}
+ const [kpi,setKpi]=useState<KPI>(zero);const [prev,setPrev]=useState<KPI|null>(null);const [trend,setTrend]=useState<TrendRow[]>([]);const [platformBreakdown,setPlatformBreakdown]=useState<PlatformMixRow[]>([]);const [rankSummary,setRankSummary]=useState({total:0,active:0});const [adsInput,setAdsInput]=useState("0");const [adsSaving,setAdsSaving]=useState(false);const [adsMessage,setAdsMessage]=useState("");const [ranking,setRanking]=useState<RankRow[]>([]);const [productRanking,setProductRanking]=useState<ProductRankRow[]>([]);const [stores,setStores]=useState<StoreRow[]>([]);const [page,setPage]=useState(1);const [total,setTotal]=useState(0);const [busy,setBusy]=useState(false);const [error,setError]=useState("");const [dataWarnings,setDataWarnings]=useState<string[]>([]);const [selectedCreator,setSelectedCreator]=useState<number|null>(null);const [rankSort,setRankSort]=useState({key:"rank",asc:true});const [productSort,setProductSort]=useState({key:"gmv",asc:false});const [productMetric,setProductMetric]=useState<keyof ProductRankRow>("gmv");const [storeSort,setStoreSort]=useState({key:"gmv",asc:false});const [periodPreset,setPeriodPreset]=useState<PeriodPreset>("");const [periodApplied,setPeriodApplied]=useState(false);
+ function clearDashboardData(){setKpi(zero);setPrev(null);setTrend([]);setPlatformBreakdown([]);setRankSummary({total:0,active:0});setRanking([]);setProductRanking([]);setStores([]);setDataWarnings([]);setTotal(0);setPage(1)}
  async function loadStoreOptions(targetPlatform=platform){
   const {data,error:storeError}=await supabase.rpc("get_dashboard_store_options",{p_workspace_id:workspaceId,p_platform:targetPlatform||null});
   if(!storeError)setStoreOptions((data||[]) as Row[]);
@@ -54,7 +55,8 @@ export default function LegacyDashboard({workspaceId}:Props){
     supabase.rpc("get_creator_ranking_summary_v2",common),
     supabase.rpc("get_product_ranking_v2",{...common,p_search:null,p_page:1,p_page_size:100}),
     supabase.rpc("get_store_dashboard_v2",common),
-    supabase.rpc("get_dashboard_daily_trend_v1",common)
+    supabase.rpc("get_dashboard_daily_trend_v1",common),
+    supabase.rpc("get_dashboard_platform_mix_v1",common)
    ];
    if(pr.start)calls.push(supabase.rpc("get_dashboard_metrics_v5",{p_workspace_id:workspaceId,p_start_date:pr.start,p_end_date:pr.end,p_platform:filterPlatform||null,p_store_name:filterStore||null}));
    const res=await Promise.all(calls);
@@ -88,7 +90,10 @@ export default function LegacyDashboard({workspaceId}:Props){
    if(res[5].error){setTrend([]);warnings.push("Grafik tren belum dapat dimuat.");}
    else setTrend((res[5].data||[]) as TrendRow[]);
 
-   if(pr.start&&res[6]&&!res[6].error)setPrev((res[6].data?.[0]||zero) as KPI);
+   if(res[6].error){setPlatformBreakdown([]);warnings.push("Kontribusi platform belum dapat dimuat.");}
+   else setPlatformBreakdown((res[6].data||[]) as PlatformMixRow[]);
+
+   if(pr.start&&res[7]&&!res[7].error)setPrev((res[7].data?.[0]||zero) as KPI);
    else setPrev(null);
 
    setDataWarnings(warnings);
@@ -162,7 +167,7 @@ export default function LegacyDashboard({workspaceId}:Props){
  const trendChartData=useMemo(()=>trend.map(row=>({label:new Date(String(row.data_date)+"T00:00:00").toLocaleDateString("id-ID",{day:"2-digit",month:"short"}),primary:Number(row.gmv||0),secondary:Number(row.orders||0)})),[trend]);
  const topProductChart=useMemo(()=>[...productRanking].sort((a,b)=>Number(b.gmv||0)-Number(a.gmv||0)).slice(0,6).map(row=>({label:row.product_name||row.sku||"Produk",value:Number(row.gmv||0),meta:`${number(row.orders)} orders · ${row.platform||"-"}`})),[productRanking]);
  const topCreatorChart=useMemo(()=>[...ranking].sort((a,b)=>Number(b.gmv||0)-Number(a.gmv||0)).slice(0,6).map(row=>({label:row.creator_name||row.username||row.creator_code||"Creator",value:Number(row.gmv||0),meta:`${number(row.orders)} orders · ${row.platform||"-"}`})),[ranking]);
- const platformMix=useMemo(()=>{const map=new Map<string,number>();for(const row of stores){const key=String(row.platform||"Lainnya").trim()||"Lainnya";map.set(key,(map.get(key)||0)+Number(row.gmv||0))}if(!map.size){for(const row of productRanking){const key=String(row.platform||"Lainnya").trim()||"Lainnya";map.set(key,(map.get(key)||0)+Number(row.gmv||0))}}return [...map.entries()].map(([label,value])=>({label,value})).sort((a,b)=>b.value-a.value)},[stores,productRanking]);
+ const platformMix=useMemo(()=>platformBreakdown.map(row=>({label:row.platform||"Lainnya",value:Number(row.gmv||0)})).filter(row=>row.value>0),[platformBreakdown]);
  const summaryChanges = hasPreviousData&&prev ? [
   {label:"GMV",value:delta(kpi.total_gmv,prev.total_gmv),detail:money(kpi.total_gmv)},
   {label:"Orders",value:delta(kpi.total_orders,prev.total_orders),detail:number(kpi.total_orders)},
@@ -200,7 +205,7 @@ export default function LegacyDashboard({workspaceId}:Props){
     <AreaTrendChart data={trendChartData} primaryLabel="GMV" secondaryLabel="Orders" primaryFormatter={money} secondaryFormatter={number}/>
    </section>
    <section className="lw-chart-card">
-    <div className="lw-chart-head"><div><h3>Kontribusi Platform</h3><p>Komposisi GMV berdasarkan platform aktif.</p></div><span className="lw-chart-badge">{platformMix.length} platform</span></div>
+    <div className="lw-chart-head"><div><h3>Kontribusi Platform</h3><p>Komposisi GMV Affiliate Performance; totalnya direkonsiliasi dengan KPI GMV di atas.</p></div><span className="lw-chart-badge">{platformMix.length} platform</span></div>
     <DonutBreakdown data={platformMix} valueFormatter={money} centerLabel="GMV"/>
    </section>
   </div>
