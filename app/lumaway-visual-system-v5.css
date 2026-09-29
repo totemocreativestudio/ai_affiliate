@@ -625,3 +625,272 @@
     padding-right:14px!important;
   }
 }
+
+
+/* -------- PR70 metric-driven analytics -------- */
+.lw-analytics-canvas{
+  grid-template-columns:minmax(0,1.55fr) minmax(360px,.8fr)!important;
+  align-items:stretch;
+}
+.lw-trend-card,.lw-platform-card{
+  min-height:390px;
+}
+.lw-metric-tabs{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  overflow-x:auto;
+  margin:2px 0 12px;
+  padding:2px 0 5px;
+  scrollbar-width:thin;
+}
+.lw-metric-tabs button{
+  flex:none;
+  min-height:30px;
+  padding:6px 10px;
+  border:1px solid #e2e7ef;
+  border-radius:8px;
+  background:#fff;
+  color:#667085;
+  font-size:9.5px;
+  font-weight:700;
+  cursor:pointer;
+  transition:border-color .16s ease,background .16s ease,color .16s ease,box-shadow .16s ease;
+}
+.lw-metric-tabs button:hover{
+  border-color:#cbd4e5;
+  background:#f8faff;
+}
+.lw-metric-tabs button.active{
+  border-color:#5369d8;
+  background:#eef2ff;
+  color:#3348b8;
+  box-shadow:0 1px 2px rgba(51,72,184,.08);
+}
+.lw-platform-tabs{
+  gap:5px;
+  margin-bottom:14px;
+}
+.lw-platform-tabs button{
+  min-height:28px;
+  padding:5px 8px;
+  font-size:9px;
+}
+.lw-trend-summary{
+  display:flex;
+  align-items:baseline;
+  gap:8px;
+  min-height:26px;
+  margin:0 0 2px;
+  color:#6f7a8c;
+  font-size:9px;
+}
+.lw-trend-summary>span{
+  color:#8a94a4;
+}
+.lw-trend-summary>strong{
+  color:#243149;
+  font-size:11px;
+}
+.lw-trend-summary>small{
+  margin-left:auto;
+  color:#98a2b3;
+  font-size:8.5px;
+}
+.viz-chart-wrap{
+  min-height:0;
+}
+.viz-area-chart{
+  min-height:240px!important;
+}
+.viz-grid-line{
+  stroke:#e6eaf1!important;
+  stroke-dasharray:3 5!important;
+}
+.viz-single-guide{
+  stroke:#ccd5e3;
+  stroke-width:1;
+  stroke-dasharray:4 5;
+}
+.viz-value-label{
+  fill:#243149;
+  font-size:11px;
+  font-weight:800;
+  font-family:inherit;
+}
+.viz-legend{
+  justify-content:flex-start!important;
+  margin:4px 0 2px!important;
+}
+.viz-legend span{
+  font-size:9px!important;
+}
+
+/* Platform contribution: compact distribution view rather than oversized donut. */
+.viz-platform-single{
+  display:grid;
+  grid-template-columns:minmax(145px,.7fr) minmax(0,1.3fr);
+  align-items:center;
+  gap:20px;
+  min-height:250px;
+  padding:14px 4px 6px;
+}
+.viz-platform-total{
+  padding:16px;
+  border:1px solid #e5e9f1;
+  border-radius:14px;
+  background:#fafbfe;
+}
+.viz-platform-total>span{
+  display:block;
+  color:#7c8798;
+  font-size:9px;
+  font-weight:700;
+}
+.viz-platform-total>strong{
+  display:block;
+  margin-top:7px;
+  color:#182230;
+  font-size:22px;
+  line-height:1.1;
+  letter-spacing:-.035em;
+}
+.viz-platform-total>small{
+  display:block;
+  margin-top:8px;
+  color:#98a2b3;
+  font-size:8.5px;
+  line-height:1.45;
+}
+.viz-platform-layout{
+  display:grid;
+  grid-template-columns:150px minmax(0,1fr);
+  align-items:center;
+  gap:20px;
+  min-height:255px;
+  padding:6px 2px 4px;
+}
+.viz-platform-donut-wrap{
+  display:grid;
+  justify-items:center;
+  gap:8px;
+}
+.viz-platform-donut-wrap>small{
+  color:#8994a5;
+  font-size:8.5px;
+}
+.viz-platform-layout .viz-donut{
+  width:132px!important;
+  box-shadow:none!important;
+}
+.viz-platform-layout .viz-donut:after{
+  inset:25%!important;
+}
+.viz-platform-layout .viz-donut>div{
+  inset:31%!important;
+}
+.viz-platform-layout .viz-donut strong{
+  font-size:12px!important;
+}
+.viz-platform-layout .viz-donut span{
+  font-size:7px!important;
+}
+.viz-platform-list{
+  display:grid;
+  gap:12px;
+}
+.viz-platform-row{
+  min-width:0;
+}
+.viz-platform-row-head,.viz-platform-row-foot{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.viz-platform-row-head span{
+  display:flex;
+  align-items:center;
+  min-width:0;
+  color:#344054;
+  font-size:10px;
+  font-weight:750;
+}
+.viz-platform-row-head span i{
+  flex:none;
+  width:8px;
+  height:8px;
+  margin-right:7px;
+  border-radius:50%;
+}
+.viz-platform-row-head b{
+  color:#182230;
+  font-size:10px;
+  white-space:nowrap;
+}
+.viz-platform-track{
+  height:7px;
+  margin:7px 0 5px;
+  overflow:hidden;
+  border-radius:999px;
+  background:#edf1f6;
+}
+.viz-platform-track i{
+  display:block;
+  height:100%;
+  border-radius:inherit;
+}
+.viz-platform-row-foot{
+  color:#8c96a6;
+  font-size:8.5px;
+}
+.viz-platform-row-foot b{
+  color:#536075;
+  font-size:8.5px;
+}
+.viz-platform-single>.viz-platform-row{
+  padding:16px;
+  border:1px solid #e5e9f1;
+  border-radius:14px;
+  background:#fff;
+}
+
+@media(max-width:1180px){
+  .lw-analytics-canvas{
+    grid-template-columns:1fr!important;
+  }
+  .lw-trend-card,.lw-platform-card{
+    min-height:0;
+  }
+}
+@media(max-width:680px){
+  .lw-metric-tabs{
+    margin-left:-2px;
+    margin-right:-2px;
+    padding-bottom:7px;
+  }
+  .lw-metric-tabs button{
+    font-size:9px;
+  }
+  .lw-trend-summary{
+    flex-wrap:wrap;
+  }
+  .lw-trend-summary>small{
+    width:100%;
+    margin-left:0;
+  }
+  .viz-area-chart{
+    min-height:220px!important;
+  }
+  .viz-platform-single,.viz-platform-layout{
+    grid-template-columns:1fr;
+    min-height:0;
+    gap:12px;
+  }
+  .viz-platform-total{
+    padding:13px;
+  }
+  .viz-platform-total>strong{
+    font-size:19px;
+  }
+}
