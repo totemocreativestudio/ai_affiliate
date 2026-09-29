@@ -216,12 +216,20 @@ export default function LumawayWorkspaceApp() {
       if (session?.user) {
         await loadLumaData(session.user.id);
       } else {
-        const sessionRequestedMode = new URLSearchParams(window.location.search).get("auth");
-        const authPath = sessionRequestedMode === "signup" || window.location.pathname === `${APP_BASE}/register`
+        const currentParams=new URLSearchParams(window.location.search);
+        const sessionRequestedMode=currentParams.get("auth");
+        const requestedView=String(currentParams.get("view")||"");
+        const authPath=sessionRequestedMode==="signup"||window.location.pathname===`${APP_BASE}/register`
           ? `${APP_BASE}/register`
           : `${APP_BASE}/login`;
-        setAuthMode(authPath === `${APP_BASE}/register` ? "signup" : "signin");
-        window.history.replaceState(null, "", authUrlWithReferral(authPath));
+        setAuthMode(authPath===`${APP_BASE}/register`?"signup":"signin");
+        if(authPath===`${APP_BASE}/login`&&["forgot","whatsapp"].includes(requestedView)){
+          const url=new URL(authUrlWithReferral(authPath),window.location.origin);
+          url.searchParams.set("view",requestedView);
+          window.history.replaceState(null,"",url.pathname+url.search);
+        }else{
+          window.history.replaceState(null,"",authUrlWithReferral(authPath));
+        }
       }
     } catch {
       setError("Sesi tidak dapat dimuat. Silakan login kembali.");
