@@ -2,6 +2,7 @@
 
 import {Fragment,useEffect,useMemo,useState} from "react";
 import {createClient} from "../../lib/supabase-browser";
+import {navigateToSection} from "../../lib/luma-navigation";
 
 type ViewMode="table"|"grid"|"list";
 
@@ -305,7 +306,7 @@ export default function ProductMaster({workspaceId}:{workspaceId:string}){
   return <section className="pm72">
     <header className="pm72-head">
       <div><span className="pm72-kicker">MASTER DATA · VISUAL CATALOG</span><h2>Product Master</h2><p>Kelola SKU induk, gambar, variasi, kode marketplace, harga, HPP, dan status dalam tampilan yang lebih mudah dibedakan.</p></div>
-      <div className="pm72-head-actions"><button type="button" className="secondary" onClick={()=>window.dispatchEvent(new CustomEvent("lumaway-routechange",{detail:{section:"upload"}}))}>Import</button><button type="button" className="primary" onClick={openAdd}>+ Tambah Produk</button></div>
+      <div className="pm72-head-actions"><button type="button" className="secondary" onClick={()=>navigateToSection("upload")}>Import</button><button type="button" className="primary" onClick={openAdd}>+ Tambah Produk</button></div>
     </header>
 
     <div className="pm72-stats">
