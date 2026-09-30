@@ -97,3 +97,21 @@
 @media(prefers-reduced-motion:reduce){
   .c360-stacked-drawer .c360-window{animation:none}
 }
+
+
+/* PR76C unified creator timeline */
+.c360-timeline-panel{padding-bottom:14px}
+.c360-timeline-list{position:relative;display:grid;gap:0;margin-top:6px}
+.c360-timeline-list:before{content:"";position:absolute;left:13px;top:8px;bottom:8px;width:1px;background:#e5e8ef}
+.c360-timeline-event{position:relative;display:grid;grid-template-columns:27px minmax(0,1fr);gap:9px;padding:8px 0}
+.c360-timeline-dot{position:relative;z-index:1;width:11px;height:11px;margin:4px 0 0 8px;border:2px solid #fff;border-radius:50%;background:#98a2b3;box-shadow:0 0 0 1px #d9dee7}
+.c360-timeline-event.type-listing .c360-timeline-dot{background:#6559dd}
+.c360-timeline-event.type-sample .c360-timeline-dot{background:#f79009}
+.c360-timeline-event.type-shipping .c360-timeline-dot{background:#1570ef}
+.c360-timeline-event.type-campaign .c360-timeline-dot{background:#7f56d9}
+.c360-timeline-event.type-agreement .c360-timeline-dot{background:#12b76a}
+.c360-timeline-event.type-performance .c360-timeline-dot{background:#0ba5ec}
+.c360-timeline-event.type-task .c360-timeline-dot{background:#f04438}
+.c360-timeline-copy{min-width:0;padding:8px 10px;border:1px solid #eceff3;border-radius:10px;background:#fcfcfd}
+.c360-timeline-copy>div{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.c360-timeline-copy strong{font-size:8.7px;color:#344054}.c360-timeline-copy>div span{padding:2px 6px;border-radius:999px;background:#f2f4f7;color:#667085;font-size:6.6px;font-weight:750}
+.c360-timeline-copy small{display:block;margin-top:3px;color:#98a2b3;font-size:6.7px}.c360-timeline-copy p{margin:5px 0 0;color:#667085;font-size:7.2px;line-height:1.45}.c360-timeline-copy em{display:block;margin-top:4px;color:#7b8494;font-size:7px;font-style:normal;line-height:1.45}
