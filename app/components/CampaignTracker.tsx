@@ -7,7 +7,7 @@ import {CreatorAutocomplete,ProductAutocomplete,CreatorSearchResult,ProductSearc
 type Campaign={
   id:number;workspace_id:string;name:string;brand_name:string|null;campaign_type:string;platform:string|null;
   start_date:string|null;end_date:string|null;status:string;target_gmv:number;actual_gmv:number;target_orders:number;
-  actual_orders:number;budget:number;notes:string|null;created_at:string;updated_at:string;
+  actual_orders:number;budget:number;notes:string|null;banner_urls:any;banner_storage_paths:any;created_at:string;updated_at:string;
 };
 type CampaignCreator={
   id:number;campaign_id:number;creator_id:number|null;creator_name:string|null;platform:string|null;product_id:number|null;
@@ -17,7 +17,7 @@ type CampaignCreator={
 type Creator={id:number;creator_code:string|null;name:string|null;username:string|null;platform:string|null};
 type Product={id:number;sku:string;product_name:string|null;cost_price:number|null};
 type ShippingOption={id:number;reference_no:string|null;tracking:string|null;creator_name:string|null;status:string|null};
-type CampaignForm={name:string;brand_name:string;campaign_type:string;platform:string;start_date:string;end_date:string;status:string;target_gmv:string;target_orders:string;budget:string;notes:string};
+type CampaignForm={name:string;brand_name:string;campaign_type:string;platform:string;start_date:string;end_date:string;status:string;target_gmv:string;target_orders:string;budget:string;notes:string;banner_urls:string[];banner_storage_paths:string[]};
 type CreatorForm={creator_id:string;creator_name:string;platform:string;product_id:string;content_type:string;due_date:string;deliverable_status:string;orders:string;gmv:string;commission:string;sample_status:string;shipping_order_id:string;notes:string};
 
 const CAMPAIGN_STATUSES=["Draft","Active","Paused","Completed","Cancelled"];
@@ -25,7 +25,7 @@ const CAMPAIGN_TYPES=["Affiliate","Influencer","Hybrid"];
 const DELIVERABLES=["Brief Sent","Sample Sent","Sample Received","Content Draft","Revision","Content Approved","Video Uploaded","Live Started","Live Finished","Performance Running","Closed"];
 const CONTENT_TYPES=["Video","LIVE","Video + LIVE","Post","Story","Other"];
 const SAMPLE_STATUSES=["Not Required","Pending","Sent","Received","Returned","Cancelled"];
-const EMPTY_CAMPAIGN:CampaignForm={name:"",brand_name:"",campaign_type:"Affiliate",platform:"TikTok",start_date:"",end_date:"",status:"Draft",target_gmv:"0",target_orders:"0",budget:"0",notes:""};
+const EMPTY_CAMPAIGN:CampaignForm={name:"",brand_name:"",campaign_type:"Affiliate",platform:"TikTok",start_date:"",end_date:"",status:"Draft",target_gmv:"0",target_orders:"0",budget:"0",notes:"",banner_urls:[],banner_storage_paths:[]};
 const EMPTY_CREATOR:CreatorForm={creator_id:"",creator_name:"",platform:"TikTok",product_id:"",content_type:"Video",due_date:"",deliverable_status:"Brief Sent",orders:"0",gmv:"0",commission:"0",sample_status:"Not Required",shipping_order_id:"",notes:""};
 const money=(value:any)=>"Rp "+Number(value||0).toLocaleString("id-ID",{maximumFractionDigits:0});
 const number=(value:any)=>Number(value||0).toLocaleString("id-ID",{maximumFractionDigits:0});
@@ -71,11 +71,13 @@ export default function CampaignTracker({workspaceId}:{workspaceId:string}){
   const [saving,setSaving]=useState(false);
   const [error,setError]=useState("");
   const [message,setMessage]=useState("");
+  const [bannerFiles,setBannerFiles]=useState<File[]>([]);
+  const [bannerIndex,setBannerIndex]=useState(0);
 
   async function load(){
     setLoading(true);setError("");
     const [campaignRes,creatorRes,productRes,shippingRes]=await Promise.all([
-      supabase.from("campaign_trackers").select("id,workspace_id,name,brand_name,campaign_type,platform,start_date,end_date,status,target_gmv,actual_gmv,target_orders,actual_orders,budget,notes,created_at,updated_at").eq("workspace_id",workspaceId).order("created_at",{ascending:false}),
+      supabase.from("campaign_trackers").select("id,workspace_id,name,brand_name,campaign_type,platform,start_date,end_date,status,target_gmv,actual_gmv,target_orders,actual_orders,budget,notes,banner_urls,banner_storage_paths,created_at,updated_at").eq("workspace_id",workspaceId).order("created_at",{ascending:false}),
       supabase.from("creators").select("id,creator_code,name,username,platform").eq("workspace_id",workspaceId).order("name").limit(7770),
       supabase.from("product_master").select("id,sku,product_name,cost_price").eq("workspace_id",workspaceId).order("sku").limit(1000),
       supabase.from("shipping").select("id,reference_no,tracking,creator_name,status").eq("workspace_id",workspaceId).order("id",{ascending:false}).limit(1000),
@@ -102,8 +104,16 @@ export default function CampaignTracker({workspaceId}:{workspaceId:string}){
 
   useEffect(()=>{void load()},[workspaceId]);
   useEffect(()=>{void loadCreatorRows(selectedId)},[selectedId,workspaceId]);
-
   const selected=campaigns.find(x=>x.id===selectedId)||null;
+  const selectedBanners=useMemo(()=>Array.isArray(selected?.banner_urls)?selected!.banner_urls.filter(Boolean).map(String).slice(0,3):[],[selected?.id,selected?.banner_urls]);
+  const newBannerPreviews=useMemo(()=>bannerFiles.map(file=>URL.createObjectURL(file)),[bannerFiles]);
+  useEffect(()=>()=>newBannerPreviews.forEach(url=>URL.revokeObjectURL(url)),[newBannerPreviews]);
+  useEffect(()=>{setBannerIndex(0)},[selectedId]);
+  useEffect(()=>{
+    if(selectedBanners.length<=1)return;
+    const timer=window.setInterval(()=>setBannerIndex(index=>(index+1)%selectedBanners.length),10000);
+    return()=>window.clearInterval(timer);
+  },[selectedId,selectedBanners.length]);
   const visibleCampaigns=useMemo(()=>campaigns.filter(row=>{
     const q=search.trim().toLowerCase();
     if(statusFilter&&row.status!==statusFilter)return false;
@@ -124,26 +134,58 @@ export default function CampaignTracker({workspaceId}:{workspaceId:string}){
   const totalCommission=creatorRows.reduce((sum,row)=>sum+Number(row.commission||0),0);
 
   function openCampaignAdd(){
-    setEditingCampaignId(null);setCampaignForm({...EMPTY_CAMPAIGN,start_date:new Date().toISOString().slice(0,10)});setShowCampaignForm(true);setMessage("");setError("");
+    setEditingCampaignId(null);setCampaignForm({...EMPTY_CAMPAIGN,start_date:new Date().toISOString().slice(0,10)});setBannerFiles([]);setShowCampaignForm(true);setMessage("");setError("");
   }
   function openCampaignEdit(row:Campaign){
-    setEditingCampaignId(row.id);setCampaignForm({name:row.name,brand_name:row.brand_name||"",campaign_type:row.campaign_type||"Affiliate",platform:row.platform||"",start_date:row.start_date||"",end_date:row.end_date||"",status:row.status||"Draft",target_gmv:String(row.target_gmv||0),target_orders:String(row.target_orders||0),budget:String(row.budget||0),notes:row.notes||""});setShowCampaignForm(true);setMessage("");setError("");
+    setEditingCampaignId(row.id);setCampaignForm({name:row.name,brand_name:row.brand_name||"",campaign_type:row.campaign_type||"Affiliate",platform:row.platform||"",start_date:row.start_date||"",end_date:row.end_date||"",status:row.status||"Draft",target_gmv:String(row.target_gmv||0),target_orders:String(row.target_orders||0),budget:String(row.budget||0),notes:row.notes||"",banner_urls:Array.isArray(row.banner_urls)?row.banner_urls.filter(Boolean).map(String).slice(0,3):[],banner_storage_paths:Array.isArray(row.banner_storage_paths)?row.banner_storage_paths.filter(Boolean).map(String).slice(0,3):[]});setBannerFiles([]);setShowCampaignForm(true);setMessage("");setError("");
+  }
+  function chooseBannerFiles(files:File[]){
+    const valid=files.filter(file=>["image/jpeg","image/png","image/webp"].includes(file.type)&&file.size<=5*1024*1024);
+    const remaining=Math.max(0,3-campaignForm.banner_urls.length);
+    setBannerFiles(valid.slice(0,remaining));
+    if(files.some(file=>file.size>5*1024*1024))setError("Setiap banner maksimal 5 MB.");
+  }
+  function removeExistingBanner(index:number){
+    setCampaignForm(prev=>({...prev,banner_urls:prev.banner_urls.filter((_,i)=>i!==index),banner_storage_paths:prev.banner_storage_paths.filter((_,i)=>i!==index)}));
+  }
+  async function uploadCampaignBanners(campaignId:number){
+    if(!bannerFiles.length)return{urls:campaignForm.banner_urls.slice(0,3),paths:campaignForm.banner_storage_paths.slice(0,3)};
+    const urls=[...campaignForm.banner_urls],paths=[...campaignForm.banner_storage_paths];
+    for(const [index,file] of bannerFiles.entries()){
+      if(urls.length>=3)break;
+      const ext=(file.name.split(".").pop()||"jpg").toLowerCase().replace(/[^a-z0-9]/g,"")||"jpg";
+      const path=`${workspaceId}/${campaignId}/banner-${Date.now()}-${index}.${ext}`;
+      const {error:uploadError}=await supabase.storage.from("luma-campaigns").upload(path,file,{contentType:file.type,upsert:false});
+      if(uploadError)throw uploadError;
+      const {data}=supabase.storage.from("luma-campaigns").getPublicUrl(path);
+      urls.push(data.publicUrl);paths.push(path);
+    }
+    return{urls:urls.slice(0,3),paths:paths.slice(0,3)};
   }
 
   async function saveCampaign(){
     if(!campaignForm.name.trim())return setError("Nama campaign wajib diisi.");
+    if(campaignForm.banner_urls.length+bannerFiles.length>3)return setError("Banner campaign maksimal 3 gambar.");
     setSaving(true);setError("");setMessage("");
-    const {data:{user}}=await supabase.auth.getUser();
-    const payload={workspace_id:workspaceId,name:campaignForm.name.trim(),brand_name:campaignForm.brand_name.trim()||null,campaign_type:campaignForm.campaign_type,platform:campaignForm.platform||null,start_date:campaignForm.start_date||null,end_date:campaignForm.end_date||null,status:campaignForm.status,target_gmv:Number(campaignForm.target_gmv||0),target_orders:Number(campaignForm.target_orders||0),budget:Number(campaignForm.budget||0),notes:campaignForm.notes.trim()||null,created_by:user?.id||null,updated_at:new Date().toISOString()};
-    if(editingCampaignId){
-      const {error}=await supabase.from("campaign_trackers").update(payload).eq("workspace_id",workspaceId).eq("id",editingCampaignId);
-      if(error){setSaving(false);return setError(error.message)}
-    }else{
-      const {data,error}=await supabase.from("campaign_trackers").insert(payload).select("id").single();
-      if(error){setSaving(false);return setError(error.message)}
-      if(data?.id)setSelectedId(Number(data.id));
-    }
-    setSaving(false);setShowCampaignForm(false);setMessage(editingCampaignId?"Campaign diperbarui.":"Campaign berhasil dibuat.");setEditingCampaignId(null);await load();
+    try{
+      const {data:{user}}=await supabase.auth.getUser();
+      const payload={workspace_id:workspaceId,name:campaignForm.name.trim(),brand_name:campaignForm.brand_name.trim()||null,campaign_type:campaignForm.campaign_type,platform:campaignForm.platform||null,start_date:campaignForm.start_date||null,end_date:campaignForm.end_date||null,status:campaignForm.status,target_gmv:Number(campaignForm.target_gmv||0),target_orders:Number(campaignForm.target_orders||0),budget:Number(campaignForm.budget||0),notes:campaignForm.notes.trim()||null,created_by:user?.id||null,updated_at:new Date().toISOString()};
+      let campaignId=editingCampaignId;
+      if(editingCampaignId){
+        const {error}=await supabase.from("campaign_trackers").update(payload).eq("workspace_id",workspaceId).eq("id",editingCampaignId);
+        if(error)throw error;
+      }else{
+        const {data,error}=await supabase.from("campaign_trackers").insert(payload).select("id").single();
+        if(error)throw error;
+        campaignId=Number(data?.id||0);
+        if(campaignId)setSelectedId(campaignId);
+      }
+      if(!campaignId)throw new Error("Campaign ID tidak tersedia.");
+      const banners=await uploadCampaignBanners(campaignId);
+      const {error:bannerError}=await supabase.from("campaign_trackers").update({banner_urls:banners.urls,banner_storage_paths:banners.paths,updated_at:new Date().toISOString()}).eq("workspace_id",workspaceId).eq("id",campaignId);
+      if(bannerError)throw bannerError;
+      setShowCampaignForm(false);setBannerFiles([]);setMessage(editingCampaignId?"Campaign diperbarui.":"Campaign berhasil dibuat.");setEditingCampaignId(null);await load();
+    }catch(err:any){setError(err?.message||"Campaign belum dapat disimpan.")}finally{setSaving(false)}
   }
 
   async function deleteCampaign(id:number){
@@ -237,6 +279,7 @@ export default function CampaignTracker({workspaceId}:{workspaceId:string}){
         <label><span>Budget</span><input type="number" min="0" value={campaignForm.budget} onChange={e=>setCampaignForm({...campaignForm,budget:e.target.value})}/></label>
         <label><span>Target GMV</span><input type="number" min="0" value={campaignForm.target_gmv} onChange={e=>setCampaignForm({...campaignForm,target_gmv:e.target.value})}/></label>
         <label><span>Target Orders</span><input type="number" min="0" value={campaignForm.target_orders} onChange={e=>setCampaignForm({...campaignForm,target_orders:e.target.value})}/></label>
+        <label className="wide campaign-banner-field"><span>Banner Campaign · maksimal 3</span><input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={e=>chooseBannerFiles(Array.from(e.target.files||[]))}/><small>JPG, PNG, WEBP · maksimal 5 MB/gambar · carousel otomatis setiap 10 detik.</small><div className="campaign-banner-editor-preview">{campaignForm.banner_urls.map((url,index)=><div key={url}><img src={url} alt={`Banner campaign ${index+1}`}/><button type="button" onClick={()=>removeExistingBanner(index)}>×</button><span>Banner {index+1}</span></div>)}{newBannerPreviews.map((url,index)=><div key={url} className="new"><img src={url} alt={`Banner baru ${index+1}`}/><span>Baru {index+1}</span></div>)}</div></label>
         <label className="wide"><span>Notes</span><textarea rows={3} value={campaignForm.notes} onChange={e=>setCampaignForm({...campaignForm,notes:e.target.value})}/></label>
       </div>
       <div className="campaign-v1-editor-actions"><button className="secondary" onClick={()=>setShowCampaignForm(false)}>Batal</button><button className="primary" disabled={saving} onClick={()=>void saveCampaign()}>{saving?"Menyimpan...":"Simpan Campaign"}</button></div>
@@ -248,6 +291,7 @@ export default function CampaignTracker({workspaceId}:{workspaceId:string}){
         {loading?<div className="campaign-v1-empty">Memuat campaign...</div>:visibleCampaigns.length===0?<div className="campaign-v1-empty"><b>Belum ada campaign.</b><span>Buat campaign pertama untuk mulai tracking.</span></div>:<div className="campaign-v1-list-stack">{visibleCampaigns.map(row=>{
           const gmvProgress=pct(Number(row.actual_gmv||0),Number(row.target_gmv||0));
           return <button type="button" key={row.id} className={"campaign-v1-list-card "+(selectedId===row.id?"selected":"")} onClick={()=>setSelectedId(row.id)}>
+            {Array.isArray(row.banner_urls)&&row.banner_urls[0]&&<img className="campaign-v1-list-banner" src={String(row.banner_urls[0])} alt={row.name}/>}
             <div className="campaign-v1-list-card-top"><span className={"campaign-v1-status "+campaignTone(row.status)}>{row.status}</span><small>{row.platform||"Multi Platform"}</small></div>
             <h4>{row.name}</h4><p>{row.brand_name||row.campaign_type}</p>
             <div className="campaign-v1-list-progress"><i style={{width:gmvProgress+"%"}}/></div>
@@ -262,6 +306,15 @@ export default function CampaignTracker({workspaceId}:{workspaceId:string}){
             <div><span>{selected.campaign_type} · {selected.platform||"Multi Platform"}</span><h3>{selected.name}</h3><p>{selected.brand_name||"Tanpa brand"} · {dateLabel(selected.start_date)} – {dateLabel(selected.end_date)}</p></div>
             <div className="campaign-v1-detail-actions"><button onClick={()=>openCampaignEdit(selected)}>Edit</button><button className="danger" onClick={()=>void deleteCampaign(selected.id)}>Hapus</button></div>
           </div>
+
+          {selectedBanners.length>0&&<div className="campaign-banner-carousel">
+            <div className="campaign-banner-stage">
+              {selectedBanners.map((url,index)=><img key={url} src={url} alt={`${selected.name} banner ${index+1}`} className={bannerIndex===index?"active":""}/>)}
+              <div className="campaign-banner-overlay"><span>{selected.brand_name||selected.campaign_type}</span><strong>{selected.name}</strong><small>{selectedBanners.length>1?"Bergeser otomatis setiap 10 detik":"1 banner campaign"}</small></div>
+              {selectedBanners.length>1&&<><button className="campaign-banner-nav prev" type="button" onClick={()=>setBannerIndex(i=>(i-1+selectedBanners.length)%selectedBanners.length)}>‹</button><button className="campaign-banner-nav next" type="button" onClick={()=>setBannerIndex(i=>(i+1)%selectedBanners.length)}>›</button></>}
+            </div>
+            {selectedBanners.length>1&&<div className="campaign-banner-dots">{selectedBanners.map((_,index)=><button key={index} type="button" className={bannerIndex===index?"active":""} onClick={()=>setBannerIndex(index)} aria-label={`Banner ${index+1}`}/>)}</div>}
+          </div>}
 
           <div className="campaign-v1-kpis">
             <article><span>GMV</span><b>{money(actualGmv)}</b><small>Target {money(selected.target_gmv)}</small><div><i style={{width:pct(actualGmv,Number(selected.target_gmv||0))+"%"}}/></div></article>

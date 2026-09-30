@@ -45,6 +45,14 @@ export default function Creator360Modal({workspaceId,creatorId,startDate,endDate
 
   useEffect(()=>{if(!creatorId)return;setPeriodReady(false);void bootstrap()},[creatorId,workspaceId]);
   useEffect(()=>{if(periodReady&&creatorId)void loadMetrics()},[periodReady,creatorId,periodMode,filterYear,filterMonth,anchorDate]);
+  useEffect(()=>{
+    if(!creatorId)return;
+    const previousOverflow=document.body.style.overflow;
+    document.body.style.overflow="hidden";
+    const onKey=(event:KeyboardEvent)=>{if(event.key==="Escape")onClose()};
+    window.addEventListener("keydown",onKey);
+    return()=>{document.body.style.overflow=previousOverflow;window.removeEventListener("keydown",onKey)};
+  },[creatorId,onClose]);
 
   async function bootstrap(){
     if(!creatorId)return;
@@ -139,8 +147,10 @@ export default function Creator360Modal({workspaceId,creatorId,startDate,endDate
   if(!creatorId)return null;
   const k=data?.kpi||{},pk=prevData?.kpi||{};const spend=Number(k.product_value_sent||0)+Number(k.shipping_cost||0)+Number(k.commission||0)+Number(manual.ads_support||0);const prevSpend=Number(pk.product_value_sent||0)+Number(pk.shipping_cost||0)+Number(pk.commission||0)+Number(manual.ads_support||0);const roi=spend>0?Number(k.gmv||0)/spend:0,prevRoi=prevSpend>0?Number(pk.gmv||0)/prevSpend:0;const locked=manualSaved&&!editingManual;
 
-  return <div className={`c360-shell ${expanded?"expanded":""} ${minimized?"minimized":""}`} onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}>
-    <div className="c360-window"><div className="c360-bar"><div><strong>Customer 360 · {data?.creator?.name||data?.creator?.username||"Creator"}</strong><small>{range.label} · {range.start} → {range.end}{prevData?<>&nbsp; · vs {prevData.comparison_label||"previous period"}</>:""}</small></div><div className="button-row"><button onClick={()=>setMinimized(v=>!v)}>{minimized?"▣":"—"}</button><button onClick={()=>setExpanded(v=>!v)}>{expanded?"↙":"↗"}</button><button onClick={onClose}>×</button></div></div>{!minimized&&<div className="c360-body">
+  return <div className={`c360-shell c360-stacked-drawer ${expanded?"expanded":""} ${minimized?"minimized":""}`} onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}>
+    <div className="c360-stack-shadow c360-stack-shadow-one" aria-hidden="true"/>
+    <div className="c360-stack-shadow c360-stack-shadow-two" aria-hidden="true"/>
+    <div className="c360-window" role="dialog" aria-modal="true" aria-label={`Customer 360 ${data?.creator?.name||data?.creator?.username||"Creator"}`}><div className="c360-bar"><div><strong>Customer 360 · {data?.creator?.name||data?.creator?.username||"Creator"}</strong><small>{range.label} · {range.start} → {range.end}{prevData?<>&nbsp; · vs {prevData.comparison_label||"previous period"}</>:""}</small></div><div className="button-row"><button onClick={()=>setMinimized(v=>!v)}>{minimized?"▣":"—"}</button><button onClick={()=>setExpanded(v=>!v)}>{expanded?"↙":"↗"}</button><button onClick={onClose}>×</button></div></div>{!minimized&&<div className="c360-body">
       {busy&&!data?<div className="empty-state"><strong>Loading Customer 360...</strong></div>:error?<div className="flash error">{error}</div>:data&&<>
         <div className="c360-head"><div><div className="c360-avatar">{String(data.creator?.name||"C").slice(0,1).toUpperCase()}</div><div><h2>{data.creator?.name||"-"}</h2><p>@{data.creator?.username||"-"} · {data.creator?.platform||"-"}</p></div></div><button disabled={locked} className={manual.favorite?"primary":"secondary"} onClick={()=>setManual({...manual,favorite:!manual.favorite})}>{manual.favorite?"★ Favorite":"☆ Favorite"}</button></div>
 

@@ -352,3 +352,32 @@
 @media(max-width:1180px){.campaign-v1-layout{grid-template-columns:280px minmax(0,1fr)}.campaign-v1-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.campaign-v1-kpis{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:900px){.campaign-v1-layout{grid-template-columns:1fr}.campaign-v1-list{position:static;max-height:none}.campaign-v1-list-stack{grid-template-columns:repeat(2,minmax(0,1fr))}.campaign-v1-stats{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:620px){.campaign-v1-header{flex-direction:column}.campaign-v1-header>button{width:100%}.campaign-v1-toolbar{grid-template-columns:1fr}.campaign-v1-list-stack{grid-template-columns:1fr}.campaign-v1-form-grid{grid-template-columns:1fr}.campaign-v1-form-grid .wide{grid-column:auto}.campaign-v1-kpis{grid-template-columns:1fr 1fr}.campaign-v1-detail-head{flex-direction:column}.campaign-v1-deliverable-bars>div{grid-template-columns:105px minmax(0,1fr) 28px}}
+
+
+/* -------- PR75E Campaign Banner Carousel -------- */
+.campaign-banner-field{grid-column:1/-1!important}
+.campaign-banner-field>small{color:#8a94a4;font-size:7.8px;line-height:1.45}
+.campaign-banner-editor-preview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:7px}
+.campaign-banner-editor-preview>div{position:relative;overflow:hidden;aspect-ratio:16/6;border:1px solid #e3e7ed;border-radius:9px;background:#f2f4f7}
+.campaign-banner-editor-preview img{width:100%;height:100%;object-fit:cover;display:block}
+.campaign-banner-editor-preview button{position:absolute;top:6px;right:6px;display:grid!important;place-items:center!important;width:24px!important;height:24px!important;min-height:24px!important;padding:0!important;border:1px solid rgba(255,255,255,.35)!important;border-radius:50%!important;background:rgba(15,23,42,.72)!important;color:#fff!important}
+.campaign-banner-editor-preview span{position:absolute;left:7px;bottom:6px;padding:3px 6px;border-radius:999px;background:rgba(15,23,42,.72);color:#fff;font-size:7px;font-weight:750}
+.campaign-banner-editor-preview>div.new:after{content:"NEW";position:absolute;right:7px;bottom:6px;padding:3px 6px;border-radius:999px;background:#eef2ff;color:#4155b8;font-size:6.5px;font-weight:850}
+.campaign-v1-list-banner{display:block;width:calc(100% + 22px);height:88px;object-fit:cover;margin:-11px -11px 9px;border-radius:9px 9px 0 0}
+.campaign-banner-carousel{margin:12px 0}
+.campaign-banner-stage{position:relative;overflow:hidden;aspect-ratio:16/5.7;border:1px solid #e3e7ed;border-radius:12px;background:#101828}
+.campaign-banner-stage>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transform:scale(1.015);transition:opacity .55s ease,transform 1.1s ease}
+.campaign-banner-stage>img.active{opacity:1;transform:scale(1)}
+.campaign-banner-stage:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(8,15,30,.72),rgba(8,15,30,.18) 54%,rgba(8,15,30,.05));pointer-events:none}
+.campaign-banner-overlay{position:absolute;z-index:2;left:18px;bottom:16px;max-width:60%;color:#fff}
+.campaign-banner-overlay span,.campaign-banner-overlay strong,.campaign-banner-overlay small{display:block}
+.campaign-banner-overlay span{font-size:7.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.78}
+.campaign-banner-overlay strong{margin-top:4px;font-size:17px;line-height:1.25;letter-spacing:-.025em}
+.campaign-banner-overlay small{margin-top:4px;font-size:7.5px;opacity:.76}
+.campaign-banner-nav{position:absolute!important;z-index:3;top:50%;display:grid!important;place-items:center!important;width:30px!important;height:30px!important;min-height:30px!important;padding:0!important;border:1px solid rgba(255,255,255,.3)!important;border-radius:50%!important;background:rgba(15,23,42,.46)!important;color:#fff!important;font-size:18px!important;transform:translateY(-50%)}
+.campaign-banner-nav.prev{left:9px}.campaign-banner-nav.next{right:9px}
+.campaign-banner-dots{display:flex;justify-content:center;gap:5px;margin-top:7px}
+.campaign-banner-dots button{width:7px!important;height:7px!important;min-height:7px!important;padding:0!important;border:0!important;border-radius:50%!important;background:#cfd5df!important}
+.campaign-banner-dots button.active{width:20px!important;border-radius:999px!important;background:#596bd2!important}
+@media(max-width:700px){.campaign-banner-editor-preview{grid-template-columns:1fr}.campaign-banner-stage{aspect-ratio:16/8}.campaign-banner-overlay{left:13px;bottom:12px;max-width:74%}.campaign-banner-overlay strong{font-size:14px}}
+@media(prefers-reduced-motion:reduce){.campaign-banner-stage>img{transition:none}}
