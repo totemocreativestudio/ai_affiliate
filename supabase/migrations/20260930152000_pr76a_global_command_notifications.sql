@@ -61,7 +61,6 @@ begin
         or lower(coalesce(c.creator_code,'')) like '%'||v_query||'%'
         or lower(coalesce(c.affiliate_id,'')) like '%'||v_query||'%'
       )
-    limit 10
 
     union all
 
@@ -80,7 +79,6 @@ begin
         or lower(coalesce(p.product_name,'')) like '%'||v_query||'%'
         or lower(coalesce(p.category,'')) like '%'||v_query||'%'
       )
-    limit 8
 
     union all
 
@@ -99,7 +97,6 @@ begin
         or lower(coalesce(c.brand_name,'')) like '%'||v_query||'%'
         or lower(coalesce(c.platform,'')) like '%'||v_query||'%'
       )
-    limit 6
 
     union all
 
@@ -120,7 +117,6 @@ begin
         or lower(coalesce(s.creator_name,'')) like '%'||v_query||'%'
         or lower(coalesce(s.product_name,'')) like '%'||v_query||'%'
       )
-    limit 6
 
     union all
 
@@ -139,7 +135,6 @@ begin
         or lower(coalesce(t.description,'')) like '%'||v_query||'%'
         or lower(coalesce(t.creator_name,'')) like '%'||v_query||'%'
       )
-    limit 6
 
     union all
 
