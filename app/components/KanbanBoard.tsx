@@ -76,6 +76,12 @@ export default function KanbanBoard({workspaceId,userId}:Props){
   }
 
   useEffect(()=>{void load()},[workspaceId]);
+  useEffect(()=>{
+    const onQuick=(event:Event)=>{const detail=(event as CustomEvent).detail;if(detail?.type==="task")openCreate()};
+    const onSelect=(event:Event)=>{const detail=(event as CustomEvent).detail;if(detail?.type!=="task")return;setSearch(String(detail.title||""))};
+    window.addEventListener("lumaway-quick-create",onQuick as EventListener);window.addEventListener("lumaway-global-select",onSelect as EventListener);
+    return()=>{window.removeEventListener("lumaway-quick-create",onQuick as EventListener);window.removeEventListener("lumaway-global-select",onSelect as EventListener)};
+  },[]);
 
   useEffect(()=>{
     if(!createOpen&&!editing)return;
