@@ -53,7 +53,6 @@ begin
         when lower(coalesce(c.name,''))=v_query then 2
         else 8
       end::integer as score
-      end::integer
     from public.creators c
     where c.workspace_id=p_workspace_id
       and (
