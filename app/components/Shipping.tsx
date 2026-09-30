@@ -1,332 +1,148 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { createClient } from "../../lib/supabase-browser";
+import {useEffect,useMemo,useState} from "react";
+import {createClient} from "../../lib/supabase-browser";
 import {CreatorAutocomplete,ProductAutocomplete,CreatorSearchResult,ProductSearchResult,resolveOrCreateCreator} from "./SmartAutocomplete";
 
-type Creator = {
-  id: number;
-  creator_code: string | null;
-  name: string | null;
-  username: string | null;
-  platform: string | null;
-};
+type Creator={id:number;creator_code:string|null;name:string|null;username:string|null;platform:string|null};
+type Product={id:number;sku:string;product_name:string|null;cost_price:number|null};
+type ShippingRow={id:number;data_date:string|null;creator_id:number|null;creator_name:string|null;platform:string|null;product_master_id:number|null;sku:string|null;product_name:string|null;qty:number|null;product_cost:number|null;shipping_cost:number|null;courier:string|null;tracking:string|null;status:string|null;reference_no:string|null;receiver_name:string|null;receiver_phone:string|null;receiver_address:string|null;sender_name:string|null;sender_phone:string|null;sender_address:string|null;service:string|null;branch:string|null;weight:number|null;insurance_amount:number|null;cod_amount:number|null;package_contents:string|null;notes:string|null;shipped_at:string|null;delivered_at:string|null};
+type Props={workspaceId:string};
+type FormState={data_date:string;creator_id:string;creator_name:string;platform:string;product_master_id:string;qty:string;product_cost:string;shipping_cost:string;courier:string;tracking:string;status:string;reference_no:string;receiver_name:string;receiver_phone:string;receiver_address:string;sender_name:string;sender_phone:string;sender_address:string;service:string;branch:string;weight:string;insurance_amount:string;cod_amount:string;package_contents:string;notes:string;shipped_at:string;delivered_at:string};
 
-type Product = {
-  id: number;
-  sku: string;
-  product_name: string | null;
-  cost_price: number | null;
-};
+const EMPTY_FORM:FormState={data_date:"",creator_id:"",creator_name:"",platform:"",product_master_id:"",qty:"1",product_cost:"0",shipping_cost:"0",courier:"",tracking:"",status:"Pending",reference_no:"",receiver_name:"",receiver_phone:"",receiver_address:"",sender_name:"",sender_phone:"",sender_address:"",service:"",branch:"",weight:"0",insurance_amount:"0",cod_amount:"0",package_contents:"",notes:"",shipped_at:"",delivered_at:""};
+const STATUS_TABS=["All","Pending","Packed","Shipped","Delivery","Delivered","Returned","Cancelled"] as const;
+const money=(value:any)=>"Rp "+Number(value||0).toLocaleString("id-ID");
+const dateLabel=(value:string|null)=>value?new Date(value+"T00:00:00").toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"}):"-";
+const tone=(status:string|null)=>{const s=String(status||"pending").toLowerCase();if(["delivered","finish"].includes(s))return"success";if(["shipped","delivery"].includes(s))return"info";if(["returned","cancelled"].includes(s))return"danger";if(s==="packed")return"warning";return"neutral"};
+const esc=(value:any)=>String(value??"").replace(/[&<>"']/g,(m)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"} as Record<string,string>)[m]||m);
 
-type ShippingRow = {
-  id: number;
-  data_date: string | null;
-  creator_id: number | null;
-  creator_name: string | null;
-  platform: string | null;
-  product_master_id: number | null;
-  sku: string | null;
-  product_name: string | null;
-  qty: number | null;
-  product_cost: number | null;
-  shipping_cost: number | null;
-  courier: string | null;
-  tracking: string | null;
-  status: string | null;
-};
+function labelHtml(row:ShippingRow){
+ const ref=row.reference_no||("LUMA-"+row.id);
+ return "<!doctype html><html><head><meta charset='utf-8'><title>"+esc(ref)+"</title><style>"+
+ "body{font-family:Arial,sans-serif;background:#f4f4f5;margin:0;padding:24px}.label{width:760px;max-width:100%;margin:auto;background:#fff;border:2px solid #111;color:#111}.head,.split,.two{display:grid;grid-template-columns:2fr 1fr}.cell{padding:14px;border-bottom:1px solid #111}.head .cell:first-child,.split .cell:first-child,.two .cell:first-child{border-right:1px solid #111}.brand{font-weight:800;letter-spacing:.08em}.muted{font-size:12px;color:#555}.awb{text-align:center;font-size:22px;font-weight:800;letter-spacing:.04em}.bars{height:72px;margin:10px 0;background:repeating-linear-gradient(90deg,#111 0 3px,#fff 3px 6px,#111 6px 8px,#fff 8px 11px)}.big{font-size:28px;font-weight:800}.small{font-size:12px;line-height:1.5}.foot{padding:12px;font-size:11px;border-top:1px solid #111}@media print{body{background:#fff;padding:0}.label{width:100%;border:1px solid #111}}</style></head><body><div class='label'>"+
+ "<div class='head'><div class='cell'><div class='brand'>LUMAWAY SHIPPING</div><div class='muted'>Internal shipping label preview</div></div><div class='cell'><b>"+esc(row.courier||"-")+"</b><br><span class='muted'>"+esc(row.service||"-")+"</span></div></div>"+
+ "<div class='split'><div class='cell'><div class='bars'></div><div class='awb'>"+esc(row.tracking||ref)+"</div></div><div class='cell small'><b>Reference</b><br>"+esc(ref)+"<br><br><b>Berat</b><br>"+esc(row.weight||0)+" gr<br><br><b>QTY</b><br>"+esc(row.qty||0)+" pcs</div></div>"+
+ "<div class='two'><div class='cell'><b>Penerima</b><br>"+esc(row.receiver_name||row.creator_name||"-")+"<br>"+esc(row.receiver_phone||"-")+"<br><span class='small'>"+esc(row.receiver_address||"-")+"</span></div><div class='cell'><b>Pengirim</b><br>"+esc(row.sender_name||"-")+"<br>"+esc(row.sender_phone||"-")+"<br><span class='small'>"+esc(row.sender_address||"-")+"</span></div></div>"+
+ "<div class='two'><div class='cell'><b>Isi paket</b><br>"+esc(row.package_contents||row.product_name||"-")+"</div><div class='cell'><b>Cabang / Origin</b><br>"+esc(row.branch||"-")+"</div></div>"+
+ "<div class='two'><div class='cell big'>COD: "+esc(money(row.cod_amount))+"</div><div class='cell'><b>Asuransi</b><br>"+esc(money(row.insurance_amount))+"</div></div>"+
+ "<div class='cell'><b>Catatan</b><br>"+esc(row.notes||"-")+"</div><div class='foot'>Template internal Lumaway. Bukan label resmi kurir sampai AWB resmi diterbitkan.</div></div></body></html>";
+}
 
-type Props = { workspaceId: string };
+export default function Shipping({workspaceId}:Props){
+ const supabase=useMemo(()=>createClient(),[]);
+ const [rows,setRows]=useState<ShippingRow[]>([]);
+ const [creators,setCreators]=useState<Creator[]>([]);
+ const [products,setProducts]=useState<Product[]>([]);
+ const [form,setForm]=useState<FormState>(EMPTY_FORM);
+ const [creatorSearch,setCreatorSearch]=useState("");
+ const [productSearch,setProductSearch]=useState("");
+ const [manualCreatorConfirmed,setManualCreatorConfirmed]=useState(false);
+ const [search,setSearch]=useState("");
+ const [dateStart,setDateStart]=useState("");
+ const [dateEnd,setDateEnd]=useState("");
+ const [activeTab,setActiveTab]=useState<(typeof STATUS_TABS)[number]>("All");
+ const [editingId,setEditingId]=useState<number|null>(null);
+ const [showForm,setShowForm]=useState(false);
+ const [preview,setPreview]=useState<ShippingRow|null>(null);
+ const [loading,setLoading]=useState(true);
+ const [saving,setSaving]=useState(false);
+ const [error,setError]=useState("");
 
-type FormState = {
-  data_date: string;
-  creator_id: string;
-  creator_name: string;
-  platform: string;
-  product_master_id: string;
-  qty: string;
-  product_cost: string;
-  shipping_cost: string;
-  courier: string;
-  tracking: string;
-  status: string;
-};
+ async function loadData(){
+  if(!workspaceId)return;setLoading(true);setError("");
+  const [shipRes,creatorRes,productRes]=await Promise.all([
+   supabase.from("shipping").select("id,data_date,creator_id,creator_name,platform,product_master_id,sku,product_name,qty,product_cost,shipping_cost,courier,tracking,status,reference_no,receiver_name,receiver_phone,receiver_address,sender_name,sender_phone,sender_address,service,branch,weight,insurance_amount,cod_amount,package_contents,notes,shipped_at,delivered_at").eq("workspace_id",workspaceId).order("id",{ascending:false}),
+   supabase.from("creators").select("id,creator_code,name,username,platform").eq("workspace_id",workspaceId).order("name").limit(7770),
+   supabase.from("product_master").select("id,sku,product_name,cost_price").eq("workspace_id",workspaceId).order("sku").limit(1000),
+  ]);
+  if(shipRes.error)setError(shipRes.error.message);else setRows((shipRes.data||[]) as ShippingRow[]);
+  if(!creatorRes.error)setCreators((creatorRes.data||[]) as Creator[]);
+  if(!productRes.error)setProducts((productRes.data||[]) as Product[]);
+  setLoading(false);
+ }
+ useEffect(()=>{void loadData()},[workspaceId]);
 
-const EMPTY_FORM: FormState = {
-  data_date: "",
-  creator_id: "",
-  creator_name: "",
-  platform: "",
-  product_master_id: "",
-  qty: "1",
-  product_cost: "0",
-  shipping_cost: "0",
-  courier: "",
-  tracking: "",
-  status: "Pending",
-};
+ function openAdd(){setEditingId(null);setForm({...EMPTY_FORM,data_date:new Date().toISOString().slice(0,10),reference_no:"LUMA-"+Date.now().toString().slice(-8)});setCreatorSearch("");setProductSearch("");setManualCreatorConfirmed(false);setError("");setShowForm(true)}
+ function openEdit(row:ShippingRow){setEditingId(row.id);setForm({data_date:row.data_date||"",creator_id:row.creator_id?.toString()||"",creator_name:row.creator_name||"",platform:row.platform||"",product_master_id:row.product_master_id?.toString()||"",qty:String(row.qty||1),product_cost:String(row.product_cost||0),shipping_cost:String(row.shipping_cost||0),courier:row.courier||"",tracking:row.tracking||"",status:row.status||"Pending",reference_no:row.reference_no||"",receiver_name:row.receiver_name||row.creator_name||"",receiver_phone:row.receiver_phone||"",receiver_address:row.receiver_address||"",sender_name:row.sender_name||"",sender_phone:row.sender_phone||"",sender_address:row.sender_address||"",service:row.service||"",branch:row.branch||"",weight:String(row.weight||0),insurance_amount:String(row.insurance_amount||0),cod_amount:String(row.cod_amount||0),package_contents:row.package_contents||row.product_name||"",notes:row.notes||"",shipped_at:row.shipped_at||"",delivered_at:row.delivered_at||""});setCreatorSearch(row.creator_name||"");setProductSearch(row.sku?(row.sku+(row.product_name?" - "+row.product_name:"")):"");setManualCreatorConfirmed(!row.creator_id&&Boolean(row.creator_name));setShowForm(true)}
 
-const money = (v: number | null | undefined) =>
-  `Rp ${Number(v || 0).toLocaleString("id-ID")}`;
-
-export default function Shipping({ workspaceId }: Props) {
-  const supabase = useMemo(() => createClient(), []);
-  const [rows, setRows] = useState<ShippingRow[]>([]);
-  const [creators, setCreators] = useState<Creator[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const [creatorSearch, setCreatorSearch] = useState("");
-  const [productSearch, setProductSearch] = useState("");
-  const [manualCreatorConfirmed, setManualCreatorConfirmed] = useState(false);
-  const [search, setSearch] = useState("");
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [showForm, setShowForm] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  async function loadData() {
-    if (!workspaceId) return;
-    setLoading(true);
-    setError("");
-
-    const [shipRes, creatorRes, productRes] = await Promise.all([
-      supabase.from("shipping")
-        .select("id,data_date,creator_id,creator_name,platform,product_master_id,sku,product_name,qty,product_cost,shipping_cost,courier,tracking,status")
-        .eq("workspace_id", workspaceId)
-        .order("id", { ascending: false }),
-      supabase.from("creators")
-        .select("id,creator_code,name,username,platform")
-        .eq("workspace_id", workspaceId)
-        .order("name")
-        .limit(7770),
-      supabase.from("product_master")
-        .select("id,sku,product_name,cost_price")
-        .eq("workspace_id", workspaceId)
-        .order("sku")
-        .limit(1000),
-    ]);
-
-    if (shipRes.error) setError(shipRes.error.message);
-    else setRows((shipRes.data ?? []) as ShippingRow[]);
-    if (!creatorRes.error) setCreators((creatorRes.data ?? []) as Creator[]);
-    if (!productRes.error) setProducts((productRes.data ?? []) as Product[]);
-    setLoading(false);
+ async function save(){
+  setSaving(true);setError("");let creator=creators.find(c=>c.id===Number(form.creator_id));
+  if(!creator&&(form.creator_name.trim()||creatorSearch.trim())){
+   if(!form.platform.trim()){setSaving(false);setError("Pilih platform terlebih dahulu untuk creator baru.");return}
+   try{const resolved=await resolveOrCreateCreator(workspaceId,form.creator_name.trim()||creatorSearch.trim(),form.platform);if(resolved){creator=resolved as Creator;setCreators(prev=>prev.some(x=>x.id===resolved.id)?prev:[resolved as Creator,...prev])}}catch(err){setSaving(false);setError(err instanceof Error?err.message:"Gagal membuat creator baru.");return}
   }
+  const product=products.find(p=>p.id===Number(form.product_master_id));
+  const payload={workspace_id:workspaceId,data_date:form.data_date||null,creator_id:creator?.id??(form.creator_id?Number(form.creator_id):null),creator_name:form.creator_name.trim()||creator?.name||creator?.username||creator?.creator_code||null,platform:form.platform||creator?.platform||null,product_master_id:form.product_master_id?Number(form.product_master_id):null,sku:product?.sku||null,product_name:product?.product_name||null,qty:Number(form.qty||0),product_cost:product?.cost_price!=null?Number(product.cost_price):Number(form.product_cost||0),shipping_cost:Number(form.shipping_cost||0),courier:form.courier.trim()||null,tracking:form.tracking.trim()||null,status:form.status||null,reference_no:form.reference_no.trim()||null,receiver_name:form.receiver_name.trim()||creator?.name||creator?.username||form.creator_name.trim()||null,receiver_phone:form.receiver_phone.trim()||null,receiver_address:form.receiver_address.trim()||null,sender_name:form.sender_name.trim()||null,sender_phone:form.sender_phone.trim()||null,sender_address:form.sender_address.trim()||null,service:form.service.trim()||null,branch:form.branch.trim()||null,weight:Number(form.weight||0),insurance_amount:Number(form.insurance_amount||0),cod_amount:Number(form.cod_amount||0),package_contents:form.package_contents.trim()||product?.product_name||null,notes:form.notes.trim()||null,shipped_at:form.shipped_at||null,delivered_at:form.delivered_at||null,updated_at:new Date().toISOString()};
+  const result=editingId!==null?await supabase.from("shipping").update(payload).eq("id",editingId).eq("workspace_id",workspaceId):await supabase.from("shipping").insert(payload);
+  setSaving(false);if(result.error){setError(result.error.message);return}setShowForm(false);setEditingId(null);await loadData();
+ }
 
-  useEffect(() => { void loadData(); }, [workspaceId]);
+ async function remove(id:number){if(!window.confirm("Hapus data shipping ini?"))return;const res=await supabase.from("shipping").delete().eq("id",id).eq("workspace_id",workspaceId);if(res.error)setError(res.error.message);else await loadData()}
 
-  const filteredCreators =
-    form.creator_id || manualCreatorConfirmed
-      ? []
-      : creators.filter((c) => {
-          const q = creatorSearch.trim().toLowerCase();
-          if (!q) return false;
+ const visibleRows=useMemo(()=>rows.filter(row=>{
+  const q=search.trim().toLowerCase(),status=String(row.status||"Pending");
+  if(activeTab!=="All"&&status.toLowerCase()!==activeTab.toLowerCase())return false;
+  if(dateStart&&String(row.data_date||"")<dateStart)return false;if(dateEnd&&String(row.data_date||"")>dateEnd)return false;
+  if(!q)return true;
+  return [row.reference_no,row.tracking,row.creator_name,row.receiver_name,row.platform,row.sku,row.product_name,row.courier,row.service,row.status].filter(Boolean).some(v=>String(v).toLowerCase().includes(q));
+ }),[rows,search,activeTab,dateStart,dateEnd]);
+ const counts=useMemo(()=>Object.fromEntries(STATUS_TABS.map(tab=>[tab,tab==="All"?rows.length:rows.filter(row=>String(row.status||"Pending").toLowerCase()===tab.toLowerCase()).length])),[rows]);
 
-          return (
-            (c.name ?? "").toLowerCase().includes(q) ||
-            (c.username ?? "").toLowerCase().includes(q) ||
-            (c.creator_code ?? "").toLowerCase().includes(q)
-          );
-        }).slice(0, 50);
+ function downloadTemplate(row:ShippingRow){const blob=new Blob([labelHtml(row)],{type:"text/html;charset=utf-8"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=(row.reference_no||("LUMA-"+row.id))+"-resi.html";a.click();URL.revokeObjectURL(url)}
+ function printLabel(row:ShippingRow){const popup=window.open("","_blank","width=900,height=1100");if(!popup)return;popup.document.write(labelHtml(row));popup.document.close();popup.focus();setTimeout(()=>popup.print(),250)}
+ function exportCsv(){const data=[["Reference","AWB","Creator","Receiver","Date","Status","Courier","Service","Qty","Weight","Shipping Cost"],...visibleRows.map(r=>[r.reference_no,r.tracking,r.creator_name,r.receiver_name,r.data_date,r.status,r.courier,r.service,r.qty,r.weight,r.shipping_cost])];const csv=data.map(row=>row.map(v=>'"'+String(v??"").replaceAll('"','""')+'"').join(",")).join("\\n");const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="lumaway-shipping.csv";a.click();URL.revokeObjectURL(url)}
 
-  const filteredProducts = products.filter((p) => {
-    const q = productSearch.trim().toLowerCase();
-    if (!q) return true;
-    return p.sku.toLowerCase().includes(q) ||
-      (p.product_name ?? "").toLowerCase().includes(q);
-  }).slice(0, 50);
+ return <section className="shipping-v2-page">
+  <header className="shipping-v2-header"><div><span>OPERATIONS</span><h2>Shipping</h2><p>Kelola pengiriman sample, produk, dan kebutuhan campaign dari satu workspace.</p></div><div className="shipping-v2-actions"><button className="secondary" onClick={exportCsv}>Export</button><button className="primary" onClick={openAdd}>+ Tambah</button></div></header>
+  <div className="shipping-v2-tabs">{STATUS_TABS.map(tab=><button key={tab} className={activeTab===tab?"active":""} onClick={()=>setActiveTab(tab)}>{tab}<span>{Number(counts[tab]||0)}</span></button>)}</div>
+  <div className="shipping-v2-toolbar"><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Cari resi, creator, penerima, produk, kurir..."/><input type="date" value={dateStart} onChange={e=>setDateStart(e.target.value)}/><input type="date" value={dateEnd} onChange={e=>setDateEnd(e.target.value)}/>{(search||dateStart||dateEnd)&&<button className="secondary" onClick={()=>{setSearch("");setDateStart("");setDateEnd("")}}>Reset</button>}</div>
+  {error&&<div className="shipping-v2-alert">{error}</div>}
 
-  const visibleRows = rows.filter((r) => {
-    const q = search.trim().toLowerCase();
-    if (!q) return true;
-    return [r.creator_name,r.platform,r.sku,r.product_name,r.courier,r.tracking,r.status]
-      .filter(Boolean)
-      .some((v) => String(v).toLowerCase().includes(q));
-  });
+  {showForm&&<section className="shipping-v2-editor">
+   <div className="shipping-v2-editor-head"><div><span>{editingId?"EDIT SHIPPING":"NEW SHIPPING"}</span><h3>{editingId?"Edit Shipping":"Tambah Shipping"}</h3></div><button onClick={()=>setShowForm(false)}>×</button></div>
+   <div className="shipping-v2-form-grid">
+    <label><span>Reference No.</span><input value={form.reference_no} onChange={e=>setForm(p=>({...p,reference_no:e.target.value}))}/></label>
+    <label><span>Tanggal</span><input type="date" value={form.data_date} onChange={e=>setForm(p=>({...p,data_date:e.target.value}))}/></label>
+    <label><span>Creator</span><CreatorAutocomplete workspaceId={workspaceId} value={creatorSearch} selectedId={form.creator_id} createPlatform={form.platform} placeholder="Ketik username atau nama creator" onTextChange={value=>{setCreatorSearch(value);setManualCreatorConfirmed(false);setForm(p=>({...p,creator_id:"",creator_name:value,receiver_name:p.receiver_name||value}))}} onSelect={(creator:CreatorSearchResult)=>{const name=creator.name||creator.username||creator.creator_code||"";setCreators(prev=>prev.some(x=>x.id===creator.id)?prev:[creator as Creator,...prev]);setForm(p=>({...p,creator_id:String(creator.id),creator_name:name,receiver_name:p.receiver_name||name,platform:creator.platform||p.platform}));setCreatorSearch(name);setManualCreatorConfirmed(false)}} onCreate={value=>{setCreatorSearch(value);setManualCreatorConfirmed(true);setForm(p=>({...p,creator_id:"",creator_name:value,receiver_name:p.receiver_name||value}))}}/>{manualCreatorConfirmed&&!form.creator_id&&<small>Creator baru akan dibuat saat data disimpan.</small>}</label>
+    <label><span>Platform</span><select value={form.platform} onChange={e=>setForm(p=>({...p,platform:e.target.value}))}><option value="">Pilih Platform</option><option>TikTok</option><option>Shopee</option><option>Instagram</option><option>YouTube</option><option>Other</option></select></label>
+    <label><span>Product / SKU</span><ProductAutocomplete workspaceId={workspaceId} value={productSearch} selectedId={form.product_master_id} placeholder="Ketik SKU atau nama produk" onTextChange={value=>{setProductSearch(value);setForm(p=>({...p,product_master_id:""}))}} onSelect={(product:ProductSearchResult)=>{setProducts(prev=>prev.some(x=>x.id===product.id)?prev:[product as Product,...prev]);setForm(p=>({...p,product_master_id:String(product.id),product_cost:String(product.cost_price||0),package_contents:p.package_contents||product.product_name||product.sku}));setProductSearch(product.sku+(product.product_name?" - "+product.product_name:""))}}/></label>
+    <label><span>Qty</span><input type="number" min="0" value={form.qty} onChange={e=>setForm(p=>({...p,qty:e.target.value}))}/></label>
+    <label><span>Weight (gr)</span><input type="number" min="0" value={form.weight} onChange={e=>setForm(p=>({...p,weight:e.target.value}))}/></label>
+    <label><span>Status</span><select value={form.status} onChange={e=>setForm(p=>({...p,status:e.target.value}))}><option>Pending</option><option>Packed</option><option>Shipped</option><option>Delivery</option><option>Delivered</option><option>Returned</option><option>Cancelled</option></select></label>
+    <label><span>Courier</span><input value={form.courier} onChange={e=>setForm(p=>({...p,courier:e.target.value}))} placeholder="JNE / J&T / ID Express"/></label>
+    <label><span>Service</span><input value={form.service} onChange={e=>setForm(p=>({...p,service:e.target.value}))} placeholder="REG / NEXT DAY / Cargo"/></label>
+    <label><span>Tracking / AWB</span><input value={form.tracking} onChange={e=>setForm(p=>({...p,tracking:e.target.value}))}/></label>
+    <label><span>Branch / Origin</span><input value={form.branch} onChange={e=>setForm(p=>({...p,branch:e.target.value}))}/></label>
+    <label><span>Receiver Name</span><input value={form.receiver_name} onChange={e=>setForm(p=>({...p,receiver_name:e.target.value}))}/></label>
+    <label><span>Receiver Phone</span><input value={form.receiver_phone} onChange={e=>setForm(p=>({...p,receiver_phone:e.target.value}))}/></label>
+    <label className="wide"><span>Receiver Address</span><textarea rows={3} value={form.receiver_address} onChange={e=>setForm(p=>({...p,receiver_address:e.target.value}))}/></label>
+    <label><span>Sender Name</span><input value={form.sender_name} onChange={e=>setForm(p=>({...p,sender_name:e.target.value}))}/></label>
+    <label><span>Sender Phone</span><input value={form.sender_phone} onChange={e=>setForm(p=>({...p,sender_phone:e.target.value}))}/></label>
+    <label className="wide"><span>Sender Address</span><textarea rows={3} value={form.sender_address} onChange={e=>setForm(p=>({...p,sender_address:e.target.value}))}/></label>
+    <label><span>Shipping Cost</span><input type="number" min="0" value={form.shipping_cost} onChange={e=>setForm(p=>({...p,shipping_cost:e.target.value}))}/></label>
+    <label><span>Insurance</span><input type="number" min="0" value={form.insurance_amount} onChange={e=>setForm(p=>({...p,insurance_amount:e.target.value}))}/></label>
+    <label><span>COD</span><input type="number" min="0" value={form.cod_amount} onChange={e=>setForm(p=>({...p,cod_amount:e.target.value}))}/></label>
+    <label><span>Shipped At</span><input type="date" value={form.shipped_at} onChange={e=>setForm(p=>({...p,shipped_at:e.target.value}))}/></label>
+    <label><span>Delivered At</span><input type="date" value={form.delivered_at} onChange={e=>setForm(p=>({...p,delivered_at:e.target.value}))}/></label>
+    <label className="wide"><span>Package Contents</span><input value={form.package_contents} onChange={e=>setForm(p=>({...p,package_contents:e.target.value}))}/></label>
+    <label className="wide"><span>Notes</span><textarea rows={3} value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))}/></label>
+   </div>
+   <div className="shipping-v2-editor-actions"><button className="secondary" onClick={()=>setShowForm(false)}>Batal</button><button className="primary" disabled={saving} onClick={()=>void save()}>{saving?"Menyimpan...":"Simpan"}</button></div>
+  </section>}
 
-  function openAdd() {
-    setEditingId(null);
-    setForm({ ...EMPTY_FORM, data_date: new Date().toISOString().slice(0, 10) });
-    setCreatorSearch("");
-    setProductSearch("");
-    setManualCreatorConfirmed(false);
-    setError("");
-    setShowForm(true);
-  }
+  {loading?<div className="shipping-v2-empty">Memuat Shipping...</div>:visibleRows.length===0?<div className="shipping-v2-empty"><b>Belum ada pengiriman pada filter ini.</b><span>Tambah pengiriman baru atau ubah filter.</span></div>:<div className="shipping-v2-table-wrap"><table className="shipping-v2-table"><thead><tr><th>Reference / AWB</th><th>Penerima</th><th>Tanggal</th><th>Status</th><th>Qty</th><th>Layanan</th><th>Cabang</th><th>Biaya</th><th>Aksi</th></tr></thead><tbody>{visibleRows.map(row=><tr key={row.id}><td><b>{row.reference_no||("LUMA-"+row.id)}</b><small>{row.tracking||"Belum ada AWB"}</small></td><td><b>{row.receiver_name||row.creator_name||"-"}</b><small>{row.receiver_phone||row.platform||"-"}</small></td><td>{dateLabel(row.data_date)}</td><td><span className={"shipping-v2-status "+tone(row.status)}>{row.status||"Pending"}</span></td><td>{Number(row.qty||0).toLocaleString("id-ID")}</td><td><b>{row.courier||"-"}</b><small>{row.service||"-"}</small></td><td>{row.branch||"-"}</td><td>{money(row.shipping_cost)}</td><td><div className="shipping-v2-row-actions"><button onClick={()=>setPreview(row)}>Preview</button><button onClick={()=>downloadTemplate(row)}>Download</button><button onClick={()=>openEdit(row)}>Edit</button><button className="danger" onClick={()=>void remove(row.id)}>Hapus</button></div></td></tr>)}</tbody></table></div>}
 
-  function openEdit(r: ShippingRow) {
-    setEditingId(r.id);
-    setForm({
-      data_date: r.data_date ?? "",
-      creator_id: r.creator_id?.toString() ?? "",
-      creator_name: r.creator_name ?? "",
-      platform: r.platform ?? "",
-      product_master_id: r.product_master_id?.toString() ?? "",
-      qty: String(r.qty ?? 1),
-      product_cost: String(r.product_cost ?? 0),
-      shipping_cost: String(r.shipping_cost ?? 0),
-      courier: r.courier ?? "",
-      tracking: r.tracking ?? "",
-      status: r.status ?? "Pending",
-    });
-    setCreatorSearch(r.creator_name ?? "");
-    setProductSearch(r.sku ? `${r.sku}${r.product_name ? ` - ${r.product_name}` : ""}` : "");
-    setManualCreatorConfirmed(!r.creator_id && Boolean(r.creator_name));
-    setShowForm(true);
-  }
-
-  async function save() {
-    setSaving(true);
-    setError("");
-
-    let creator = creators.find((c) => c.id === Number(form.creator_id));
-    if (!creator && (form.creator_name.trim() || creatorSearch.trim())) {
-      if (!form.platform.trim()) { setSaving(false); setError("Pilih platform terlebih dahulu untuk creator baru."); return; }
-      try {
-        const resolved=await resolveOrCreateCreator(workspaceId,form.creator_name.trim()||creatorSearch.trim(),form.platform);
-        if(resolved){creator=resolved as Creator;setCreators(prev=>prev.some(x=>x.id===resolved.id)?prev:[resolved as Creator,...prev]);}
-      } catch(err) { setSaving(false); setError(err instanceof Error?err.message:"Gagal membuat creator baru."); return; }
-    }
-    const product = products.find((p) => p.id === Number(form.product_master_id));
-
-    const payload = {
-      workspace_id: workspaceId,
-      data_date: form.data_date || null,
-      creator_id: creator?.id ?? (form.creator_id ? Number(form.creator_id) : null),
-      creator_name: form.creator_name.trim() || creator?.name || creator?.username || creator?.creator_code || null,
-      platform: form.platform || creator?.platform || null,
-      product_master_id: form.product_master_id ? Number(form.product_master_id) : null,
-      sku: product?.sku ?? null,
-      product_name: product?.product_name ?? null,
-      qty: form.qty ? Number(form.qty) : 0,
-      product_cost: form.product_cost ? Number(form.product_cost) : 0,
-      shipping_cost: form.shipping_cost ? Number(form.shipping_cost) : 0,
-      courier: form.courier.trim() || null,
-      tracking: form.tracking.trim() || null,
-      status: form.status || null,
-    };
-
-    const result = editingId !== null
-      ? await supabase.from("shipping").update(payload).eq("id", editingId).eq("workspace_id", workspaceId)
-      : await supabase.from("shipping").insert(payload);
-
-    setSaving(false);
-    if (result.error) return setError(result.error.message);
-    setShowForm(false);
-    setEditingId(null);
-    await loadData();
-  }
-
-  async function remove(id: number) {
-    if (!window.confirm("Hapus data shipping ini?")) return;
-    const res = await supabase.from("shipping").delete().eq("id", id).eq("workspace_id", workspaceId);
-    if (res.error) setError(res.error.message);
-    else await loadData();
-  }
-
-  return (
-    <section style={{ border: "1px solid #d9dee7", borderRadius: 10, padding: 20, marginTop: 24 }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:15 }}>
-        <div>
-          <h2 style={{ margin:0 }}>Shipping</h2>
-          <p style={{ color:"#777", fontSize:13, marginTop:5 }}>Tracking pengiriman produk / sample ke creator</p>
-        </div>
-        <button onClick={openAdd} style={{ background:"#111827", color:"#fff", border:0, borderRadius:7, padding:"10px 16px", fontWeight:600 }}>+ Tambah Shipping</button>
-      </div>
-
-      <input value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="Cari creator, SKU, courier, tracking, status..." style={{ width:"100%", boxSizing:"border-box", marginTop:14, padding:10 }} />
-
-      {error && <div style={{ marginTop:12, padding:10, color:"red", border:"1px solid red", borderRadius:6 }}>{error}</div>}
-
-      {showForm && (
-        <div style={{ border:"1px solid #d9dee7", borderRadius:8, padding:18, marginTop:16, background:"#fafbfc" }}>
-          <h3 style={{ marginTop:0 }}>{editingId ? "Edit Shipping" : "Tambah Shipping"}</h3>
-
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(4,minmax(0,1fr))", gap:12 }}>
-            <label>Data Date
-              <input type="date" value={form.data_date} onChange={(e)=>setForm(p=>({...p,data_date:e.target.value}))} style={{ width:"100%", padding:8 }} />
-            </label>
-
-            <label>Creator Search
-              <CreatorAutocomplete
-                workspaceId={workspaceId}
-                value={creatorSearch}
-                selectedId={form.creator_id}
-                createPlatform={form.platform}
-                placeholder="Ketik username atau nama creator"
-                onTextChange={(value)=>{setCreatorSearch(value);setManualCreatorConfirmed(false);setForm(p=>({...p,creator_id:"",creator_name:value}))}}
-                onSelect={(creator:CreatorSearchResult)=>{
-                  const name=creator.name??creator.username??creator.creator_code??"";
-                  setCreators(prev=>prev.some(x=>x.id===creator.id)?prev:[creator as Creator,...prev]);
-                  setForm(p=>({...p,creator_id:String(creator.id),creator_name:name,platform:creator.platform??p.platform}));
-                  setCreatorSearch(name);setManualCreatorConfirmed(false);
-                }}
-                onCreate={(value)=>{setCreatorSearch(value);setManualCreatorConfirmed(true);setForm(p=>({...p,creator_id:"",creator_name:value}))}}
-              />
-              {manualCreatorConfirmed&&!form.creator_id&&<small className="field-note">Creator baru akan dibuat otomatis saat data Shipping disimpan.</small>}
-            </label>
-
-            <label>Platform
-              <select value={form.platform} onChange={(e)=>setForm(p=>({...p,platform:e.target.value}))} style={{ width:"100%", padding:8 }}>
-                <option value="">Pilih Platform</option>
-                <option value="TikTok">TikTok</option><option value="Shopee">Shopee</option>
-                <option value="Instagram">Instagram</option><option value="YouTube">YouTube</option><option value="Other">Other</option>
-              </select>
-            </label>
-
-            <label>Product / SKU Search
-              <ProductAutocomplete
-                workspaceId={workspaceId}
-                value={productSearch}
-                selectedId={form.product_master_id}
-                placeholder="Ketik SKU produk atau nama produk"
-                onTextChange={(value)=>{setProductSearch(value);setForm(p=>({...p,product_master_id:""}))}}
-                onSelect={(product:ProductSearchResult)=>{
-                  setProducts(prev=>prev.some(x=>x.id===product.id)?prev:[product as Product,...prev]);
-                  setForm(p=>({...p,product_master_id:String(product.id),product_cost:String(product.cost_price??0)}));
-                  setProductSearch(`${product.sku}${product.product_name?` - ${product.product_name}`:""}`);
-                }}
-              />
-              {form.product_master_id&&<small className="field-note">HPP produk: Rp {Number(products.find(p=>p.id===Number(form.product_master_id))?.cost_price||form.product_cost||0).toLocaleString("id-ID")}</small>}
-            </label>
-
-            <label>Qty<input type="number" min="0" placeholder="Jumlah produk dikirim" value={form.qty} onChange={(e)=>setForm(p=>({...p,qty:e.target.value}))} style={{ width:"100%", padding:8 }} /></label>
-            <label>Product Cost<input type="number" min="0" placeholder="HPP per produk" value={form.product_cost} onChange={(e)=>setForm(p=>({...p,product_cost:e.target.value}))} style={{ width:"100%", padding:8 }} /></label>
-            <label>Shipping Cost<input type="number" min="0" placeholder="Biaya ongkir" value={form.shipping_cost} onChange={(e)=>setForm(p=>({...p,shipping_cost:e.target.value}))} style={{ width:"100%", padding:8 }} /></label>
-            <label>Courier<input value={form.courier} onChange={(e)=>setForm(p=>({...p,courier:e.target.value}))} placeholder="JNE / J&T / SiCepat..." style={{ width:"100%", padding:8 }} /></label>
-            <label>Tracking<input value={form.tracking} onChange={(e)=>setForm(p=>({...p,tracking:e.target.value}))} placeholder="Nomor resi" style={{ width:"100%", padding:8 }} /></label>
-            <label>Status
-              <select value={form.status} onChange={(e)=>setForm(p=>({...p,status:e.target.value}))} style={{ width:"100%", padding:8 }}>
-                <option>Pending</option><option>Packed</option><option>Shipped</option><option>Delivered</option><option>Returned</option><option>Cancelled</option>
-              </select>
-            </label>
-          </div>
-
-          <div style={{ marginTop:15 }}>
-            <button onClick={save} disabled={saving} style={{ background:"#111827",color:"#fff",border:0,borderRadius:7,padding:"10px 18px",marginRight:8 }}>{saving?"Menyimpan...":"Simpan"}</button>
-            <button onClick={()=>setShowForm(false)} style={{ padding:"10px 18px" }}>Batal</button>
-          </div>
-        </div>
-      )}
-
-      {loading ? <p>Loading Shipping...</p> : visibleRows.length===0 ? <p style={{color:"#777"}}>Belum ada data Shipping.</p> : (
-        <div style={{overflowX:"auto",marginTop:16}}>
-          <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
-            <thead><tr>{["Date","Creator","Platform","SKU","Product","Qty","Product Cost","Shipping Cost","Courier","Tracking","Status","Action"].map(h=><th key={h} style={{textAlign:"left",padding:9,borderBottom:"1px solid #ddd",whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead>
-            <tbody>{visibleRows.map(r=>(
-              <tr key={r.id}>
-                <td style={{padding:9}}>{r.data_date??"-"}</td><td style={{padding:9}}>{r.creator_name??"-"}</td><td style={{padding:9}}>{r.platform??"-"}</td>
-                <td style={{padding:9}}>{r.sku??"-"}</td><td style={{padding:9}}>{r.product_name??"-"}</td><td style={{padding:9}}>{Number(r.qty??0).toLocaleString("id-ID")}</td>
-                <td style={{padding:9}}>{money(r.product_cost)}</td><td style={{padding:9}}>{money(r.shipping_cost)}</td><td style={{padding:9}}>{r.courier??"-"}</td>
-                <td style={{padding:9}}>{r.tracking??"-"}</td><td style={{padding:9}}>{r.status??"-"}</td>
-                <td style={{padding:9,whiteSpace:"nowrap"}}><button onClick={()=>openEdit(r)} style={{marginRight:5}}>Edit</button><button onClick={()=>void remove(r.id)}>Hapus</button></td>
-              </tr>
-            ))}</tbody>
-          </table>
-          <p style={{color:"#777",fontSize:13}}>Menampilkan {visibleRows.length} dari {rows.length} shipping</p>
-        </div>
-      )}
-    </section>
-  );
+  {preview&&<div className="shipping-v2-modal-backdrop" onMouseDown={()=>setPreview(null)}><section className="shipping-v2-preview" onMouseDown={e=>e.stopPropagation()}>
+   <header><div><span>TEMPLATE RESI</span><h3>{preview.reference_no||("LUMA-"+preview.id)}</h3><p>Preview internal Lumaway — bukan label resmi kurir sampai AWB diterbitkan.</p></div><button onClick={()=>setPreview(null)}>×</button></header>
+   <div className="shipping-label-preview">
+    <div className="slp-head"><div><b>LUMAWAY SHIPPING</b><small>Internal shipping label preview</small></div><div><b>{preview.courier||"-"}</b><small>{preview.service||"-"}</small></div></div>
+    <div className="slp-main"><div><div className="slp-bars"/><strong>{preview.tracking||preview.reference_no||("LUMA-"+preview.id)}</strong></div><aside><span>Berat <b>{Number(preview.weight||0).toLocaleString("id-ID")} gr</b></span><span>QTY <b>{Number(preview.qty||0).toLocaleString("id-ID")} pcs</b></span><span>Asuransi <b>{money(preview.insurance_amount)}</b></span></aside></div>
+    <div className="slp-two"><div><span>Penerima</span><b>{preview.receiver_name||preview.creator_name||"-"}</b><p>{preview.receiver_phone||"-"}<br/>{preview.receiver_address||"-"}</p></div><div><span>Pengirim</span><b>{preview.sender_name||"-"}</b><p>{preview.sender_phone||"-"}<br/>{preview.sender_address||"-"}</p></div></div>
+    <div className="slp-two"><div><span>Isi paket</span><b>{preview.package_contents||preview.product_name||"-"}</b></div><div><span>Cabang / Origin</span><b>{preview.branch||"-"}</b></div></div>
+    <div className="slp-two"><div className="slp-cod">COD: {money(preview.cod_amount)}</div><div><span>Catatan</span><b>{preview.notes||"-"}</b></div></div>
+   </div>
+   <footer><button className="secondary" onClick={()=>downloadTemplate(preview)}>Download Template</button><button className="primary" onClick={()=>printLabel(preview)}>Print / Save PDF</button></footer>
+  </section></div>}
+ </section>
 }
