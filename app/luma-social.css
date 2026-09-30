@@ -120,3 +120,5 @@
 @media(max-width:820px){.promotion-grid-v2{grid-template-columns:1fr}.promotion-hub-head{align-items:flex-start;flex-direction:column}}
 @media(max-width:680px){.content-card-grid{grid-template-columns:1fr}.content-hub-tabs{display:grid;grid-template-columns:repeat(3,1fr);width:100%}.content-hub-tabs button{padding:7px 8px!important}.learning-modal-backdrop{padding:0}.learning-modal{width:100vw;height:100dvh;max-height:none;border-radius:0}.learning-modal>header h2{font-size:18px}.learning-step-list article{grid-template-columns:30px 1fr}.learning-step-list article>span{width:28px;height:28px}.promotion-card-v2>img{aspect-ratio:16/9}}
 @media(prefers-reduced-motion:reduce){.content-card{transition:none}}
+
+.learning-video-embed{padding:14px 18px 0}.learning-video-embed iframe{display:block;width:100%;aspect-ratio:16/9;border:1px solid #e6e9ef;border-radius:13px;background:#101828}
