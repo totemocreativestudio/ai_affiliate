@@ -345,7 +345,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path=public,pg_temp
-as $
+as $$
 begin
   if new.target_reference is not null then
     update public.luma_promo_reservations
@@ -357,7 +357,7 @@ begin
   end if;
   return new;
 end
-$;
+$$;
 
 drop trigger if exists trg_luma_apply_promo_reservation on public.luma_promo_redemptions;
 create trigger trg_luma_apply_promo_reservation
@@ -370,7 +370,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path=public,pg_temp
-as $
+as $$
 begin
   if lower(coalesce(new.status,'')) in ('expired','canceled','cancelled','failed') then
     update public.luma_promo_reservations
@@ -379,7 +379,7 @@ begin
   end if;
   return new;
 end
-$;
+$$;
 
 drop trigger if exists trg_luma_release_subscription_promo on public.luma_subscription_orders;
 create trigger trg_luma_release_subscription_promo
