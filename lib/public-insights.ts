@@ -15,6 +15,7 @@ export type PublicBlogPost={
   author_name:string|null;
   published_at:string|null;
   updated_at:string;
+  faq_json?:Array<{question?:string;answer?:string}>|null;
 };
 
 export type StaticInsight={
@@ -82,7 +83,7 @@ export async function getPublicBlogs(limit=100):Promise<PublicBlogPost[]>{
   const {url,key}=publicConfig();
   if(!url||!key)return [];
   const query=new URLSearchParams({
-    select:"id,slug,title,excerpt,content_html,category,cover_image_url,seo_title,seo_description,seo_keywords,external_dofollow_url,video_embed_url,image_alt,author_name,published_at,updated_at",
+    select:"id,slug,title,excerpt,content_html,category,cover_image_url,seo_title,seo_description,seo_keywords,external_dofollow_url,video_embed_url,image_alt,author_name,published_at,updated_at,faq_json",
     status:"eq.published",
     order:"published_at.desc",
     limit:String(limit)
