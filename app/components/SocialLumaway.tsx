@@ -1,3 +1,4 @@
+
 "use client";
 
 import {useEffect,useMemo,useState} from "react";
@@ -10,45 +11,58 @@ type FeedRow={
 };
 type Archive={id:number;image_url:string;created_at:string};
 type Identity={social_alias:string;social_avatar_key:string;social_avatar_url:string|null};
+type SocialProfile={
+  user_id:string;social_alias:string;social_avatar_key:string;social_avatar_url:string|null;bio:string|null;position_title:string|null;
+  post_count:number;follower_count:number;following_count:number;like_count:number;save_count:number;subscribed_by_me:boolean;
+};
+type Tab="for_you"|"following"|"popular"|"saved";
 
-const mascotEmoji=(key:string)=>key.startsWith("nailong")?"🐲":key.startsWith("dragon")?"🐉":key.startsWith("gecko")?"🦎":"🦖";
-const colorKey=(key:string)=>key.split("-")[1]||"emerald";
 const imageList=(row:FeedRow)=>{
   if(Array.isArray(row.image_urls)&&row.image_urls.length)return row.image_urls.filter(Boolean).map(String);
   return row.image_url?[row.image_url]:[];
 };
+const num=(value:any)=>Number(value||0).toLocaleString("id-ID");
+const shortDate=(value:string)=>new Date(value).toLocaleDateString("id-ID",{day:"2-digit",month:"short"});
+const longDate=(value:string)=>new Date(value).toLocaleString("id-ID",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
 
-function SocialAvatar({alias,avatarUrl,avatarKey,size="normal"}:{alias:string;avatarUrl?:string|null;avatarKey:string;size?:"normal"|"small"|"large"}){
-  return <div className={`social-lemon-avatar ${size} c-${colorKey(avatarKey)}`}>
-    {avatarUrl?<img src={avatarUrl} alt={alias}/>:<span>{mascotEmoji(avatarKey)}</span>}
+function SocialAvatar({alias,avatarUrl,size="normal"}:{alias:string;avatarUrl?:string|null;size?:"small"|"normal"|"large"|"xl"}){
+  return <div className={"social-v3-avatar "+size}>
+    {avatarUrl?<img src={avatarUrl} alt={alias}/>:<span>{String(alias||"L").slice(0,1).toUpperCase()}</span>}
   </div>;
 }
 
 export default function SocialLumaway({workspaceId,userId}:{workspaceId:string;userId:string}){
-  const supabase=createClient();
+  const supabase=useMemo(()=>createClient(),[]);
   const [feed,setFeed]=useState<FeedRow[]>([]);
   const [archives,setArchives]=useState<Archive[]>([]);
-  const [identity,setIdentity]=useState<Identity>({social_alias:"LumaUser",social_avatar_key:"dino-emerald-happy",social_avatar_url:null});
+  const [identity,setIdentity]=useState<Identity>({social_alias:"LumaUser",social_avatar_key:"default",social_avatar_url:null});
+  const [myProfile,setMyProfile]=useState<SocialProfile|null>(null);
   const [body,setBody]=useState("");
   const [files,setFiles]=useState<File[]>([]);
   const [busy,setBusy]=useState(false);
   const [status,setStatus]=useState("");
-  const [tab,setTab]=useState<"for_you"|"following"|"popular">("for_you");
+  const [tab,setTab]=useState<Tab>("for_you");
   const [detail,setDetail]=useState<FeedRow|null>(null);
   const [carouselIndex,setCarouselIndex]=useState(0);
   const [shareRow,setShareRow]=useState<FeedRow|null>(null);
+  const [profile,setProfile]=useState<SocialProfile|null>(null);
+  const [profilePosts,setProfilePosts]=useState<FeedRow[]>([]);
+  const [profileBusy,setProfileBusy]=useState(false);
 
   async function load(){
     const scope=tab==="following"?"following":"for_you";
-    const [f,a,i]=await Promise.all([
-      supabase.rpc("luma_get_social_feed_v2",{p_limit:80,p_offset:0,p_scope:scope}),
-      supabase.from("luma_social_archives").select("id,image_url,created_at").eq("user_id",userId).order("created_at",{ascending:false}).limit(9),
-      supabase.rpc("luma_get_my_social_identity_v2")
+    const [feedResult,archiveResult,identityResult,profileResult]=await Promise.all([
+      supabase.rpc("luma_get_social_feed_v2",{p_limit:100,p_offset:0,p_scope:scope}),
+      supabase.from("luma_social_archives").select("id,image_url,created_at").eq("user_id",userId).order("created_at",{ascending:false}).limit(12),
+      supabase.rpc("luma_get_my_social_identity_v2"),
+      supabase.rpc("luma_get_social_profile_v3",{p_user_id:userId})
     ]);
-    setFeed((f.data||[]) as FeedRow[]);
-    setArchives((a.data||[]) as Archive[]);
-    const me=(i.data||[])[0] as Identity|undefined;if(me)setIdentity(me);
+    setFeed((feedResult.data||[]) as FeedRow[]);
+    setArchives((archiveResult.data||[]) as Archive[]);
+    const me=(identityResult.data||[])[0] as Identity|undefined;if(me)setIdentity(me);
+    const mine=(profileResult.data||[])[0] as SocialProfile|undefined;if(mine)setMyProfile(mine);
   }
+
   useEffect(()=>{void load()},[workspaceId,userId,tab]);
   useEffect(()=>{
     const refresh=()=>void load();
@@ -56,114 +70,256 @@ export default function SocialLumaway({workspaceId,userId}:{workspaceId:string;u
     return()=>window.removeEventListener("lumaway-social-profile-updated",refresh);
   },[workspaceId,userId,tab]);
 
+  useEffect(()=>{
+    if(!profile&&!detail&&!shareRow)return;
+    const previous=document.body.style.overflow;
+    document.body.style.overflow="hidden";
+    const onKey=(event:KeyboardEvent)=>{
+      if(event.key!=="Escape")return;
+      if(shareRow)setShareRow(null);
+      else if(detail)setDetail(null);
+      else if(profile)setProfile(null);
+    };
+    window.addEventListener("keydown",onKey);
+    return()=>{document.body.style.overflow=previous;window.removeEventListener("keydown",onKey)};
+  },[profile,detail,shareRow]);
+
   const sorted=useMemo(()=>{
-    const rows=[...feed];
-    if(tab==="popular")rows.sort((a,b)=>(Number(b.like_count)+Number(b.save_count)*2)-(Number(a.like_count)+Number(a.save_count)*2));
+    let rows=[...feed];
+    if(tab==="popular")rows.sort((a,b)=>(Number(b.like_count)+Number(b.save_count)*2+Number(b.subscriber_count))-(Number(a.like_count)+Number(a.save_count)*2+Number(a.subscriber_count)));
+    if(tab==="saved")rows=rows.filter(row=>row.saved_by_me);
     return rows;
   },[feed,tab]);
+
+  const ownPosts=useMemo(()=>feed.filter(row=>row.user_id===userId),[feed,userId]);
+  const otherPosts=useMemo(()=>sorted.filter(row=>row.user_id!==userId),[sorted,userId]);
+  const people=useMemo(()=>{
+    const map=new Map<string,FeedRow>();
+    for(const row of feed){
+      const current=map.get(row.user_id);
+      if(!current||Number(row.subscriber_count)>Number(current.subscriber_count))map.set(row.user_id,row);
+    }
+    return Array.from(map.values()).filter(row=>row.user_id!==userId).sort((a,b)=>Number(b.subscriber_count)-Number(a.subscriber_count)).slice(0,6);
+  },[feed,userId]);
 
   const previewUrls=useMemo(()=>files.map(file=>URL.createObjectURL(file)),[files]);
   useEffect(()=>()=>previewUrls.forEach(url=>URL.revokeObjectURL(url)),[previewUrls]);
 
   async function publish(){
-    if(!body.trim()&&!files.length)return setStatus("Tulis sesuatu atau pilih foto terlebih dahulu.");
-    if(files.length>9)return setStatus("Maksimal 9 foto dalam satu post.");
-    if(files.some(file=>file.size>3*1024*1024))return setStatus("Setiap foto maksimal 3 MB.");
-    setBusy(true);setStatus("Memeriksa keamanan konten...");
+    if(!body.trim()&&!files.length){setStatus("Tulis sesuatu atau pilih foto terlebih dahulu.");return}
+    if(files.length>9){setStatus("Maksimal 9 foto dalam satu post.");return}
+    if(files.some(file=>file.size>3*1024*1024)){setStatus("Setiap foto maksimal 3 MB.");return}
+    setBusy(true);setStatus("Memeriksa dan mempublikasikan...");
     try{
       const fd=new FormData();fd.set("workspace_id",workspaceId);fd.set("body",body.trim());files.forEach(file=>fd.append("images",file));
-      const r=await fetch("/api/social/publish",{method:"POST",body:fd});const d=await r.json();
-      if(!r.ok||!d.ok)throw new Error(d.error||"error, terjadi kesalahan.");
-      setBody("");setFiles([]);setStatus("Post berhasil dipublikasikan.");await load();
-    }catch(e:any){setStatus(e?.message||"error, terjadi kesalahan.")}finally{setBusy(false)}
+      const response=await fetch("/api/social/publish",{method:"POST",body:fd});const data=await response.json();
+      if(!response.ok||!data.ok)throw new Error(data.error||"Post belum dapat dipublikasikan.");
+      setBody("");setFiles([]);setTab("for_you");setStatus("Post berhasil dipublikasikan dan sudah tampil di feed.");await load();
+    }catch(error:any){setStatus(error?.message||"Terjadi kesalahan saat mempublikasikan.")}finally{setBusy(false)}
+  }
+
+  function updateRow(next:FeedRow){
+    setFeed(rows=>rows.map(row=>row.id===next.id?next:row));
+    setProfilePosts(rows=>rows.map(row=>row.id===next.id?next:row));
+    if(detail?.id===next.id)setDetail(next);
   }
 
   async function toggleLike(row:FeedRow){
     if(row.liked_by_me)await supabase.from("luma_community_likes").delete().eq("post_id",row.id).eq("user_id",userId);
     else await supabase.from("luma_community_likes").insert({post_id:row.id,user_id:userId});
-    const next={...row,liked_by_me:!row.liked_by_me,like_count:Math.max(0,Number(row.like_count)+(row.liked_by_me?-1:1))};
-    setFeed(xs=>xs.map(x=>x.id===row.id?next:x));if(detail?.id===row.id)setDetail(next);
+    updateRow({...row,liked_by_me:!row.liked_by_me,like_count:Math.max(0,Number(row.like_count)+(row.liked_by_me?-1:1))});
   }
+
   async function toggleSave(row:FeedRow){
     if(row.saved_by_me)await supabase.from("luma_community_saves").delete().eq("post_id",row.id).eq("user_id",userId);
     else await supabase.from("luma_community_saves").insert({post_id:row.id,user_id:userId});
-    const next={...row,saved_by_me:!row.saved_by_me,save_count:Math.max(0,Number(row.save_count)+(row.saved_by_me?-1:1))};
-    setFeed(xs=>xs.map(x=>x.id===row.id?next:x));if(detail?.id===row.id)setDetail(next);
+    updateRow({...row,saved_by_me:!row.saved_by_me,save_count:Math.max(0,Number(row.save_count)+(row.saved_by_me?-1:1))});
   }
+
   async function toggleSubscribe(row:FeedRow){
     if(row.user_id===userId)return;
     if(row.subscribed_by_me)await supabase.from("luma_community_subscriptions").delete().eq("user_id",userId).eq("subscribed_user_id",row.user_id);
     else await supabase.from("luma_community_subscriptions").insert({user_id:userId,subscribed_user_id:row.user_id});
-    setFeed(xs=>xs.map(x=>x.user_id===row.user_id?{...x,subscribed_by_me:!row.subscribed_by_me,subscriber_count:Math.max(0,Number(x.subscriber_count)+(row.subscribed_by_me?-1:1))}:x));
-    if(detail?.user_id===row.user_id)setDetail({...detail,subscribed_by_me:!row.subscribed_by_me,subscriber_count:Math.max(0,Number(detail.subscriber_count)+(row.subscribed_by_me?-1:1))});
+    const subscribed=!row.subscribed_by_me;
+    setFeed(rows=>rows.map(item=>item.user_id===row.user_id?{...item,subscribed_by_me:subscribed,subscriber_count:Math.max(0,Number(item.subscriber_count)+(row.subscribed_by_me?-1:1))}:item));
+    setProfilePosts(rows=>rows.map(item=>item.user_id===row.user_id?{...item,subscribed_by_me:subscribed,subscriber_count:Math.max(0,Number(item.subscriber_count)+(row.subscribed_by_me?-1:1))}:item));
+    if(profile?.user_id===row.user_id)setProfile({...profile,subscribed_by_me:subscribed,follower_count:Math.max(0,Number(profile.follower_count)+(row.subscribed_by_me?-1:1))});
+    if(detail?.user_id===row.user_id)setDetail({...detail,subscribed_by_me:subscribed,subscriber_count:Math.max(0,Number(detail.subscriber_count)+(row.subscribed_by_me?-1:1))});
   }
 
-  function shareUrl(row:FeedRow){return `${window.location.origin}/share/social/${row.id}?ref=${encodeURIComponent(userId)}`}
-  function shareText(row:FeedRow){return `${row.social_alias} di Lumaway Community: ${row.body||"Lihat post terbaru"}`}
-  async function nativeShare(row:FeedRow){const url=shareUrl(row);const text=shareText(row);if(navigator.share){try{await navigator.share({title:"Lumaway Community",text,url});return}catch{}}await navigator.clipboard.writeText(`${text}\n${url}`);setStatus("Link post disalin.")}
-  function openShare(network:string,row:FeedRow){const url=encodeURIComponent(shareUrl(row));const text=encodeURIComponent(shareText(row));let target="";if(network==="whatsapp")target=`https://wa.me/?text=${text}%0A${url}`;if(network==="linkedin")target=`https://www.linkedin.com/sharing/share-offsite/?url=${url}`;if(network==="threads")target=`https://www.threads.net/intent/post?text=${text}%20${url}`;if(network==="instagram"){void nativeShare(row);setStatus("Pilih Instagram/Story dari menu share perangkat Anda.");setShareRow(null);return}if(target)window.open(target,"_blank","noopener,noreferrer");setShareRow(null)}
+  async function openProfile(targetUserId:string){
+    setProfileBusy(true);setStatus("");
+    try{
+      const [profileResult,postsResult]=await Promise.all([
+        supabase.rpc("luma_get_social_profile_v3",{p_user_id:targetUserId}),
+        supabase.rpc("luma_get_social_user_posts_v3",{p_user_id:targetUserId,p_limit:30,p_offset:0})
+      ]);
+      if(profileResult.error)throw profileResult.error;if(postsResult.error)throw postsResult.error;
+      const row=(profileResult.data||[])[0] as SocialProfile|undefined;
+      if(!row)throw new Error("Profil Community tidak ditemukan.");
+      setProfile(row);setProfilePosts((postsResult.data||[]) as FeedRow[]);
+    }catch(error:any){setStatus(error?.message||"Profil belum dapat dibuka.")}finally{setProfileBusy(false)}
+  }
 
   function openDetail(row:FeedRow){setDetail(row);setCarouselIndex(0)}
+  function shareUrl(row:FeedRow){return window.location.origin+"/share/social/"+row.id+"?ref="+encodeURIComponent(userId)}
+  function shareText(row:FeedRow){return row.social_alias+" di Lumaway Community: "+(row.body||"Lihat post terbaru")}
+  async function nativeShare(row:FeedRow){
+    const url=shareUrl(row),text=shareText(row);
+    if(navigator.share){try{await navigator.share({title:"Lumaway Community",text,url});return}catch{}}
+    await navigator.clipboard.writeText(text+"\n"+url);setStatus("Link post disalin.");
+  }
+  function openShare(network:string,row:FeedRow){
+    const url=encodeURIComponent(shareUrl(row)),text=encodeURIComponent(shareText(row));let target="";
+    if(network==="whatsapp")target="https://wa.me/?text="+text+"%0A"+url;
+    if(network==="linkedin")target="https://www.linkedin.com/sharing/share-offsite/?url="+url;
+    if(network==="threads")target="https://www.threads.net/intent/post?text="+text+"%20"+url;
+    if(network==="instagram"){void nativeShare(row);setStatus("Pilih Instagram/Story dari menu share perangkat Anda.");setShareRow(null);return}
+    if(target)window.open(target,"_blank","noopener,noreferrer");setShareRow(null);
+  }
 
-  return <section id="social-lumaway" className="legacy-page-anchor social-page social-lemon-page">
-    <div className="social-lemon-header">
-      <div><div className="eyebrow">LUMAWAY SOCIAL</div><h1>Community</h1><p>Temukan inspirasi, pengalaman, dan insight dari komunitas Lumaway.</p></div>
-      <div className="social-lemon-me"><SocialAvatar alias={identity.social_alias} avatarUrl={identity.social_avatar_url} avatarKey={identity.social_avatar_key}/><div><b>{identity.social_alias}</b><small>Profil Community dapat diubah dari menu Profile</small></div></div>
-    </div>
+  function renderPost(row:FeedRow,compact=false){
+    const images=imageList(row);
+    return <article className={"social-v3-post "+(compact?"compact":"")} key={row.id}>
+      <header>
+        <button className="social-v3-author-button" onClick={()=>void openProfile(row.user_id)}>
+          <SocialAvatar alias={row.social_alias} avatarUrl={row.social_avatar_url} size="small"/>
+          <span><b>{row.social_alias}</b><small>{shortDate(row.created_at)}</small></span>
+        </button>
+        {row.user_id!==userId&&<button className={"social-v3-follow-mini "+(row.subscribed_by_me?"active":"")} onClick={()=>void toggleSubscribe(row)}>{row.subscribed_by_me?"Mengikuti":"Ikuti"}</button>}
+      </header>
+      <button className="social-v3-post-open" onClick={()=>openDetail(row)}>
+        {images.length?<div className="social-v3-post-media"><img src={images[0]} alt="Community post"/>{images.length>1&&<span>{images.length} foto</span>}</div>:<div className="social-v3-text-post">{row.body}</div>}
+        {row.body&&images.length>0&&<p>{row.body}</p>}
+      </button>
+      <footer>
+        <button className={row.liked_by_me?"active":""} onClick={()=>void toggleLike(row)}>Suka <b>{num(row.like_count)}</b></button>
+        <button className={row.saved_by_me?"active":""} onClick={()=>void toggleSave(row)}>Simpan <b>{num(row.save_count)}</b></button>
+        <button onClick={()=>setShareRow(row)}>Bagikan</button>
+      </footer>
+    </article>;
+  }
 
-    <div className="social-lemon-composer">
-      <div className="social-lemon-compose-row"><SocialAvatar alias={identity.social_alias} avatarUrl={identity.social_avatar_url} avatarKey={identity.social_avatar_key}/>
-        <textarea value={body} onChange={e=>setBody(e.target.value)} placeholder="Bagikan inspirasi, insight, pengalaman, atau referensi..." maxLength={1200}/>
-      </div>
-      {!!previewUrls.length&&<div className="social-compose-preview">{previewUrls.map((url,index)=><div key={url}><img src={url} alt={`Preview ${index+1}`}/><span>{index+1}/{previewUrls.length}</span></div>)}</div>}
-      <div className="social-compose-actions lemon-actions">
-        <label className="social-image-button">＋ Foto / Carousel<input multiple type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>setFiles(Array.from(e.target.files||[]).slice(0,9))}/></label>
-        <span className="social-file-name">{files.length?`${files.length} foto dipilih · maksimal 9`:"JPG, PNG, WEBP · maks 3 MB/foto"}</span>
-        <button className="primary" disabled={busy} onClick={publish}>{busy?"Checking...":"Post"}</button>
-      </div>
-      {status&&<small className="social-status">{status}</small>}
-    </div>
+  const profileActionRow=profilePosts[0]||feed.find(row=>row.user_id===profile?.user_id)||null;
 
-    <div className="social-lemon-tabs">
-      <button className={tab==="for_you"?"active":""} onClick={()=>setTab("for_you")}>Untuk Anda</button>
-      <button className={tab==="following"?"active":""} onClick={()=>setTab("following")}>Mengikuti</button>
-      <button className={tab==="popular"?"active":""} onClick={()=>setTab("popular")}>Populer</button>
-      <span>{sorted.length} post</span>
-    </div>
+  return <section id="social-lumaway" className="legacy-page-anchor social-v3-page">
+    <header className="social-v3-page-head">
+      <div><div className="eyebrow">LUMAWAY SOCIAL</div><h1>Community</h1><p>Ruang berbagi insight, inspirasi, pengalaman, dan aktivitas creator di dalam ekosistem Lumaway.</p></div>
+      <div className="social-v3-me-compact"><SocialAvatar alias={identity.social_alias} avatarUrl={identity.social_avatar_url}/><div><b>{identity.social_alias}</b><small>Identitas Community mengikuti menu Profile</small></div></div>
+    </header>
 
-    <div className="social-lemon-masonry">
-      {sorted.map(row=>{const images=imageList(row);return <article className="social-lemon-card" key={row.id} onClick={()=>openDetail(row)}>
-        {images[0]?<div className="social-lemon-cover"><img src={images[0]} alt="Community"/>{images.length>1&&<span className="social-carousel-count">▧ {images.length}</span>}</div>:<div className="social-lemon-text-cover"><p>{row.body}</p></div>}
-        <div className="social-lemon-card-body">
-          {row.body&&images[0]&&<h3>{row.body}</h3>}
-          <div className="social-lemon-author"><SocialAvatar alias={row.social_alias} avatarUrl={row.social_avatar_url} avatarKey={row.social_avatar_key} size="small"/><span><b>{row.social_alias}</b><small>{new Date(row.created_at).toLocaleDateString("id-ID",{day:"numeric",month:"short"})}</small></span><button className={row.liked_by_me?"active":""} onClick={e=>{e.stopPropagation();void toggleLike(row)}}>♡ {Number(row.like_count)||0}</button></div>
-        </div>
-      </article>})}
-      {!sorted.length&&<div className="empty-state social-lemon-empty"><strong>Belum ada post pada feed ini.</strong><span>Jadilah yang pertama berbagi inspirasi.</span></div>}
-    </div>
+    <div className="social-v3-shell">
+      <aside className="social-v3-left">
+        <div className="social-v3-brand"><span className="social-v3-brand-dot"/><div><b>Lumaway Social</b><small>Community workspace</small></div></div>
+        <nav>
+          <button className={tab==="for_you"?"active":""} onClick={()=>setTab("for_you")}><span>01</span>Community Home</button>
+          <button onClick={()=>void openProfile(userId)}><span>02</span>My Profile</button>
+          <button className={tab==="following"?"active":""} onClick={()=>setTab("following")}><span>03</span>Following</button>
+          <button className={tab==="popular"?"active":""} onClick={()=>setTab("popular")}><span>04</span>Discover</button>
+          <button className={tab==="saved"?"active":""} onClick={()=>setTab("saved")}><span>05</span>Saved</button>
+        </nav>
+        <div className="social-v3-left-section"><span>ACCOUNT</span><button onClick={()=>void openProfile(userId)}>Public Profile</button><a href="/profile">Edit Profile</a></div>
+        <button className="social-v3-new-post" onClick={()=>document.getElementById("social-v3-composer")?.scrollIntoView({behavior:"smooth",block:"center"})}>+ New Post</button>
+      </aside>
 
-    {!!archives.length&&<div className="social-lemon-archive-strip"><div><h3>Koleksi foto saya</h3><small>Foto terbaru yang pernah Anda post</small></div><div>{archives.map(x=><img key={x.id} src={x.image_url} alt="Archive"/>)}</div></div>}
-
-    {detail&&<div className="social-detail-backdrop" onClick={()=>setDetail(null)}>
-      <div className="social-detail-modal" onClick={e=>e.stopPropagation()}>
-        <button className="social-detail-close" onClick={()=>setDetail(null)}>×</button>
-        <div className="social-detail-media">
-          {imageList(detail).length?<><img src={imageList(detail)[carouselIndex]} alt="Post detail"/>
-            {imageList(detail).length>1&&<><button className="carousel-nav prev" onClick={()=>setCarouselIndex(i=>(i-1+imageList(detail).length)%imageList(detail).length)}>‹</button><button className="carousel-nav next" onClick={()=>setCarouselIndex(i=>(i+1)%imageList(detail).length)}>›</button><div className="carousel-dots">{imageList(detail).map((_,i)=><button key={i} className={i===carouselIndex?"active":""} onClick={()=>setCarouselIndex(i)}/>)}</div><span className="social-detail-counter">{carouselIndex+1}/{imageList(detail).length}</span></>}</>:<div className="social-detail-noimage">{detail.body}</div>}
-        </div>
-        <div className="social-detail-content">
-          <div className="social-detail-author"><SocialAvatar alias={detail.social_alias} avatarUrl={detail.social_avatar_url} avatarKey={detail.social_avatar_key}/><div><b>{detail.social_alias}</b><small>{Number(detail.subscriber_count)||0} pengikut · {new Date(detail.created_at).toLocaleString("id-ID")}</small></div>{detail.user_id!==userId&&<button className={detail.subscribed_by_me?"subscribed":""} onClick={()=>void toggleSubscribe(detail)}>{detail.subscribed_by_me?"Mengikuti":"Ikuti"}</button>}</div>
-          {detail.body&&<p className="social-detail-caption">{detail.body}</p>}
-          <div className="social-detail-actions">
-            <button className={detail.liked_by_me?"active":""} onClick={()=>void toggleLike(detail)}>♡ <b>{Number(detail.like_count)||0}</b> Suka</button>
-            <button className={detail.saved_by_me?"active":""} onClick={()=>void toggleSave(detail)}>⌑ <b>{Number(detail.save_count)||0}</b> Simpan</button>
-            <button onClick={()=>setShareRow(detail)}>↗ Bagikan</button>
+      <main className="social-v3-center">
+        <section className="social-v3-profile-hero">
+          <div className="social-v3-profile-primary">
+            <SocialAvatar alias={identity.social_alias} avatarUrl={identity.social_avatar_url} size="large"/>
+            <div><span>MY COMMUNITY PROFILE</span><h2>{identity.social_alias}</h2><p>{myProfile?.bio||"Bagikan apa yang sedang Anda kerjakan, pelajari, atau temukan bersama Community Lumaway."}</p><button onClick={()=>void openProfile(userId)}>Lihat Profil</button></div>
           </div>
-          <div className="social-detail-note">Lumaway Community tidak menyediakan komentar. Interaksi tersedia melalui Suka, Simpan, Bagikan, dan Ikuti.</div>
+          <div className="social-v3-stat-grid">
+            <article><span>Post</span><b>{num(myProfile?.post_count)}</b><small>Total publikasi</small></article>
+            <article><span>Followers</span><b>{num(myProfile?.follower_count)}</b><small>Community</small></article>
+            <article><span>Following</span><b>{num(myProfile?.following_count)}</b><small>Profil diikuti</small></article>
+            <article><span>Likes</span><b>{num(myProfile?.like_count)}</b><small>Interaksi post</small></article>
+          </div>
+        </section>
+
+        <section id="social-v3-composer" className="social-v3-composer">
+          <div className="social-v3-composer-head"><SocialAvatar alias={identity.social_alias} avatarUrl={identity.social_avatar_url}/><div><b>Buat post baru</b><small>Posting Anda langsung muncul di tengah feed setelah dipublikasikan.</small></div></div>
+          <textarea value={body} onChange={e=>setBody(e.target.value)} placeholder="Bagikan insight, pengalaman, progress campaign, referensi, atau inspirasi..." maxLength={1200}/>
+          {!!previewUrls.length&&<div className="social-v3-compose-preview">{previewUrls.map((url,index)=><div key={url}><img src={url} alt={"Preview "+(index+1)}/><span>{index+1}/{previewUrls.length}</span></div>)}</div>}
+          <footer><label>Tambah Foto<input multiple type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>setFiles(Array.from(e.target.files||[]).slice(0,9))}/></label><span>{files.length?files.length+" foto dipilih":"JPG, PNG, WEBP · maks. 3 MB/foto"}</span><button className="primary" disabled={busy} onClick={()=>void publish()}>{busy?"Publishing...":"Post"}</button></footer>
+          {status&&<div className="social-v3-status">{status}</div>}
+        </section>
+
+        <div className="social-v3-feed-tabs">
+          <button className={tab==="for_you"?"active":""} onClick={()=>setTab("for_you")}>Untuk Anda</button>
+          <button className={tab==="following"?"active":""} onClick={()=>setTab("following")}>Mengikuti</button>
+          <button className={tab==="popular"?"active":""} onClick={()=>setTab("popular")}>Populer</button>
+          <button className={tab==="saved"?"active":""} onClick={()=>setTab("saved")}>Tersimpan</button>
+          <span>{sorted.length} post</span>
         </div>
+
+        {tab==="for_you"&&ownPosts.length>0&&<section className="social-v3-own-strip">
+          <div><h3>Postingan Saya</h3><span>Post terbaru Anda tampil paling awal di sini.</span></div>
+          <div className="social-v3-own-grid">{ownPosts.slice(0,3).map(row=>renderPost(row,true))}</div>
+        </section>}
+
+        <section className="social-v3-feed">
+          <div className="social-v3-section-title"><div><h3>{tab==="saved"?"Post Tersimpan":tab==="following"?"Dari Profil yang Anda Ikuti":tab==="popular"?"Sedang Populer":"Community Feed"}</h3><p>Klik nama profil untuk membuka profile stack, atau klik post untuk melihat detail.</p></div></div>
+          <div className="social-v3-feed-grid">
+            {(tab==="for_you"?otherPosts:sorted).map(row=>renderPost(row))}
+          </div>
+          {(tab==="for_you"?otherPosts:sorted).length===0&&<div className="social-v3-empty"><b>Belum ada post pada feed ini.</b><span>Coba tab lain atau buat post baru.</span></div>}
+        </section>
+
+        {!!archives.length&&<section className="social-v3-archive"><div><h3>Koleksi Saya</h3><span>Foto terbaru dari post Anda.</span></div><div>{archives.map(item=><img key={item.id} src={item.image_url} alt="Archive"/>)}</div></section>}
+      </main>
+
+      <aside className="social-v3-right">
+        <section><header><h3>Aktivitas Terbaru</h3><span>{feed.length}</span></header><div className="social-v3-activity-list">{feed.slice(0,5).map(row=><button key={row.id} onClick={()=>openDetail(row)}><SocialAvatar alias={row.social_alias} avatarUrl={row.social_avatar_url} size="small"/><span><b>{row.social_alias}</b><small>{row.body||"Membagikan media baru"}</small></span><em>{shortDate(row.created_at)}</em></button>)}</div></section>
+        <section><header><h3>Creator Populer</h3><span>{people.length}</span></header><div className="social-v3-people-list">{people.map(row=><div key={row.user_id}><button className="profile" onClick={()=>void openProfile(row.user_id)}><SocialAvatar alias={row.social_alias} avatarUrl={row.social_avatar_url} size="small"/><span><b>{row.social_alias}</b><small>{num(row.subscriber_count)} followers</small></span></button><button className={row.subscribed_by_me?"active":""} onClick={()=>void toggleSubscribe(row)}>{row.subscribed_by_me?"Following":"Follow"}</button></div>)}</div></section>
+        <section className="social-v3-community-note"><span>COMMUNITY</span><h3>Berinteraksi tanpa komentar publik.</h3><p>Lumaway Community menggunakan Follow, Like, Save, dan Share agar interaksi tetap ringkas dan fokus.</p></section>
+      </aside>
+    </div>
+
+    {profileBusy&&<div className="social-v3-loading-float">Membuka profil...</div>}
+
+    {profile&&<div className="social-v3-stack-backdrop" onMouseDown={()=>setProfile(null)}>
+      <div className="social-v3-stack-wrap" onMouseDown={event=>event.stopPropagation()}>
+        <div className="social-v3-stack-layer layer-one"/>
+        <div className="social-v3-stack-layer layer-two"/>
+        <section className="social-v3-profile-stack">
+          <button className="social-v3-stack-close" onClick={()=>setProfile(null)}>×</button>
+          <header>
+            <SocialAvatar alias={profile.social_alias} avatarUrl={profile.social_avatar_url} size="xl"/>
+            <div><span>{profile.position_title||"Lumaway Community"}</span><h2>{profile.social_alias}</h2><p>{profile.bio||"Profil Community Lumaway."}</p></div>
+            {profile.user_id!==userId&&profileActionRow&&<button className={profile.subscribed_by_me?"active":""} onClick={()=>void toggleSubscribe(profileActionRow)}>{profile.subscribed_by_me?"Mengikuti":"Ikuti Profil"}</button>}
+          </header>
+          <div className="social-v3-profile-stats">
+            <article><span>Post</span><b>{num(profile.post_count)}</b></article>
+            <article><span>Followers</span><b>{num(profile.follower_count)}</b></article>
+            <article><span>Following</span><b>{num(profile.following_count)}</b></article>
+            <article><span>Likes</span><b>{num(profile.like_count)}</b></article>
+          </div>
+          <div className="social-v3-profile-posts-head"><div><h3>Post Terbaru</h3><p>Post dari profil ini ditampilkan sebagai kumpulan visual di dalam profile stack.</p></div><span>{profilePosts.length} post</span></div>
+          <div className="social-v3-profile-post-grid">{profilePosts.map(row=><button key={row.id} onClick={()=>openDetail(row)}>{imageList(row)[0]?<img src={imageList(row)[0]} alt="Post"/>:<div>{row.body}</div>}<span><b>{num(row.like_count)}</b> suka · {shortDate(row.created_at)}</span></button>)}</div>
+          {!profilePosts.length&&<div className="social-v3-empty compact"><b>Belum ada post publik.</b></div>}
+        </section>
       </div>
     </div>}
 
-    {shareRow&&<div className="share-sheet-backdrop" onClick={()=>setShareRow(null)}><div className="share-sheet" onClick={e=>e.stopPropagation()}><div className="share-sheet-head"><div><b>Bagikan post</b><small>Post ID #{shareRow.id}</small></div><button onClick={()=>setShareRow(null)}>×</button></div>{imageList(shareRow)[0]&&<img src={imageList(shareRow)[0]} alt="Share preview" className="share-preview-image"/>}<p>{shareText(shareRow)}</p><div className="share-grid"><button onClick={()=>openShare("whatsapp",shareRow)}>WhatsApp</button><button onClick={()=>openShare("instagram",shareRow)}>Instagram</button><button onClick={()=>openShare("linkedin",shareRow)}>LinkedIn</button><button onClick={()=>openShare("threads",shareRow)}>Threads</button></div><button className="secondary share-copy" onClick={()=>nativeShare(shareRow)}>Share / Copy Link</button></div></div>}
+    {detail&&<div className="social-v3-detail-backdrop" onMouseDown={()=>setDetail(null)}>
+      <div className="social-v3-detail-stack" onMouseDown={event=>event.stopPropagation()}>
+        <div className="social-v3-detail-layer one"/><div className="social-v3-detail-layer two"/>
+        <section className="social-v3-detail-panel">
+          <button className="social-v3-stack-close" onClick={()=>setDetail(null)}>×</button>
+          <div className="social-v3-detail-media">
+            {imageList(detail).length?<><img src={imageList(detail)[carouselIndex]} alt="Post detail"/>{imageList(detail).length>1&&<><button className="social-v3-carousel prev" onClick={()=>setCarouselIndex(index=>(index-1+imageList(detail).length)%imageList(detail).length)}>‹</button><button className="social-v3-carousel next" onClick={()=>setCarouselIndex(index=>(index+1)%imageList(detail).length)}>›</button><div className="social-v3-carousel-dots">{imageList(detail).map((_,index)=><button key={index} className={carouselIndex===index?"active":""} onClick={()=>setCarouselIndex(index)}/>)}</div></>}</>:<div className="social-v3-detail-text">{detail.body}</div>}
+          </div>
+          <div className="social-v3-detail-content">
+            <button className="social-v3-detail-author" onClick={()=>{setDetail(null);void openProfile(detail.user_id)}}><SocialAvatar alias={detail.social_alias} avatarUrl={detail.social_avatar_url}/><span><b>{detail.social_alias}</b><small>{num(detail.subscriber_count)} followers · {longDate(detail.created_at)}</small></span></button>
+            {detail.user_id!==userId&&<button className={"social-v3-detail-follow "+(detail.subscribed_by_me?"active":"")} onClick={()=>void toggleSubscribe(detail)}>{detail.subscribed_by_me?"Mengikuti":"Ikuti"}</button>}
+            {detail.body&&<p>{detail.body}</p>}
+            <div className="social-v3-detail-actions"><button className={detail.liked_by_me?"active":""} onClick={()=>void toggleLike(detail)}>Suka <b>{num(detail.like_count)}</b></button><button className={detail.saved_by_me?"active":""} onClick={()=>void toggleSave(detail)}>Simpan <b>{num(detail.save_count)}</b></button><button onClick={()=>setShareRow(detail)}>Bagikan</button></div>
+            <div className="social-v3-no-comments">Lumaway Community tidak menggunakan komentar publik.</div>
+          </div>
+        </section>
+      </div>
+    </div>}
+
+    {shareRow&&<div className="social-v3-share-backdrop" onMouseDown={()=>setShareRow(null)}><section className="social-v3-share-sheet" onMouseDown={event=>event.stopPropagation()}><header><div><b>Bagikan post</b><small>{shareRow.social_alias}</small></div><button onClick={()=>setShareRow(null)}>×</button></header>{imageList(shareRow)[0]&&<img src={imageList(shareRow)[0]} alt="Share preview"/>}<p>{shareText(shareRow)}</p><div><button onClick={()=>openShare("whatsapp",shareRow)}>WhatsApp</button><button onClick={()=>openShare("instagram",shareRow)}>Instagram</button><button onClick={()=>openShare("linkedin",shareRow)}>LinkedIn</button><button onClick={()=>openShare("threads",shareRow)}>Threads</button></div><button className="secondary" onClick={()=>void nativeShare(shareRow)}>Share / Copy Link</button></section></div>}
   </section>;
 }
