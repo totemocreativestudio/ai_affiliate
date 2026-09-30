@@ -14,7 +14,7 @@ export default function OwnerSubscriptionPromo(){
   const [savingPlan,setSavingPlan]=useState<number|null>(null);
   const [adjustingId,setAdjustingId]=useState<number|null>(null);
   const [adjustments,setAdjustments]=useState<Record<number,{days:string;reason:string}>>({});
-  const [form,setForm]=useState<any>({code:"",title:"",promo_type:"subscription_percent",value:10,starts_at:"",ends_at:"",max_uses:"",per_user_limit:1,plan_codes:"",token_ids:"",notes:""});
+  const [form,setForm]=useState<any>({code:"",title:"",description:"",campaign_label:"LUMAWAY PROMOTION",promo_type:"subscription_percent",value:10,max_discount_amount:12000,min_purchase_amount:0,starts_at:"",ends_at:"",max_uses:"",per_user_limit:1,plan_codes:"",token_ids:"",new_user_only:false,renewal_only:false,valid_weekdays:"",is_published:true,is_featured:false,banner_portrait_url:"",banner_landscape_url:"",short_terms:"",notes:""});
 
   async function load(){
     const [p,s,c]=await Promise.all([
@@ -70,7 +70,7 @@ export default function OwnerSubscriptionPromo(){
 
   async function createPromo(){
     const {data:{user}}=await supabase.auth.getUser();
-    const payload={code:String(form.code).trim().toUpperCase(),title:form.title,promo_type:form.promo_type,value:Number(form.value),starts_at:form.starts_at||null,ends_at:form.ends_at||null,max_uses:form.max_uses?Number(form.max_uses):null,per_user_limit:Number(form.per_user_limit||1),applicable_plan_codes:String(form.plan_codes||"").split(",").map((x:string)=>x.trim()).filter(Boolean),applicable_token_package_ids:String(form.token_ids||"").split(",").map((x:string)=>Number(x.trim())).filter(Boolean),notes:form.notes||null,created_by:user?.id||null,active:true};
+    const payload={code:String(form.code).trim().toUpperCase(),title:form.title,slug:String(form.code).trim().toLowerCase().replace(/[^a-z0-9]+/g,"-"),description:form.description||null,campaign_label:form.campaign_label||null,promo_type:form.promo_type,value:Number(form.value),max_discount_amount:Math.min(12000,Math.max(0,Number(form.max_discount_amount||0))),min_purchase_amount:Math.max(0,Number(form.min_purchase_amount||0)),starts_at:form.starts_at||null,ends_at:form.ends_at||null,max_uses:form.max_uses?Number(form.max_uses):null,per_user_limit:Number(form.per_user_limit||1),applicable_plan_codes:String(form.plan_codes||"").split(",").map((x:string)=>x.trim()).filter(Boolean),applicable_token_package_ids:String(form.token_ids||"").split(",").map((x:string)=>Number(x.trim())).filter(Boolean),new_user_only:Boolean(form.new_user_only),renewal_only:Boolean(form.renewal_only),valid_weekdays:String(form.valid_weekdays||"").split(",").map((x:string)=>Number(x.trim())).filter((x:number)=>Number.isInteger(x)&&x>=0&&x<=6),is_published:Boolean(form.is_published),is_featured:Boolean(form.is_featured),banner_portrait_url:form.banner_portrait_url||null,banner_landscape_url:form.banner_landscape_url||null,short_terms:form.short_terms||null,notes:form.notes||null,created_by:user?.id||null,active:true};
     const {error}=await supabase.from("luma_promo_codes").insert(payload);
     setMsg(error?error.message:"Promo berhasil dibuat.");
     if(!error){setForm({...form,code:"",title:"",notes:""});await load()}
@@ -141,15 +141,27 @@ export default function OwnerSubscriptionPromo(){
       <div className="promo-admin-grid">
         <input placeholder="CODE" value={form.code} onChange={e=>setForm({...form,code:e.target.value})}/>
         <input placeholder="Nama promo" value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/>
+        <input placeholder="Campaign label" value={form.campaign_label} onChange={e=>setForm({...form,campaign_label:e.target.value})}/>
         <select value={form.promo_type} onChange={e=>setForm({...form,promo_type:e.target.value})}><option value="subscription_percent">Subscription %</option><option value="subscription_amount">Subscription Rp</option><option value="token_percent">Token %</option><option value="token_amount">Token Rp</option><option value="free_tokens">Free Token</option><option value="extend_days">Extend Active Days</option></select>
         <input type="number" placeholder="Value" value={form.value} onChange={e=>setForm({...form,value:e.target.value})}/>
+        <input type="number" max="12000" placeholder="Max discount ≤ 12000" value={form.max_discount_amount} onChange={e=>setForm({...form,max_discount_amount:e.target.value})}/>
+        <input type="number" placeholder="Minimum purchase" value={form.min_purchase_amount} onChange={e=>setForm({...form,min_purchase_amount:e.target.value})}/>
         <input type="datetime-local" value={form.starts_at} onChange={e=>setForm({...form,starts_at:e.target.value})}/>
         <input type="datetime-local" value={form.ends_at} onChange={e=>setForm({...form,ends_at:e.target.value})}/>
         <input type="number" placeholder="Max uses" value={form.max_uses} onChange={e=>setForm({...form,max_uses:e.target.value})}/>
         <input type="number" placeholder="Per user" value={form.per_user_limit} onChange={e=>setForm({...form,per_user_limit:e.target.value})}/>
         <input placeholder="Plan codes: monthly_95,six_month_355,annual_510" value={form.plan_codes} onChange={e=>setForm({...form,plan_codes:e.target.value})}/>
         <input placeholder="Token package IDs: 1,2" value={form.token_ids} onChange={e=>setForm({...form,token_ids:e.target.value})}/>
-        <input className="promo-notes" placeholder="Catatan / materi promosi" value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/>
+        <input placeholder="Valid weekdays: 0,6 (Minggu,Sabtu)" value={form.valid_weekdays} onChange={e=>setForm({...form,valid_weekdays:e.target.value})}/>
+        <input placeholder="Poster portrait URL" value={form.banner_portrait_url} onChange={e=>setForm({...form,banner_portrait_url:e.target.value})}/>
+        <input placeholder="Poster landscape URL" value={form.banner_landscape_url} onChange={e=>setForm({...form,banner_landscape_url:e.target.value})}/>
+        <input className="promo-notes" placeholder="Deskripsi promo" value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/>
+        <input className="promo-notes" placeholder="Syarat singkat" value={form.short_terms} onChange={e=>setForm({...form,short_terms:e.target.value})}/>
+        <label className="inline-check"><input type="checkbox" checked={form.new_user_only} onChange={e=>setForm({...form,new_user_only:e.target.checked})}/>User baru saja</label>
+        <label className="inline-check"><input type="checkbox" checked={form.renewal_only} onChange={e=>setForm({...form,renewal_only:e.target.checked})}/>Renewal saja</label>
+        <label className="inline-check"><input type="checkbox" checked={form.is_published} onChange={e=>setForm({...form,is_published:e.target.checked})}/>Tampil ke user</label>
+        <label className="inline-check"><input type="checkbox" checked={form.is_featured} onChange={e=>setForm({...form,is_featured:e.target.checked})}/>Featured</label>
+        <input className="promo-notes" placeholder="Catatan internal" value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/>
         <button className="primary" onClick={createPromo}>Buat Promo</button>
       </div>
       {msg&&<div className="owner-inline-note">{msg}</div>}
