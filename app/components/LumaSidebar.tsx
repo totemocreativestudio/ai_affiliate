@@ -250,6 +250,7 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
               </Group>
 
               <Group icon="kanban" label="Growth & Workflow">
+                <a className={subActive("campaign-tracker")} href={routeForSection("campaign-tracker")} onClick={(e) => go(e, "campaign-tracker")}><LumaIcon name="performance" />Campaign Tracker</a>
                 <a className={subActive("promo-studio")} href={routeForSection("promo-studio")} onClick={(e) => go(e, "promo-studio")}><LumaIcon name="broadcast" />Promo Studio</a>
                 <a className={subActive("kanban")} href={routeForSection("kanban")} onClick={(e) => go(e, "kanban")}><LumaIcon name="kanban" />Kanban</a>
               </Group>
