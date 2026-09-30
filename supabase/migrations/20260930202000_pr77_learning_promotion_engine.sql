@@ -298,6 +298,31 @@ $$;
 revoke all on function public.luma_active_promotions_v1() from public,anon;
 grant execute on function public.luma_active_promotions_v1() to authenticated;
 
+
+create or replace function public.luma_apply_promo_reservation_on_redemption()
+returns trigger
+language plpgsql
+security definer
+set search_path=public,pg_temp
+as $
+begin
+  if new.target_reference is not null then
+    update public.luma_promo_reservations
+    set status='applied',updated_at=now()
+    where promo_id=new.promo_id
+      and user_id=new.user_id
+      and order_code=new.target_reference
+      and status='reserved';
+  end if;
+  return new;
+end
+$;
+
+drop trigger if exists trg_luma_apply_promo_reservation on public.luma_promo_redemptions;
+create trigger trg_luma_apply_promo_reservation
+after insert on public.luma_promo_redemptions
+for each row execute function public.luma_apply_promo_reservation_on_redemption();
+
 -- Seed 8 controlled promotion campaigns. All monetary discounts are capped <= Rp12,000.
 insert into public.luma_promo_codes(
   code,title,slug,description,campaign_label,promo_type,value,max_discount_amount,
