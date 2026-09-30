@@ -228,6 +228,7 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
               <Group icon="data" label="Data & Intelligence" open>
                 <a className={subActive("upload")} href={routeForSection("upload")} onClick={(e) => go(e, "upload")}><LumaIcon name="data" />Upload Center</a>
                 <a className={subActive("database")} href={routeForSection("database")} onClick={(e) => go(e, "database")}><LumaIcon name="master" />Database</a>
+                <a className={subActive("data-health")} href={routeForSection("data-health")} onClick={(e) => go(e, "data-health")}><LumaIcon name="performance" />Data Health</a>
                 <a className={subActive("excel-sync")} href={routeForSection("excel-sync")} onClick={(e) => go(e, "excel-sync")}><LumaIcon name="listing" />Excel Sync</a>
                 <a className={subActive("tutorial")} href={routeForSection("tutorial")} onClick={(e) => go(e, "tutorial")}><LumaIcon name="content" />Tutorial Upload</a>
               </Group>
