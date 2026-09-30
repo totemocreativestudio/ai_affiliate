@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200" viewBox="0 0 900 1200">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0f1738"/><stop offset=".52" stop-color="#4f46e5"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient>
+    <radialGradient id="r" cx=".9" cy=".1"><stop stop-color="#22d3ee" stop-opacity=".9"/><stop offset="1" stop-color="#22d3ee" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="100%" height="100%" rx="42" fill="url(#g)"/>
+  <rect width="100%" height="100%" rx="42" fill="url(#r)"/>
+  <circle cx="760" cy="170" r="190" fill="#fff" opacity=".07"/>
+  <circle cx="720" cy="1040" r="300" fill="#fff" opacity=".05"/>
+  <g transform="translate(60 65)">
+    <path d="M0 0h34c19 0 34 15 34 34S53 68 34 68H0z" fill="#fff" opacity=".96"/>
+    <path d="M12 12h18c10 0 18 8 18 18S40 48 30 48H12z" fill="#7c3aed"/>
+    <text x="88" y="45" fill="#fff" font-size="34" font-family="Arial,sans-serif" font-weight="800">LUMAWAY.</text>
+  </g>
+  <text x="80" y="250" fill="#b8c1ff" font-size="28" font-family="Arial,sans-serif" font-weight="700" letter-spacing="4">PROMOTION</text>
+  <text x="80" y="335" fill="#fff" font-size="72" font-family="Arial,sans-serif" font-weight="900">POTONGAN Rp7.000</text>
+  <text x="80" y="395" fill="#e7e9ff" font-size="32" font-family="Arial,sans-serif">Langsung saat checkout</text>
+  <g transform="translate(80 860)">
+    <rect width="520" height="92" rx="20" fill="#fff"/>
+    <text x="32" y="60" fill="#312e81" font-size="34" font-family="Arial,sans-serif" font-weight="900">LUMA7K</text>
+  </g>
+  <text x="80" y="1005" fill="#dbe3ff" font-size="24" font-family="Arial,sans-serif">1x per user</text>
+  <text x="80" y="1145" fill="#c7d2fe" font-size="20" font-family="Arial,sans-serif">Syarat &amp; ketentuan berlaku · app.lumaway.online</text>
+  </svg>
