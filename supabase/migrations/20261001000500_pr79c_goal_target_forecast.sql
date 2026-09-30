@@ -103,9 +103,9 @@ begin
   v_forecast_qty:=round((v_qty/v_days_elapsed)*v_days_total,2);
   v_forecast_margin:=round((v_margin/v_days_elapsed)*v_days_total,2);
 
-  select coalesce(jsonb_agg(row_data order by day),'[]'::jsonb) into v_daily
+  select coalesce(jsonb_agg(row_data order by data_day),'[]'::jsonb) into v_daily
   from (
-    select data_date day, jsonb_build_object(
+    select data_date as data_day, jsonb_build_object(
       'date',data_date,
       'gmv',coalesce(sum(gmv),0),
       'orders',coalesce(sum(orders),0),
