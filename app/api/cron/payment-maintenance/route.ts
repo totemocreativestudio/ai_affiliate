@@ -18,10 +18,12 @@ export async function GET(req:NextRequest){
     const admin=adminClient();
     const {data,error}=await admin.rpc("luma_payment_maintenance_v1");
     if(error)throw error;
-    await admin.from("luma_api_usage_events").insert({
-      workspace_id:null,user_id:null,provider:"lumaway",service:"payment_maintenance",
-      request_type:"cron",status:"success",metadata:data||{}
-    }).catch(()=>undefined);
+    try{
+      await admin.from("luma_api_usage_events").insert({
+        workspace_id:null,user_id:null,provider:"lumaway",service:"payment_maintenance",
+        request_type:"cron",status:"success",metadata:data||{}
+      });
+    }catch{}
     return NextResponse.json(data||{ok:true});
   }catch(error:any){
     return NextResponse.json({ok:false,error:String(error?.message||"Payment maintenance failed.")},{status:500});
