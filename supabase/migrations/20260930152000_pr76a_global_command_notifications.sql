@@ -42,16 +42,17 @@ begin
   select x.entity_type,x.entity_id,x.title,x.subtitle,x.meta,x.section,x.score
   from (
     select
-      'creator'::text,
-      c.id::bigint,
-      coalesce(nullif(c.name,''),nullif(c.username,''),nullif(c.creator_code,''),'Creator')::text,
-      concat_ws(' · ',nullif(c.username,''),nullif(c.affiliate_id,''))::text,
-      concat_ws(' · ',nullif(c.platform,''),nullif(c.status,''))::text,
-      'listings'::text,
+      'creator'::text as entity_type,
+      c.id::bigint as entity_id,
+      coalesce(nullif(c.name,''),nullif(c.username,''),nullif(c.creator_code,''),'Creator')::text as title,
+      concat_ws(' · ',nullif(c.username,''),nullif(c.affiliate_id,''))::text as subtitle,
+      concat_ws(' · ',nullif(c.platform,''),nullif(c.status,''))::text as meta,
+      'listings'::text as section,
       case
         when lower(coalesce(c.username,''))=v_query or lower(coalesce(c.creator_code,''))=v_query then 1
         when lower(coalesce(c.name,''))=v_query then 2
         else 8
+      end::integer as score
       end::integer
     from public.creators c
     where c.workspace_id=p_workspace_id
@@ -154,7 +155,6 @@ begin
         or lower(coalesce(l.sku,'')) like '%'||v_query||'%'
         or lower(coalesce(l.next_action,'')) like '%'||v_query||'%'
       )
-    limit 6
   ) x
   order by x.score asc,x.title asc
   limit v_limit;
