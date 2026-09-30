@@ -13,7 +13,7 @@ export async function GET(req:NextRequest){
     const pageSize=Math.min(200,Math.max(25,Number(searchParams.get("page_size")||100)));
     if(!workspaceId)return NextResponse.json({ok:false,error:"workspace_id required"},{status:400});
     const {admin}=await getServerContext(workspaceId);
-    const {data,error}=await admin.rpc("luma_get_master_creators_unique",{
+    const {data,error}=await admin.rpc("luma_get_master_creators_unique_v2",{
       p_workspace_id:workspaceId,
       p_search:q||null,
       p_page:page,
@@ -49,7 +49,7 @@ export async function POST(req:NextRequest){
 
     const {admin}=await getServerContext(workspaceId);
     const normalized=normalizeCreator(raw);
-    const {data:matches,error:searchError}=await admin.rpc("luma_get_master_creators_unique",{
+    const {data:matches,error:searchError}=await admin.rpc("luma_get_master_creators_unique_v2",{
       p_workspace_id:workspaceId,
       p_search:raw,
       p_page:1,
@@ -74,7 +74,7 @@ export async function POST(req:NextRequest){
       username:cleanUsername,
       platform:platform||null,
       status:"Active"
-    }).select("id,creator_code,name,username,platform,affiliate_id,phone,payment_type,ratecard,status").single();
+    }).select("id,creator_code,name,username,platform,affiliate_id,phone,payment_type,ratecard,status,profile_url,avatar_url,social_links,social_profile_updated_at").single();
     if(error)throw error;
     return NextResponse.json({ok:true,created:true,creator:data});
   }catch(error:any){
