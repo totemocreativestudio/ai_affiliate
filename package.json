@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test:load": "node scripts/lumaway-load-test.mjs"
   },
   "devDependencies": {
     "@types/node": "26.5.0",
