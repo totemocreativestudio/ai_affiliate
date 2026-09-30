@@ -48,6 +48,10 @@ export async function POST(req:NextRequest){
 
     if(amount<=0){
       orderCode=`SUB-${randomUUID().replace(/-/g,"").slice(0,12).toUpperCase()}`;
+      if(promo?.id){
+        const {error:reserveError}=await ctx.admin.rpc("luma_reserve_promo_v1",{p_promo_id:promo.id,p_user_id:ctx.user.id,p_workspace_id:workspaceId,p_order_code:orderCode,p_expires_at:expiresAt});
+        if(reserveError)throw reserveError;
+      }
       const orderRow={user_id:ctx.user.id,workspace_id:workspaceId,plan_id:plan.id,order_code:orderCode,base_amount:baseAmount,discount_amount:promoDiscount,amount,status:"pending",promo_id:promo?.id||null,expires_at:expiresAt,upgrade_from_subscription_id:upgrade?.subscription_id||null,upgrade_credit_days:Number(upgrade?.remaining_days||0),upgrade_credit_amount:upgradeCredit};
       const {error:insertError}=await ctx.admin.from("luma_subscription_orders").insert({...orderRow,payment_provider:"Promo/Credit",payment_method:"Covered by promo or upgrade credit",provider_payload:{promo_code:promo?.code||null,upgrade}});
       if(insertError)throw insertError;
@@ -72,6 +76,14 @@ export async function POST(req:NextRequest){
       return NextResponse.json({ok:false,error:"Pembayaran sedang diproses. Mohon tunggu beberapa detik lalu coba kembali.",code:"PAYMENT_PENDING"},{status:409});
     }
 
+    if(promo?.id){
+      const {error:reserveError}=await ctx.admin.rpc("luma_reserve_promo_v1",{p_promo_id:promo.id,p_user_id:ctx.user.id,p_workspace_id:workspaceId,p_order_code:orderCode,p_expires_at:expiresAt});
+      if(reserveError){
+        await markCheckoutIntentFailed(ctx.admin,intentId,String(reserveError.message||"PROMO_RESERVATION_FAILED"));
+        throw reserveError;
+      }
+    }
+
     let checkout:any;
     try{
       checkout=await createPaymentCheckout({
@@ -84,6 +96,9 @@ export async function POST(req:NextRequest){
       await markCheckoutIntentReady(ctx.admin,intentId,checkout);
     }catch(error:any){
       await markCheckoutIntentFailed(ctx.admin,intentId,String(error?.message||"PAYMENT_GATEWAY_UNAVAILABLE"));
+      if(promo?.id&&orderCode){
+        await ctx.admin.from("luma_promo_reservations").update({status:"released",updated_at:new Date().toISOString()}).eq("promo_id",promo.id).eq("user_id",ctx.user.id).eq("order_code",orderCode).eq("status","reserved");
+      }
       throw error;
     }
 
