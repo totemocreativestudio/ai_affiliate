@@ -73,7 +73,7 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
   const dismissedToastKeys = useRef<Set<string>>(new Set());
 
   async function load() {
-    await supabase.rpc("luma_refresh_operational_notifications_v1",{p_workspace_id:workspaceId}).catch(()=>undefined);
+    try{await supabase.rpc("luma_refresh_operational_notifications_v1",{p_workspace_id:workspaceId})}catch{}
     const [globalRes, directRes] = await Promise.all([
       supabase
         .from("luma_notifications")
