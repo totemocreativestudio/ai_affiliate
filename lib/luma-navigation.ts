@@ -7,6 +7,7 @@ const SECTION_ROUTES: Record<string, string> = {
   "excel-sync": "excel-sync",
   database: "database",
   "data-health": "data-health",
+  "creator-identity": "creator-identity",
   agreements: "agreements",
   "affiliate-support": "affiliate-support",
   "ai-analytics": "ai-analytics",

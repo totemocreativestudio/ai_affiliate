@@ -38,6 +38,7 @@ export default function Creator360Modal({workspaceId,creatorId,startDate,endDate
   const [manual,setManual]=useState<Row>(DEFAULT_MANUAL);const [manualSaved,setManualSaved]=useState(false);const [editingManual,setEditingManual]=useState(false);const [saveMessage,setSaveMessage]=useState("");
   const [periodMode,setPeriodMode]=useState<PeriodMode>("month");const [anchorDate,setAnchorDate]=useState("");const [filterYear,setFilterYear]=useState(new Date().getUTCFullYear());const [filterMonth,setFilterMonth]=useState(new Date().getUTCMonth()+1);const [periodReady,setPeriodReady]=useState(false);
   const [targetRows,setTargetRows]=useState<Row[]>([]);const [showTargetEditor,setShowTargetEditor]=useState(false);const [targetType,setTargetType]=useState<"month"|"year">("month");const [targetForm,setTargetForm]=useState<Row>({target_year:new Date().getUTCFullYear(),target_month:new Date().getUTCMonth()+1,target_sales:"",target_live:"",target_video:"",notes:""});const [targetMessage,setTargetMessage]=useState("");
+  const [timeline,setTimeline]=useState<Row[]>([]);const [timelineBusy,setTimelineBusy]=useState(false);const [timelineError,setTimelineError]=useState("");
 
   const range=useMemo(()=>rangeFor(periodMode,anchorDate,filterYear,filterMonth),[periodMode,anchorDate,filterYear,filterMonth]);
   const previous=useMemo(()=>previousFor(periodMode,range),[periodMode,range.start,range.end]);
@@ -45,6 +46,7 @@ export default function Creator360Modal({workspaceId,creatorId,startDate,endDate
 
   useEffect(()=>{if(!creatorId)return;setPeriodReady(false);void bootstrap()},[creatorId,workspaceId]);
   useEffect(()=>{if(periodReady&&creatorId)void loadMetrics()},[periodReady,creatorId,periodMode,filterYear,filterMonth,anchorDate]);
+  useEffect(()=>{if(tab==="timeline"&&creatorId)void loadTimeline()},[tab,creatorId,workspaceId]);
   useEffect(()=>{
     if(!creatorId)return;
     const previousOverflow=document.body.style.overflow;
@@ -69,6 +71,15 @@ export default function Creator360Modal({workspaceId,creatorId,startDate,endDate
       if(startDate&&endDate){const s=utcDate(startDate),e=utcDate(endDate);const sameMonth=s.getUTCFullYear()===e.getUTCFullYear()&&s.getUTCMonth()===e.getUTCMonth();if(sameMonth)setPeriodMode("month")}
       setPeriodReady(true);
     }catch(e:any){setError(e?.message||"Gagal menyiapkan periode Customer 360.");setBusy(false)}
+  }
+
+  async function loadTimeline(){
+    if(!creatorId)return;
+    setTimelineBusy(true);setTimelineError("");
+    const {data:payload,error:e}=await supabase.rpc("luma_creator_timeline_v1",{p_workspace_id:workspaceId,p_creator_id:creatorId,p_limit:250});
+    if(e){setTimelineError(e.message);setTimeline([])}
+    else setTimeline(Array.isArray(payload?.events)?payload.events:[]);
+    setTimelineBusy(false);
   }
 
   async function loadTargets(){
@@ -159,7 +170,7 @@ export default function Creator360Modal({workspaceId,creatorId,startDate,endDate
           <div className="c360-period-selects">{periodMode==="month"&&<label>Bulan<select value={filterMonth} onChange={e=>setFilterMonth(Number(e.target.value))}>{MONTHS.map((label,index)=><option key={label} value={index+1}>{label}</option>)}</select></label>}{(periodMode==="month"||periodMode==="year")&&<label>Tahun<select value={filterYear} onChange={e=>setFilterYear(Number(e.target.value))}>{availableYears.map(y=><option key={y} value={y}>{y}</option>)}</select></label>}{(periodMode==="7d"||periodMode==="30d")&&<span>Anchor data terakhir: <b>{anchorDate||"-"}</b></span>}<span className="c360-target-source">{effectiveTarget.source}</span></div>
         </div>
 
-        <div className="c360-tabs">{[["overview","Overview"],["sales","Sales & ROI"],["products","Products"],["support","Support"],["stores","Stores"],["profile","Profile & Notes"]].map(([x,l])=><button className={tab===x?"active":""} key={x} onClick={()=>setTab(x)}>{l}</button>)}</div>
+        <div className="c360-tabs">{[["overview","Overview"],["timeline","Timeline"],["sales","Sales & ROI"],["products","Products"],["support","Support"],["stores","Stores"],["profile","Profile & Notes"]].map(([x,l])=><button className={tab===x?"active":""} key={x} onClick={()=>setTab(x)}>{l}</button>)}</div>
 
         {tab==="overview"&&<><div className="c360-kpis"><Metric label="GMV" value={money(k.gmv)} deltaValue={prevData?delta(k.gmv,pk.gmv):null}/><Metric label="Orders" value={num(k.orders)} deltaValue={prevData?delta(k.orders,pk.orders):null}/><Metric label="Qty" value={num(k.qty)} deltaValue={prevData?delta(k.qty,pk.qty):null}/><Metric label="Commission" value={money(k.commission)} deltaValue={prevData?delta(k.commission,pk.commission):null}/><Metric label="Spend" value={money(spend)} deltaValue={prevData?delta(spend,prevSpend):null}/><Metric label="ROI" value={roi.toFixed(2)+"x"} deltaValue={prevData?delta(roi,prevRoi):null}/><Metric label="Total Siaran LIVE" value={num(k.live_count)} deltaValue={prevData?delta(k.live_count,pk.live_count):null}/><Metric label="Tayangan Video" value={num(k.video_views)} deltaValue={prevData?delta(k.video_views,pk.video_views):null}/><Metric label="CTR" value={Number(k.ctr||0).toFixed(2)+"%"} deltaValue={prevData?delta(k.ctr,pk.ctr):null}/><Metric label="Total Video" value={num(k.video_count)} deltaValue={prevData?delta(k.video_count,pk.video_count):null}/><Metric label="Sampel Terkirim" value={num(k.samples_total)} deltaValue={prevData?delta(k.samples_total,pk.samples_total):null}/><Metric label="Total Click" value={num(k.clicks)} deltaValue={prevData?delta(k.clicks,pk.clicks):null}/><Metric label="Refund GMV" value={money(k.refund)} deltaValue={prevData?delta(k.refund,pk.refund):null}/><Metric label="Item Refund" value={num(k.refund_qty)} deltaValue={prevData?delta(k.refund_qty,pk.refund_qty):null}/><Metric label="Points" value={num(k.points)} deltaValue={prevData?delta(k.points,pk.points):null}/></div>
         <div className="c360-target-card card"><div className="section-head"><div><h3>Target Achievement · {range.label}</h3><p className="muted">{effectiveTarget.source}. Target rolling 7/30 hari dihitung prorata dari target bulanan.</p></div><div className="button-row"><button className="secondary" onClick={()=>openTarget("month",filterYear,filterMonth)}>Target Bulanan</button><button className="secondary" onClick={()=>openTarget("year",filterYear,0)}>Target Tahunan</button></div></div><TargetProgress label="Sales / GMV" actual={Number(k.gmv||0)} target={effectiveTarget.sales} formatter={money}/><TargetProgress label="LIVE Content" actual={Number(k.live_count||0)} target={effectiveTarget.live} formatter={num}/><TargetProgress label="Video Content" actual={Number(k.video_count||0)} target={effectiveTarget.video} formatter={num}/></div>
@@ -169,6 +180,7 @@ export default function Creator360Modal({workspaceId,creatorId,startDate,endDate
 
         {tab==="products"&&<div className="card"><h3>Top Products</h3><Table rows={data.top_products||[]} cols={["product_name","sku","qty","orders","gmv","commission","points"]}/></div>}
         {tab==="support"&&<><div className="card"><h3>Samples & Shipping</h3><Table rows={data.samples||[]} cols={["sent_date","product_name","sku","qty","product_value","sample_status","tracking"]}/></div><div className="card"><h3>Last 3 Video Links</h3>{[0,1,2].map(i=><label key={i}>Video {i+1}<input disabled={locked} value={(manual.video_links||[])[i]||""} onChange={e=>{const links=[...(manual.video_links||[])];links[i]=e.target.value;setManual({...manual,video_links:links})}} placeholder="https://..."/></label>)}</div></>}
+        {tab==="timeline"&&<div className="card c360-timeline-panel"><div className="section-head"><div><h3>Unified Creator Timeline</h3><p className="muted">Reach out, listing, sample, shipping, campaign, agreement, task, dan performance dalam satu histori creator.</p></div><button className="secondary" disabled={timelineBusy} onClick={()=>void loadTimeline()}>Refresh</button></div>{timelineBusy?<div className="empty-state"><strong>Memuat timeline...</strong></div>:timelineError?<div className="flash error">{timelineError}</div>:timeline.length?<div className="c360-timeline-list">{timeline.map((event,index)=><TimelineEvent key={String(event.event_at||"")+"-"+index} event={event}/>)}</div>:<div className="empty-state"><strong>Belum ada aktivitas creator.</strong></div>}</div>}
         {tab==="stores"&&<div className="card"><h3>Affiliated Stores</h3><Table rows={data.stores||[]} cols={["store_name","platform","status","gmv","orders","qty","spend","roi"]}/></div>}
         {tab==="profile"&&<><div className="grid"><div className="card"><h3>Creator Profile</h3><p>Phone: <b>{data.creator?.phone||"-"}</b></p><p>Address: <b>{data.creator?.address||"-"}</b></p><p>Social/Profile: {data.creator?.profile_url?<a href={data.creator.profile_url} target="_blank" rel="noreferrer">Open Profile</a>:"-"}</p><p>Payment type: <b>{data.creator?.payment_type||"-"}</b></p><p>Ratecard: <b>{money(data.creator?.ratecard)}</b></p><p>Notes: {data.creator?.notes||"-"}</p></div><div className="card"><div className="section-head"><h3>Manual Management</h3>{locked&&<span className="status-pill s-paid">Data tersimpan ✓</span>}</div><label>Rating<select disabled={locked} value={manual.rating||0} onChange={e=>setManual({...manual,rating:Number(e.target.value)})}>{[0,1,2,3,4,5].map(v=><option key={v} value={v}>{v}</option>)}</select></label><label>Program Status<select disabled={locked} value={manual.program_status||"Not Joined"} onChange={e=>setManual({...manual,program_status:e.target.value})}><option>Not Joined</option><option>Invited</option><option>Active</option><option>Paused</option><option>Completed</option></select></label><label className="inline-check"><input disabled={locked} type="checkbox" checked={Boolean(manual.top_creator)} onChange={e=>setManual({...manual,top_creator:e.target.checked})}/>Mark as Top Creator</label><label>Ads Support<input disabled={locked} type="number" value={manual.ads_support||0} onChange={e=>setManual({...manual,ads_support:e.target.value})}/></label><p className="muted">Target Sales/LIVE/Video sekarang dikelola per bulan dan per tahun melalui Target Management.</p></div></div>
         <div className="card c360-target-management"><div className="section-head"><div><h3>Target Management</h3><p className="muted">Simpan target creator berdasarkan bulan atau tahun. Target ini otomatis mengikuti filter metrik Customer 360.</p></div><div className="button-row"><button onClick={()=>openTarget("month",filterYear,filterMonth)}>+ Target Bulanan</button><button onClick={()=>openTarget("year",filterYear,0)}>+ Target Tahunan</button></div></div><Table rows={targetRows.map(row=>({...row,period:Number(row.target_month)===0?`Tahun ${row.target_year}`:`${MONTHS[Number(row.target_month)-1]} ${row.target_year}`}))} cols={["period","target_sales","target_live","target_video","notes"]}/></div></>}
@@ -187,3 +199,19 @@ function Delta({value}:{value:number}){return <small className={`c360-delta ${va
 function CompareLine({label,current,previous}:{label:string;current:number;previous:number|null}){return <p>{label}: <b>{money(current)}</b>{previous!==null&&<Delta value={delta(current,previous)}/>}</p>}
 function TargetProgress({label,actual,target,formatter}:{label:string;actual:number;target:number;formatter:(value:any)=>string}){const pct=target>0?actual/target*100:0;return <div className="c360-target-row"><div><strong>{label}</strong><span>{target>0?`${formatter(actual)} / ${formatter(target)}`:`${formatter(actual)} · target belum diset`}</span></div><div className="c360-progress"><i style={{width:`${Math.min(100,pct)}%`}}/><em style={{left:`calc(${Math.min(100,pct)}% - 5px)`}}/></div><b>{target>0?`${pct.toFixed(1)}%`:"—"}</b></div>}
 function Table({rows,cols}:{rows:Row[];cols:string[]}){const [sort,setSort]=useState({key:cols[0]||"",asc:true});const sorted=useMemo(()=>sortRows(rows,sort.key,sort.asc),[rows,sort]);const toggle=(key:string)=>setSort(v=>({key,asc:v.key===key?!v.asc:true}));return rows.length?<div className="scroll"><table><thead><tr>{cols.map(c=><th key={c}><button className="table-sort" onClick={()=>toggle(c)}>{c.replaceAll("_"," ")}<span>{sort.key===c?(sort.asc?"↑":"↓"):"↕"}</span></button></th>)}</tr></thead><tbody>{sorted.map((r,i)=><tr key={r.id||i}>{cols.map(c=><td key={c}>{c==="gmv"||c==="commission"||c==="spend"||c==="product_value"||c==="target_sales"?money(r[c]):String(r[c]??"-")}</td>)}</tr>)}</tbody></table></div>:<div className="empty-state"><strong>Belum ada data.</strong></div>}
+
+
+function TimelineEvent({event}:{event:Row}){
+  const meta=event?.meta||{};
+  const type=String(event?.event_type||"activity");
+  const when=event?.event_at?new Date(event.event_at).toLocaleString("id-ID",{dateStyle:"medium",timeStyle:"short"}):"-";
+  const metrics:string[]=[];
+  if(Number(meta.gmv||0)>0)metrics.push(money(meta.gmv));
+  if(Number(meta.orders||0)>0)metrics.push(num(meta.orders)+" orders");
+  if(Number(meta.qty||0)>0)metrics.push(num(meta.qty)+" qty");
+  if(Number(meta.commission||0)>0)metrics.push(money(meta.commission)+" commission");
+  if(meta.product_name)metrics.push(String(meta.product_name));
+  if(meta.tracking)metrics.push("Resi "+String(meta.tracking));
+  if(meta.due_date)metrics.push("Due "+String(meta.due_date));
+  return <article className={"c360-timeline-event type-"+type}><div className="c360-timeline-dot"/><div className="c360-timeline-copy"><div><strong>{event.title||"Activity"}</strong><span>{event.subtitle||type}</span></div><small>{when}</small>{metrics.length>0&&<p>{metrics.join(" · ")}</p>}{meta.note&&<em>{String(meta.note)}</em>}{meta.notes&&<em>{String(meta.notes)}</em>}</div></article>
+}

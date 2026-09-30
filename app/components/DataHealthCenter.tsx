@@ -61,7 +61,7 @@ export default function DataHealthCenter({workspaceId}:{workspaceId:string}){
 
   const issueRows=useMemo(()=>[
     ["Creator tanpa identitas",data?.metrics?.creator_missing_identity||0,"listings"],
-    ["Creator terindikasi duplikat",data?.metrics?.creator_duplicates||0,"listings"],
+    ["Creator terindikasi duplikat",data?.metrics?.creator_duplicates||0,"creator-identity"],
     ["Produk tanpa nama",data?.metrics?.product_missing_name||0,"product-master"],
     ["Produk tanpa HPP",data?.metrics?.product_missing_hpp||0,"product-master"],
     ["Produk tanpa gambar",data?.metrics?.product_missing_image||0,"product-master"],
@@ -108,7 +108,7 @@ export default function DataHealthCenter({workspaceId}:{workspaceId:string}){
         {issues.map(issue=><article key={issue.key} className={"health-issue severity-"+issue.severity}>
           <div className="health-issue-marker"><i/></div>
           <div className="health-issue-copy"><div><strong>{issue.title}</strong><span>{fmt(issue.count)} data</span></div><p>{issue.description}</p></div>
-          <button type="button" onClick={()=>navigateToSection(issue.section)}>{issue.action_label} <span>→</span></button>
+          <button type="button" onClick={()=>navigateToSection(issue.key==="creator_duplicates"?"creator-identity":issue.section)}>{issue.action_label} <span>→</span></button>
         </article>)}
       </div>:<div className="data-health-clear"><div>✓</div><strong>Tidak ada masalah utama yang terdeteksi.</strong><span>Data utama workspace siap digunakan oleh dashboard dan modul operasional.</span></div>}
     </section>

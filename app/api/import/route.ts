@@ -368,6 +368,7 @@ async function resolveCreatorIds(admin:any,workspaceId:string,rows:Row[],platfor
     const {data,error}=await admin.from("creators")
       .select("id,name,username,affiliate_id,identity_key")
       .eq("workspace_id",workspaceId)
+      .is("merged_into_creator_id",null)
       .in("identity_key",part);
     if(error)throw error;
     for(const row of data||[])register(row);
@@ -379,10 +380,31 @@ async function resolveCreatorIds(admin:any,workspaceId:string,rows:Row[],platfor
     const {data,error}=await admin.from("creators")
       .select("id,name,username,affiliate_id,identity_key")
       .eq("workspace_id",workspaceId)
+      .is("merged_into_creator_id",null)
       .ilike("platform",platform)
       .in("affiliate_id",part);
     if(error)throw error;
     for(const row of data||[])register(row);
+  }
+
+
+  // PR76C: merged creator identities remain resolvable through persistent aliases.
+  // This prevents a future marketplace upload from recreating an archived duplicate.
+  const aliasKeys=[...new Set([
+    ...identityKeys.map(key=>`i:${key}`),
+    ...affiliateIds.map(id=>`a:${id}`)
+  ])];
+  for(let i=0;i<aliasKeys.length;i+=400){
+    const part=aliasKeys.slice(i,i+400);
+    const {data,error}=await admin.from("creator_identity_aliases")
+      .select("alias_key,canonical_creator_id")
+      .eq("workspace_id",workspaceId)
+      .in("alias_key",part);
+    if(error)throw error;
+    for(const alias of data||[]){
+      const id=Number(alias.canonical_creator_id||0);
+      if(alias.alias_key&&id)map.set(String(alias.alias_key),id);
+    }
   }
 
   const missing=new Map<string,any>();
@@ -421,7 +443,7 @@ async function ensureCreator(admin: any, workspaceId: string, row: Row, platform
   const username = clean(value(row, ["Username Affiliate", "Username", "Affiliate Username"]));
   const affiliateId = clean(value(row, ["ID Affiliates", "Affiliate ID"]));
   if (!name && !username) return null;
-  let q = admin.from("creators").select("id").eq("workspace_id", workspaceId).ilike("platform", platform).limit(1);
+  let q = admin.from("creators").select("id").eq("workspace_id", workspaceId).is("merged_into_creator_id",null).ilike("platform", platform).limit(1);
   if (username) q = q.ilike("username", username); else if (affiliateId) q = q.eq("affiliate_id", affiliateId); else q = q.ilike("name", name);
   const { data: existing } = await q.maybeSingle(); if (existing?.id) return existing.id;
   const { data, error } = await admin.from("creators").insert({ workspace_id:workspaceId,creator_code:creatorCode(),name:name||username,username:username||name,platform,affiliate_id:affiliateId||null,status:"Active",source_import_id:importId,updated_at:new Date().toISOString() }).select("id").single();
