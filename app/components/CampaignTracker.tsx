@@ -12,13 +12,13 @@ type Campaign={
 type CampaignCreator={
   id:number;campaign_id:number;creator_id:number|null;creator_name:string|null;platform:string|null;product_id:number|null;
   product_name:string|null;sku:string|null;content_type:string|null;due_date:string|null;deliverable_status:string;
-  orders:number;gmv:number;commission:number;sample_status:string|null;shipping_order_id:number|null;notes:string|null;
+  orders:number;gmv:number;commission:number;performance_source?:string|null;performance_synced_at?:string|null;sample_status:string|null;shipping_order_id:number|null;notes:string|null;
 };
 type Creator={id:number;creator_code:string|null;name:string|null;username:string|null;platform:string|null};
 type Product={id:number;sku:string;product_name:string|null;cost_price:number|null};
 type ShippingOption={id:number;reference_no:string|null;tracking:string|null;creator_name:string|null;status:string|null};
 type CampaignForm={name:string;brand_name:string;campaign_type:string;platform:string;start_date:string;end_date:string;status:string;target_gmv:string;target_orders:string;budget:string;notes:string;banner_urls:string[];banner_storage_paths:string[]};
-type CreatorForm={creator_id:string;creator_name:string;platform:string;product_id:string;content_type:string;due_date:string;deliverable_status:string;orders:string;gmv:string;commission:string;sample_status:string;shipping_order_id:string;notes:string};
+type CreatorForm={creator_id:string;creator_name:string;platform:string;product_id:string;content_type:string;due_date:string;deliverable_status:string;orders:string;gmv:string;commission:string;performance_source:string;sample_status:string;shipping_order_id:string;notes:string};
 
 const CAMPAIGN_STATUSES=["Draft","Active","Paused","Completed","Cancelled"];
 const CAMPAIGN_TYPES=["Affiliate","Influencer","Hybrid"];
@@ -26,7 +26,7 @@ const DELIVERABLES=["Brief Sent","Sample Sent","Sample Received","Content Draft"
 const CONTENT_TYPES=["Video","LIVE","Video + LIVE","Post","Story","Other"];
 const SAMPLE_STATUSES=["Not Required","Pending","Sent","Received","Returned","Cancelled"];
 const EMPTY_CAMPAIGN:CampaignForm={name:"",brand_name:"",campaign_type:"Affiliate",platform:"TikTok",start_date:"",end_date:"",status:"Draft",target_gmv:"0",target_orders:"0",budget:"0",notes:"",banner_urls:[],banner_storage_paths:[]};
-const EMPTY_CREATOR:CreatorForm={creator_id:"",creator_name:"",platform:"TikTok",product_id:"",content_type:"Video",due_date:"",deliverable_status:"Brief Sent",orders:"0",gmv:"0",commission:"0",sample_status:"Not Required",shipping_order_id:"",notes:""};
+const EMPTY_CREATOR:CreatorForm={creator_id:"",creator_name:"",platform:"TikTok",product_id:"",content_type:"Video",due_date:"",deliverable_status:"Brief Sent",orders:"0",gmv:"0",commission:"0",performance_source:"auto",sample_status:"Not Required",shipping_order_id:"",notes:""};
 const money=(value:any)=>"Rp "+Number(value||0).toLocaleString("id-ID",{maximumFractionDigits:0});
 const number=(value:any)=>Number(value||0).toLocaleString("id-ID",{maximumFractionDigits:0});
 const dateLabel=(value:string|null)=>value?new Date(value+"T00:00:00").toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"}):"-";
@@ -94,16 +94,24 @@ export default function CampaignTracker({workspaceId}:{workspaceId:string}){
     setLoading(false);
   }
 
+  async function syncPerformance(campaignId:number|null,{silent=false}:{silent?:boolean}={}){
+    if(!campaignId)return null;
+    const {data,error}=await supabase.rpc("luma_sync_campaign_performance_v1",{p_workspace_id:workspaceId,p_campaign_id:campaignId});
+    if(error){if(!silent)setError(error.message);return null}
+    if(!silent)setMessage(`Performance campaign tersinkron · ${Number(data?.synced_creator_rows||0).toLocaleString("id-ID")} creator · GMV ${money(data?.actual_gmv)} · ${Number(data?.actual_orders||0).toLocaleString("id-ID")} orders.`);
+    return data;
+  }
+
   async function loadCreatorRows(campaignId:number|null){
     if(!campaignId){setCreatorRows([]);return}
     const {data,error}=await supabase.from("campaign_tracker_creators")
-      .select("id,campaign_id,creator_id,creator_name,platform,product_id,product_name,sku,content_type,due_date,deliverable_status,orders,gmv,commission,sample_status,shipping_order_id,notes")
+      .select("id,campaign_id,creator_id,creator_name,platform,product_id,product_name,sku,content_type,due_date,deliverable_status,orders,gmv,commission,performance_source,performance_synced_at,sample_status,shipping_order_id,notes")
       .eq("workspace_id",workspaceId).eq("campaign_id",campaignId).order("due_date",{ascending:true}).order("id",{ascending:true});
     if(error)setError(error.message);else setCreatorRows((data||[]) as CampaignCreator[]);
   }
 
   useEffect(()=>{void load()},[workspaceId]);
-  useEffect(()=>{void loadCreatorRows(selectedId)},[selectedId,workspaceId]);
+  useEffect(()=>{if(!selectedId){void loadCreatorRows(null);return}void (async()=>{await syncPerformance(selectedId,{silent:true});await Promise.all([loadCreatorRows(selectedId),load()])})()},[selectedId,workspaceId]);
   useEffect(()=>{
     const onQuick=(event:Event)=>{const detail=(event as CustomEvent).detail;if(detail?.type==="campaign")openCampaignAdd()};
     const onSelect=(event:Event)=>{const detail=(event as CustomEvent).detail;if(detail?.type!=="campaign")return;setSelectedId(Number(detail.id));setSearch("")};
@@ -206,7 +214,7 @@ export default function CampaignTracker({workspaceId}:{workspaceId:string}){
     setEditingCreatorId(null);setCreatorForm({...EMPTY_CREATOR,platform:selected.platform||"TikTok",due_date:selected.end_date||""});setCreatorSearch("");setProductSearch("");setManualCreatorConfirmed(false);setShowCreatorForm(true);setError("");
   }
   function openCreatorEdit(row:CampaignCreator){
-    setEditingCreatorId(row.id);setCreatorForm({creator_id:row.creator_id?.toString()||"",creator_name:row.creator_name||"",platform:row.platform||"",product_id:row.product_id?.toString()||"",content_type:row.content_type||"Video",due_date:row.due_date||"",deliverable_status:row.deliverable_status||"Brief Sent",orders:String(row.orders||0),gmv:String(row.gmv||0),commission:String(row.commission||0),sample_status:row.sample_status||"Not Required",shipping_order_id:row.shipping_order_id?.toString()||"",notes:row.notes||""});setCreatorSearch(row.creator_name||"");setProductSearch(row.sku?(row.sku+(row.product_name?" - "+row.product_name:"")):"");setManualCreatorConfirmed(!row.creator_id&&Boolean(row.creator_name));setShowCreatorForm(true);setError("");
+    setEditingCreatorId(row.id);setCreatorForm({creator_id:row.creator_id?.toString()||"",creator_name:row.creator_name||"",platform:row.platform||"",product_id:row.product_id?.toString()||"",content_type:row.content_type||"Video",due_date:row.due_date||"",deliverable_status:row.deliverable_status||"Brief Sent",orders:String(row.orders||0),gmv:String(row.gmv||0),commission:String(row.commission||0),performance_source:row.performance_source||"auto",sample_status:row.sample_status||"Not Required",shipping_order_id:row.shipping_order_id?.toString()||"",notes:row.notes||""});setCreatorSearch(row.creator_name||"");setProductSearch(row.sku?(row.sku+(row.product_name?" - "+row.product_name:"")):"");setManualCreatorConfirmed(!row.creator_id&&Boolean(row.creator_name));setShowCreatorForm(true);setError("");
   }
 
   async function syncCampaignActuals(campaignId:number){
@@ -228,7 +236,7 @@ export default function CampaignTracker({workspaceId}:{workspaceId:string}){
       }catch(err){setSaving(false);return setError(err instanceof Error?err.message:"Creator belum dapat disimpan.")}
     }
     const product=products.find(x=>x.id===Number(creatorForm.product_id));
-    const payload={workspace_id:workspaceId,campaign_id:selected.id,creator_id:creator?.id??(creatorForm.creator_id?Number(creatorForm.creator_id):null),creator_name:creatorForm.creator_name.trim()||creator?.name||creator?.username||creator?.creator_code||null,platform:creatorForm.platform||creator?.platform||selected.platform||null,product_id:creatorForm.product_id?Number(creatorForm.product_id):null,product_name:product?.product_name||null,sku:product?.sku||null,content_type:creatorForm.content_type||null,due_date:creatorForm.due_date||null,deliverable_status:creatorForm.deliverable_status||"Brief Sent",orders:Number(creatorForm.orders||0),gmv:Number(creatorForm.gmv||0),commission:Number(creatorForm.commission||0),sample_status:creatorForm.sample_status||null,shipping_order_id:creatorForm.shipping_order_id?Number(creatorForm.shipping_order_id):null,notes:creatorForm.notes.trim()||null,updated_at:new Date().toISOString()};
+    const payload={workspace_id:workspaceId,campaign_id:selected.id,creator_id:creator?.id??(creatorForm.creator_id?Number(creatorForm.creator_id):null),creator_name:creatorForm.creator_name.trim()||creator?.name||creator?.username||creator?.creator_code||null,platform:creatorForm.platform||creator?.platform||selected.platform||null,product_id:creatorForm.product_id?Number(creatorForm.product_id):null,product_name:product?.product_name||null,sku:product?.sku||null,content_type:creatorForm.content_type||null,due_date:creatorForm.due_date||null,deliverable_status:creatorForm.deliverable_status||"Brief Sent",orders:creatorForm.performance_source==="manual"?Number(creatorForm.orders||0):0,gmv:creatorForm.performance_source==="manual"?Number(creatorForm.gmv||0):0,commission:creatorForm.performance_source==="manual"?Number(creatorForm.commission||0):0,performance_source:creatorForm.performance_source||"auto",performance_synced_at:null,sample_status:creatorForm.sample_status||null,shipping_order_id:creatorForm.shipping_order_id?Number(creatorForm.shipping_order_id):null,notes:creatorForm.notes.trim()||null,updated_at:new Date().toISOString()};
     if(editingCreatorId){
       const {error}=await supabase.from("campaign_tracker_creators").update(payload).eq("workspace_id",workspaceId).eq("id",editingCreatorId);
       if(error){setSaving(false);return setError(error.message)}
@@ -236,8 +244,8 @@ export default function CampaignTracker({workspaceId}:{workspaceId:string}){
       const {error}=await supabase.from("campaign_tracker_creators").insert(payload);
       if(error){setSaving(false);return setError(error.message)}
     }
-    await syncCampaignActuals(selected.id);
-    setSaving(false);setShowCreatorForm(false);setEditingCreatorId(null);setMessage("Creator campaign diperbarui.");await Promise.all([loadCreatorRows(selected.id),load()]);
+    if(creatorForm.performance_source==="auto")await syncPerformance(selected.id,{silent:true});else await syncCampaignActuals(selected.id);
+    setSaving(false);setShowCreatorForm(false);setEditingCreatorId(null);setMessage(creatorForm.performance_source==="auto"?"Creator campaign diperbarui. GMV, orders, dan komisi dibaca otomatis dari Affiliate Performance.":"Creator campaign diperbarui dengan performance manual.");await Promise.all([loadCreatorRows(selected.id),load()]);
   }
 
   async function quickDeliverable(row:CampaignCreator,status:string){
@@ -310,7 +318,7 @@ export default function CampaignTracker({workspaceId}:{workspaceId:string}){
         {!selected?<div className="campaign-v1-empty detail"><b>Pilih campaign.</b><span>Detail, creator, deliverable, sample, dan performa akan tampil di sini.</span></div>:<>
           <div className="campaign-v1-detail-head">
             <div><span>{selected.campaign_type} · {selected.platform||"Multi Platform"}</span><h3>{selected.name}</h3><p>{selected.brand_name||"Tanpa brand"} · {dateLabel(selected.start_date)} – {dateLabel(selected.end_date)}</p></div>
-            <div className="campaign-v1-detail-actions"><button onClick={()=>openCampaignEdit(selected)}>Edit</button><button className="danger" onClick={()=>void deleteCampaign(selected.id)}>Hapus</button></div>
+            <div className="campaign-v1-detail-actions"><button onClick={()=>void (async()=>{await syncPerformance(selected.id);await Promise.all([loadCreatorRows(selected.id),load()])})}>Sync Performance</button><button onClick={()=>openCampaignEdit(selected)}>Edit</button><button className="danger" onClick={()=>void deleteCampaign(selected.id)}>Hapus</button></div>
           </div>
 
           {selectedBanners.length>0&&<div className="campaign-banner-carousel">
@@ -334,7 +342,7 @@ export default function CampaignTracker({workspaceId}:{workspaceId:string}){
             {deliverableCounts.length?<div className="campaign-v1-deliverable-bars">{deliverableCounts.map(item=><div key={item.label}><span>{item.label}</span><div><i style={{width:(creatorRows.length?item.value/creatorRows.length*100:0)+"%"}}/></div><b>{item.value}</b></div>)}</div>:<div className="campaign-v1-mini-empty">Belum ada creator/deliverable.</div>}
           </div>
 
-          <div className="campaign-v1-section-head"><div><h4>Creator & Deliverables</h4><p>Track content, due date, sample, shipping, orders, GMV, dan komisi.</p></div><button className="primary" onClick={openCreatorAdd}>+ Tambah Creator</button></div>
+          <div className="campaign-v1-section-head"><div><h4>Creator & Deliverables</h4><p>Creator terhubung otomatis membaca Orders, GMV, dan Commission dari Affiliate Performance berdasarkan periode campaign, platform, dan SKU bila dipilih.</p></div><button className="primary" onClick={openCreatorAdd}>+ Tambah Creator</button></div>
 
           {showCreatorForm&&<section className="campaign-v1-creator-editor">
             <div className="campaign-v1-editor-head"><div><span>{editingCreatorId?"EDIT CREATOR":"ADD CREATOR"}</span><h3>{editingCreatorId?"Edit Deliverable Creator":"Tambah Creator ke Campaign"}</h3></div><button onClick={()=>setShowCreatorForm(false)}>×</button></div>
@@ -351,9 +359,10 @@ export default function CampaignTracker({workspaceId}:{workspaceId:string}){
               <label><span>Deliverable Status</span><select value={creatorForm.deliverable_status} onChange={e=>setCreatorForm({...creatorForm,deliverable_status:e.target.value})}>{DELIVERABLES.map(x=><option key={x}>{x}</option>)}</select></label>
               <label><span>Sample Status</span><select value={creatorForm.sample_status} onChange={e=>setCreatorForm({...creatorForm,sample_status:e.target.value})}>{SAMPLE_STATUSES.map(x=><option key={x}>{x}</option>)}</select></label>
               <label><span>Shipping</span><select value={creatorForm.shipping_order_id} onChange={e=>setCreatorForm({...creatorForm,shipping_order_id:e.target.value})}><option value="">Tidak terhubung</option>{shipping.map(x=><option key={x.id} value={x.id}>{x.reference_no||x.tracking||("Shipping #"+x.id)} · {x.creator_name||"-"} · {x.status||"-"}</option>)}</select></label>
-              <label><span>Orders</span><input type="number" min="0" value={creatorForm.orders} onChange={e=>setCreatorForm({...creatorForm,orders:e.target.value})}/></label>
-              <label><span>GMV</span><input type="number" min="0" value={creatorForm.gmv} onChange={e=>setCreatorForm({...creatorForm,gmv:e.target.value})}/></label>
-              <label><span>Commission</span><input type="number" min="0" value={creatorForm.commission} onChange={e=>setCreatorForm({...creatorForm,commission:e.target.value})}/></label>
+              <label><span>Performance Source</span><select value={creatorForm.performance_source} onChange={e=>setCreatorForm({...creatorForm,performance_source:e.target.value})}><option value="auto">Auto · Affiliate Performance</option><option value="manual">Manual Override</option></select><small>{creatorForm.performance_source==="auto"?"Sinkron berdasarkan creator + periode campaign + platform + SKU.":"Gunakan hanya jika data performance tidak tersedia di Upload Center."}</small></label>
+              <label><span>Orders</span><input type="number" min="0" disabled={creatorForm.performance_source==="auto"} value={creatorForm.orders} onChange={e=>setCreatorForm({...creatorForm,orders:e.target.value})}/></label>
+              <label><span>GMV</span><input type="number" min="0" disabled={creatorForm.performance_source==="auto"} value={creatorForm.gmv} onChange={e=>setCreatorForm({...creatorForm,gmv:e.target.value})}/></label>
+              <label><span>Commission</span><input type="number" min="0" disabled={creatorForm.performance_source==="auto"} value={creatorForm.commission} onChange={e=>setCreatorForm({...creatorForm,commission:e.target.value})}/></label>
               <label className="wide"><span>Notes</span><textarea rows={3} value={creatorForm.notes} onChange={e=>setCreatorForm({...creatorForm,notes:e.target.value})}/></label>
             </div>
             <div className="campaign-v1-editor-actions"><button className="secondary" onClick={()=>setShowCreatorForm(false)}>Batal</button><button className="primary" disabled={saving} onClick={()=>void saveCreator()}>{saving?"Menyimpan...":"Simpan Creator"}</button></div>
@@ -366,7 +375,7 @@ export default function CampaignTracker({workspaceId}:{workspaceId:string}){
               <td>{row.content_type||"-"}</td><td>{dateLabel(row.due_date)}</td>
               <td><select className={"campaign-v1-deliverable-select "+deliverableTone(row.deliverable_status)} value={row.deliverable_status} onChange={e=>void quickDeliverable(row,e.target.value)}>{DELIVERABLES.map(x=><option key={x}>{x}</option>)}</select></td>
               <td><b>{row.sample_status||"-"}</b><small>{row.shipping_order_id?"Shipping #"+row.shipping_order_id:"Belum terhubung"}</small></td>
-              <td>{number(row.orders)}</td><td>{money(row.gmv)}</td><td>{money(row.commission)}</td>
+              <td>{number(row.orders)}<small>{row.performance_source==="auto"?"Auto":"Manual"}</small></td><td>{money(row.gmv)}{row.performance_synced_at&&<small>{new Date(row.performance_synced_at).toLocaleString("id-ID")}</small>}</td><td>{money(row.commission)}</td>
               <td><div className="campaign-v1-row-actions"><button onClick={()=>openCreatorEdit(row)}>Edit</button><button className="danger" onClick={()=>void removeCreator(row)}>Hapus</button></div></td>
             </tr>)}</tbody>
           </table></div>}
