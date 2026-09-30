@@ -31,7 +31,7 @@ export default function CreatorIdentityCenter({workspaceId}:{workspaceId:string}
 
   async function load(q=search){
     setLoading(true);setError("");
-    const {data:payload,error:e}=await supabase.rpc("luma_creator_identity_candidates_v1",{p_workspace_id:workspaceId,p_search:q.trim()||null,p_limit:100});
+    const {data:payload,error:e}=await supabase.rpc("luma_creator_identity_candidates_v1",{p_workspace_id:workspaceId,p_search:q.trim()||null,p_limit:50});
     if(e){setError(e.message);setData(null)}
     else{
       const next=(payload||{}) as Row;setData(next);
