@@ -8,16 +8,14 @@ export async function resolvePromo(admin:any,userId:string,code:string,target:Pr
   const now=Date.now();
   if(promo.starts_at&&new Date(promo.starts_at).getTime()>now)throw new Error("Kode promo belum aktif.");
   if(promo.ends_at&&new Date(promo.ends_at).getTime()<=now)throw new Error("Kode promo sudah berakhir.");
-  const [{count:used},{count:userUsed},{count:reservedSubs},{count:reservedTokens},{count:userReservedSubs},{count:userReservedTokens}]=await Promise.all([
+  const [{count:used},{count:userUsed},{count:reserved},{count:userReserved}]=await Promise.all([
     admin.from("luma_promo_redemptions").select("id",{head:true,count:"exact"}).eq("promo_id",promo.id).eq("status","applied"),
     admin.from("luma_promo_redemptions").select("id",{head:true,count:"exact"}).eq("promo_id",promo.id).eq("user_id",userId).eq("status","applied"),
-    admin.from("luma_subscription_orders").select("id",{head:true,count:"exact"}).eq("promo_id",promo.id).in("status",["pending","processing"]),
-    admin.from("luma_topup_orders").select("id",{head:true,count:"exact"}).eq("promo_id",promo.id).in("status",["pending","processing"]),
-    admin.from("luma_subscription_orders").select("id",{head:true,count:"exact"}).eq("promo_id",promo.id).eq("user_id",userId).in("status",["pending","processing"]),
-    admin.from("luma_topup_orders").select("id",{head:true,count:"exact"}).eq("promo_id",promo.id).eq("user_id",userId).in("status",["pending","processing"])
+    admin.from("luma_promo_reservations").select("id",{head:true,count:"exact"}).eq("promo_id",promo.id).eq("status","reserved").gt("expires_at",new Date().toISOString()),
+    admin.from("luma_promo_reservations").select("id",{head:true,count:"exact"}).eq("promo_id",promo.id).eq("user_id",userId).eq("status","reserved").gt("expires_at",new Date().toISOString())
   ]);
-  const totalUsage=Number(used||0)+Number(reservedSubs||0)+Number(reservedTokens||0);
-  const totalUserUsage=Number(userUsed||0)+Number(userReservedSubs||0)+Number(userReservedTokens||0);
+  const totalUsage=Number(used||0)+Number(reserved||0);
+  const totalUserUsage=Number(userUsed||0)+Number(userReserved||0);
   if(promo.max_uses!=null&&totalUsage>=Number(promo.max_uses))throw new Error("Kuota promo sudah habis.");
   if(totalUserUsage>=Number(promo.per_user_limit||1))throw new Error("Kode promo sudah pernah digunakan.");
   const type=String(promo.promo_type);
