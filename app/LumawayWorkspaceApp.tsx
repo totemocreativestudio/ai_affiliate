@@ -29,6 +29,7 @@ import LumaSidebar from "./components/LumaSidebar";
 import LegacyDashboard from "./components/LegacyDashboard";
 import RestoredLegacyModules from "./components/RestoredLegacyModules";
 import NotificationCenter from "./components/NotificationCenter";
+import GlobalCommandCenter from "./components/GlobalCommandCenter";
 import ContentHub from "./components/ContentHub";
 import SocialLumaway from "./components/SocialLumaway";
 import LumaHelpdeskAgent from "./components/LumaHelpdeskAgent";
@@ -459,6 +460,7 @@ export default function LumawayWorkspaceApp() {
     <div className="app-shell">
       <header className="topbar">
         <div className="topbar-brand-copy"><span className="topbar-kicker">{isAdmin ? "LUMAWAY OWNER" : "LUMAWAY WORKSPACE"}</span><span className="topbar-title">{isAdmin ? "Business Control Center" : "Affiliate Intelligence"}</span></div>
+        {!isAdmin&&<GlobalCommandCenter workspaceId={workspace.id} accessLocked={accessLocked}/>}
         <div className="topbar-right"><PWAInstallButton compact /><BackgroundTaskCenter /><NotificationCenter workspaceId={workspace.id} userId={profile.id} /><span className="connection-pill"><i />{workspace.name} · Active</span></div>
       </header>
       <main className="content">
