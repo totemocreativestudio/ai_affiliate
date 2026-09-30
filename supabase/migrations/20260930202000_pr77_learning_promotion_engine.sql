@@ -15,6 +15,47 @@ alter table public.luma_blog_posts
 create index if not exists idx_luma_blog_posts_published_category
   on public.luma_blog_posts(status,category,published_at desc);
 
+
+create table if not exists public.luma_content_categories (
+  id bigserial primary key,
+  name text not null,
+  slug text not null unique,
+  content_scope text not null default 'article'
+    check(content_scope in ('article','tutorial','promotion','all')),
+  description text,
+  sort_order integer not null default 0,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.luma_content_categories enable row level security;
+drop policy if exists luma_content_categories_read on public.luma_content_categories;
+create policy luma_content_categories_read
+on public.luma_content_categories for select to authenticated
+using (is_active=true or public.luma_is_admin());
+drop policy if exists luma_content_categories_admin_write on public.luma_content_categories;
+create policy luma_content_categories_admin_write
+on public.luma_content_categories for all to authenticated
+using (public.luma_is_admin())
+with check (public.luma_is_admin());
+
+insert into public.luma_content_categories(name,slug,content_scope,description,sort_order)
+values
+('Tutorial Lumaway','tutorial-lumaway','all','Panduan penggunaan fitur dan workflow Lumaway.',1),
+('Product Knowledge','product-knowledge','all','Penjelasan fitur, modul, dan cara kerja produk.',2),
+('Business & Growth','business-growth','article','Strategi operasional, growth, dan pengambilan keputusan.',3),
+('Affiliate & Creator','affiliate-creator','all','Creator management, affiliate performance, ratecard, dan campaign.',4),
+('Marketplace & E-commerce','marketplace-ecommerce','article','Marketplace performance, produk, refund, dan commerce.',5),
+('Data & Analytics','data-analytics','all','Data quality, dashboard, metrik, dan analitik.',6),
+('Campaign & Promotion','campaign-promotion','all','Campaign tracker, promo, dan aktivasi.',7),
+('Lifestyle & Productivity','lifestyle-productivity','article','Cara kerja, productivity, dan kebiasaan tim.',8),
+('News & Updates','news-updates','article','Update fitur dan perkembangan Lumaway.',9),
+('Operations','operations','all','Shipping, samples, follow up, dan workflow operasional.',10)
+on conflict(slug) do update set
+  name=excluded.name,content_scope=excluded.content_scope,
+  description=excluded.description,sort_order=excluded.sort_order,is_active=true,updated_at=now();
+
 -- TUTORIAL / LEARNING --------------------------------------------------------
 alter table public.tutorials
   alter column youtube_url drop not null,
@@ -322,6 +363,33 @@ drop trigger if exists trg_luma_apply_promo_reservation on public.luma_promo_red
 create trigger trg_luma_apply_promo_reservation
 after insert on public.luma_promo_redemptions
 for each row execute function public.luma_apply_promo_reservation_on_redemption();
+
+
+create or replace function public.luma_release_promo_reservation_on_order_terminal()
+returns trigger
+language plpgsql
+security definer
+set search_path=public,pg_temp
+as $
+begin
+  if lower(coalesce(new.status,'')) in ('expired','canceled','cancelled','failed') then
+    update public.luma_promo_reservations
+    set status='released',updated_at=now()
+    where order_code=new.order_code and status='reserved';
+  end if;
+  return new;
+end
+$;
+
+drop trigger if exists trg_luma_release_subscription_promo on public.luma_subscription_orders;
+create trigger trg_luma_release_subscription_promo
+after update of status on public.luma_subscription_orders
+for each row execute function public.luma_release_promo_reservation_on_order_terminal();
+
+drop trigger if exists trg_luma_release_topup_promo on public.luma_topup_orders;
+create trigger trg_luma_release_topup_promo
+after update of status on public.luma_topup_orders
+for each row execute function public.luma_release_promo_reservation_on_order_terminal();
 
 -- Seed 8 controlled promotion campaigns. All monetary discounts are capped <= Rp12,000.
 insert into public.luma_promo_codes(
