@@ -1,5 +1,6 @@
-import {redirect} from "next/navigation";
+import PublicInsightsPage,{metadata as sourceMetadata} from "../web/insights/page";
 
-export default function InsightsAliasPage(){
-  redirect("/web/insights");
-}
+export const dynamic="force-dynamic";
+export const metadata=sourceMetadata;
+
+export default PublicInsightsPage;

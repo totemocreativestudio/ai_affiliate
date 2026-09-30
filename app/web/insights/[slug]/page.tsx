@@ -12,12 +12,12 @@ export async function generateMetadata({params}:{params:Promise<{slug:string}>})
   if(post)return {
     title:post.seo_title||post.title,
     description:post.seo_description||post.excerpt||"",
-    alternates:{canonical:`${PUBLIC_SITE_ORIGIN}/web/insights/${post.slug}`},
-    openGraph:{type:"article",title:post.title,description:post.excerpt||"",url:`${PUBLIC_SITE_ORIGIN}/web/insights/${post.slug}`,publishedTime:post.published_at||undefined,modifiedTime:post.updated_at,images:post.cover_image_url?[post.cover_image_url]:undefined}
+    alternates:{canonical:`${PUBLIC_SITE_ORIGIN}/insights/${post.slug}`},
+    openGraph:{type:"article",title:post.title,description:post.excerpt||"",url:`${PUBLIC_SITE_ORIGIN}/insights/${post.slug}`,publishedTime:post.published_at||undefined,modifiedTime:post.updated_at,images:post.cover_image_url?[post.cover_image_url]:undefined}
   };
   const fallback=getStaticInsight(slug);
   if(!fallback)return {};
-  return {title:fallback.title,description:fallback.description,alternates:{canonical:`${PUBLIC_SITE_ORIGIN}/web/insights/${fallback.slug}`}};
+  return {title:fallback.title,description:fallback.description,alternates:{canonical:`${PUBLIC_SITE_ORIGIN}/insights/${fallback.slug}`}};
 }
 
 function safeJson(value:unknown){
@@ -36,19 +36,21 @@ export default async function PublicInsightDetail({params}:{params:Promise<{slug
   const author=post?.author_name||"Lumaway";
   const date=post?.published_at||fallback!.date;
   const embed=youtubeEmbed(post?.video_embed_url||null);
-  const articleUrl=`${PUBLIC_SITE_ORIGIN}/web/insights/${slug}`;
+  const articleUrl=`${PUBLIC_SITE_ORIGIN}/insights/${slug}`;
   const jsonLd={"@context":"https://schema.org","@type":"Article",headline:title,description:description||"",datePublished:date,dateModified:post?.updated_at||date,author:{"@type":"Organization",name:author},publisher:{"@type":"Organization",name:"Lumaway"},mainEntityOfPage:articleUrl,image:post?.cover_image_url||`${PUBLIC_SITE_ORIGIN}/luma-mark.png`};
+  const faqItems=Array.isArray(post?.faq_json)?post!.faq_json!.filter((item:any)=>String(item?.question||"").trim()&&String(item?.answer||"").trim()).slice(0,12):[];
+  const faqJsonLd=faqItems.length?{"@context":"https://schema.org","@type":"FAQPage",mainEntity:faqItems.map((item:any)=>({"@type":"Question",name:String(item.question),acceptedAnswer:{"@type":"Answer",text:String(item.answer)}}))}:null;
 
   return <main>
     {post&&<PublicContentTracker contentId={post.id}/>}
     <header className="public-insights-nav">
       <Link href="/web/home" className="public-insights-brand"><img src="/luma-mark.png" alt=""/><strong>LUMAWAY<span>.</span></strong></Link>
-      <nav><Link href="/web/home">Home</Link><Link href="/web/insights" className="active">Insights</Link><Link href="/app.lumaway/login">Login</Link></nav>
+      <nav><Link href="/web/home">Home</Link><Link href="/insights" className="active">Insights</Link><Link href="/app.lumaway/login">Login</Link></nav>
     </header>
 
     <article className="public-article">
       <header className="public-article-head">
-        <nav className="public-breadcrumb"><Link href="/web/home">Home</Link><span>/</span><Link href="/web/insights">Insights</Link></nav>
+        <nav className="public-breadcrumb"><Link href="/web/home">Home</Link><span>/</span><Link href="/insights">Insights</Link></nav>
         <span className="public-eyebrow">{category}</span>
         <h1>{title}</h1>
         <p>{description}</p>
@@ -64,12 +66,12 @@ export default async function PublicInsightDetail({params}:{params:Promise<{slug
           {post?.external_dofollow_url&&<aside className="public-reference"><strong>Referensi terkait</strong><a href={post.external_dofollow_url} target="_blank" rel="noopener noreferrer">{post.external_dofollow_url}</a></aside>}
           <aside className="public-context-note"><strong>Gunakan insight sebagai bahan keputusan.</strong><p>Sesuaikan periode, sumber, dan indikator dengan kondisi bisnis Anda. Temuan data perlu dibaca bersama konteks operasional.</p></aside>
         </div>
-        <aside className="public-article-side"><span>ARTIKEL LUMAWAY</span><strong>{category}</strong><small>Posted by {author}</small><Link href="/web/insights">← Semua Insights</Link><Link href="/app.lumaway/register">Coba Lumaway →</Link></aside>
+        <aside className="public-article-side"><span>ARTIKEL LUMAWAY</span><strong>{category}</strong><small>Posted by {author}</small><Link href="/insights">← Semua Insights</Link><Link href="/app.lumaway/register">Coba Lumaway →</Link></aside>
       </div>
     </article>
 
     <section className="public-insights-note compact"><div><span className="public-eyebrow">LANGKAH BERIKUTNYA</span><h2>Data Anda punya potensi.</h2><p>Satukan konteks, analisis, dan tindak lanjut di Lumaway.</p></div><Link href="/app.lumaway/register">Buat akun Lumaway →</Link></section>
     <footer className="public-insights-footer"><span>© {new Date().getFullYear()} Lumaway · Light Up Your Potential.</span><Link href="/web/home">Lumaway Home</Link></footer>
-    <script type="application/ld+json" dangerouslySetInnerHTML={{__html:safeJson(jsonLd)}}/>
+    <script type="application/ld+json" dangerouslySetInnerHTML={{__html:safeJson(jsonLd)}}/>{faqJsonLd&&<script type="application/ld+json" dangerouslySetInnerHTML={{__html:safeJson(faqJsonLd)}}/>}
   </main>;
 }
