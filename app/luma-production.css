@@ -495,3 +495,17 @@ button:disabled{cursor:not-allowed;opacity:.55}
 @media(max-width:1180px){.creator-id-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){.creator-review-actions{grid-template-columns:1fr}.creator-review-actions>div{justify-content:flex-start}.creator-id-toolbar select{flex:1;min-width:140px}}
 @media(max-width:560px){.creator-id-stats{grid-template-columns:1fr 1fr}.creator-review-status{flex-wrap:wrap}.creator-review-status small{width:100%;margin-left:0}}
+
+
+/* -------- PR78D Observability / System Health -------- */
+.system-health-hero{border-width:1px}
+.system-health-hero.status-healthy{background:linear-gradient(135deg,#ffffff 0%,#f3fbf7 100%);border-color:#cfe9dc}
+.system-health-hero.status-degraded{background:linear-gradient(135deg,#ffffff 0%,#fffaf0 100%);border-color:#f0dfb7}
+.system-health-hero.status-critical{background:linear-gradient(135deg,#ffffff 0%,#fff4f2 100%);border-color:#f2cbc6}
+.system-health-hero.status-healthy .owner-kicker{color:#087a52}
+.system-health-hero.status-degraded .owner-kicker{color:#b36a09}
+.system-health-hero.status-critical .owner-kicker{color:#b42318}
+.system-health-hero .owner-kpi-row{margin-top:12px;grid-template-columns:repeat(4,minmax(0,1fr))}
+.system-health-hero .owner-metric{background:rgba(255,255,255,.82)}
+@media(max-width:1100px){.system-health-hero .owner-kpi-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.system-health-hero .owner-kpi-row{grid-template-columns:1fr}}
