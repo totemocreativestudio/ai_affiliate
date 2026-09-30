@@ -48,10 +48,17 @@ export default function SubscriptionBilling({ workspaceId, userId }: { workspace
     const saved = localStorage.getItem("lumaway_promo_code");
     if (saved) setPromo(saved);
     const refreshPricing = () => void load();
+    const applyPromo=(event:Event)=>{
+      const code=String((event as CustomEvent).detail?.code||"").trim().toUpperCase();
+      if(!code)return;
+      setPromo(code);setPromoInfo(null);setMsg("Kode "+code+" siap divalidasi.");
+    };
     window.addEventListener("luma-pricing-updated", refreshPricing);
+    window.addEventListener("lumaway-promo-code",applyPromo as EventListener);
     const timer = window.setInterval(refreshPricing, 30000);
     return () => {
       window.removeEventListener("luma-pricing-updated", refreshPricing);
+      window.removeEventListener("lumaway-promo-code",applyPromo as EventListener);
       window.clearInterval(timer);
     };
   }, [workspaceId, userId]);

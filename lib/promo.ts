@@ -8,19 +8,31 @@ export async function resolvePromo(admin:any,userId:string,code:string,target:Pr
   const now=Date.now();
   if(promo.starts_at&&new Date(promo.starts_at).getTime()>now)throw new Error("Kode promo belum aktif.");
   if(promo.ends_at&&new Date(promo.ends_at).getTime()<=now)throw new Error("Kode promo sudah berakhir.");
-  const [{count:used},{count:userUsed},{count:reservedSubs},{count:reservedTokens},{count:userReservedSubs},{count:userReservedTokens}]=await Promise.all([
+  const [{count:used},{count:userUsed},{count:reserved},{count:userReserved}]=await Promise.all([
     admin.from("luma_promo_redemptions").select("id",{head:true,count:"exact"}).eq("promo_id",promo.id).eq("status","applied"),
     admin.from("luma_promo_redemptions").select("id",{head:true,count:"exact"}).eq("promo_id",promo.id).eq("user_id",userId).eq("status","applied"),
-    admin.from("luma_subscription_orders").select("id",{head:true,count:"exact"}).eq("promo_id",promo.id).in("status",["pending","processing"]),
-    admin.from("luma_topup_orders").select("id",{head:true,count:"exact"}).eq("promo_id",promo.id).in("status",["pending","processing"]),
-    admin.from("luma_subscription_orders").select("id",{head:true,count:"exact"}).eq("promo_id",promo.id).eq("user_id",userId).in("status",["pending","processing"]),
-    admin.from("luma_topup_orders").select("id",{head:true,count:"exact"}).eq("promo_id",promo.id).eq("user_id",userId).in("status",["pending","processing"])
+    admin.from("luma_promo_reservations").select("id",{head:true,count:"exact"}).eq("promo_id",promo.id).eq("status","reserved").gt("expires_at",new Date().toISOString()),
+    admin.from("luma_promo_reservations").select("id",{head:true,count:"exact"}).eq("promo_id",promo.id).eq("user_id",userId).eq("status","reserved").gt("expires_at",new Date().toISOString())
   ]);
-  const totalUsage=Number(used||0)+Number(reservedSubs||0)+Number(reservedTokens||0);
-  const totalUserUsage=Number(userUsed||0)+Number(userReservedSubs||0)+Number(userReservedTokens||0);
+  const totalUsage=Number(used||0)+Number(reserved||0);
+  const totalUserUsage=Number(userUsed||0)+Number(userReserved||0);
   if(promo.max_uses!=null&&totalUsage>=Number(promo.max_uses))throw new Error("Kuota promo sudah habis.");
   if(totalUserUsage>=Number(promo.per_user_limit||1))throw new Error("Kode promo sudah pernah digunakan.");
   const type=String(promo.promo_type);
+  if(target!=="generic"&&Number(promo.min_purchase_amount||0)>0&&Number(baseAmount||0)<Number(promo.min_purchase_amount||0))throw new Error("Minimum transaksi promo belum terpenuhi.");
+  if(Array.isArray(promo.valid_weekdays)&&promo.valid_weekdays.length){
+    const key=new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Jakarta",weekday:"short"}).format(new Date());
+    const day=({Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6} as Record<string,number>)[key];
+    if(!promo.valid_weekdays.map((x:any)=>Number(x)).includes(day))throw new Error("Kode promo tidak berlaku hari ini.");
+  }
+  if(promo.new_user_only){
+    const {count}=await admin.from("luma_subscription_orders").select("id",{head:true,count:"exact"}).eq("user_id",userId).eq("status","paid");
+    if(Number(count||0)>0)throw new Error("Promo ini khusus user baru.");
+  }
+  if(promo.renewal_only){
+    const {count}=await admin.from("luma_subscription_orders").select("id",{head:true,count:"exact"}).eq("user_id",userId).eq("status","paid");
+    if(Number(count||0)<1)throw new Error("Promo ini khusus perpanjangan.");
+  }
   if(target==="subscription"){
     if(!["subscription_percent","subscription_amount"].includes(type))throw new Error("Kode promo tidak berlaku untuk langganan.");
     const allowed=(promo.applicable_plan_codes||[]) as string[];
@@ -36,6 +48,8 @@ export async function resolvePromo(admin:any,userId:string,code:string,target:Pr
   const value=Number(promo.value||0);
   if(type.endsWith("_percent"))discount=Math.min(Number(baseAmount||0),Math.round(Number(baseAmount||0)*Math.min(100,value)/100));
   if(type.endsWith("_amount"))discount=Math.min(Number(baseAmount||0),value);
+  const maxDiscount=Math.max(0,Math.min(12000,Number(promo.max_discount_amount??12000)));
+  if(discount>0)discount=Math.min(discount,maxDiscount);
   if(type==="free_tokens")bonusTokens=Math.max(0,Math.floor(value));
   if(type==="extend_days")extendDays=Math.max(0,Math.floor(value));
   return {promo,effect:{discount_amount:discount,final_amount:Math.max(0,Number(baseAmount||0)-discount),bonus_tokens:bonusTokens,extend_days:extendDays}};
