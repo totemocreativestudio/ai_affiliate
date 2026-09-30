@@ -10,6 +10,7 @@ const SECTION_ROUTES: Record<string, string> = {
   "affiliate-support": "affiliate-support",
   "ai-analytics": "ai-analytics",
   "promo-studio": "promo-studio",
+  "campaign-tracker": "campaign-tracker",
   kanban: "kanban",
   "support-tickets": "support-tickets",
   billing: "billing",
