@@ -197,7 +197,15 @@ export default function CreatorSamples({workspaceId}:{workspaceId:string}){
       <section className="samples-v2-detail">
         {!selected?<div className="samples-v2-empty detail"><b>Pilih creator sample.</b><span>Detail sample dan timeline akan tampil di sini.</span></div>:<>
           <div className="samples-v2-detail-head">
-            <div className="samples-v2-detail-person"><div className="samples-v2-avatar large">{String(selected.creator_name||"C").slice(0,1).toUpperCase()}</div><div><span>{selected.platform||"Creator"}</span><h3>{selected.creator_name||"Creator"}</h3><p>{selected.product_name||selected.sku||"Produk belum dipilih"}</p></div></div>
+            <div className="samples-v2-detail-person">
+              <div className="samples-v2-avatar large">{String(selected.creator_name||"C").slice(0,1).toUpperCase()}</div>
+              <div className="samples-v2-detail-copy">
+                <div className="samples-v2-detail-meta"><span>{selected.platform||"Creator"}</span><span className={"samples-v2-status "+statusTone(selected.sample_status)}>{statusLabel(selected.sample_status)}</span></div>
+                <h3>{selected.creator_name||"Creator"}</h3>
+                <p>{selected.product_name||selected.sku||"Produk belum dipilih"}</p>
+                <small>Sample #{selected.id} · {dateLabel(selected.sent_date)}{selected.sku?" · SKU "+selected.sku:""}</small>
+              </div>
+            </div>
             <div className="samples-v2-detail-actions"><button onClick={()=>openEdit(selected)}>Edit</button>{selected.creator_id&&<button onClick={()=>setCreator360Id(selected.creator_id)}>Customer 360</button>}<a href="/shipping">Shipping</a><button className="danger" onClick={()=>void remove(selected.id)}>Hapus</button></div>
           </div>
 
@@ -209,13 +217,13 @@ export default function CreatorSamples({workspaceId}:{workspaceId:string}){
           </div>
 
           <section className="samples-v2-timeline-card">
-            <div className="samples-v2-section-head"><div><h4>Sample Timeline</h4><p>Progress sample menuju hasil konten.</p></div><span>{dateLabel(selected.sent_date)}</span></div>
-            <div className="samples-v2-timeline">{steps.map((step,index)=><div key={step.key} className={index<=activeStep?"done":""}><i/><span><b>{step.label}</b><small>{index===0?dateLabel(selected.sent_date):index<=activeStep?"Completed":"Waiting"}</small></span></div>)}</div>
+            <div className="samples-v2-section-head"><div><h4>Sample Timeline</h4><p>Progress sample dari pengiriman sampai konten selesai.</p></div><span className={"samples-v2-status "+statusTone(selected.sample_status)}>{statusLabel(selected.sample_status)}</span></div>
+            <div className="samples-v2-timeline">{steps.map((step,index)=><div key={step.key} className={index<=activeStep?"done":""}><i/><span><b>{step.label}</b><small>{index===0?dateLabel(selected.sent_date):index<activeStep?"Completed":index===activeStep?statusLabel(selected.sample_status):"Waiting"}</small></span></div>)}</div>
           </section>
 
           <section className="samples-v2-info-grid">
-            <article><h4>Product & Shipping</h4><dl><div><dt>SKU</dt><dd>{selected.sku||"-"}</dd></div><div><dt>Product</dt><dd>{selected.product_name||"-"}</dd></div><div><dt>Tracking</dt><dd>{selected.tracking||"-"}</dd></div><div><dt>Source</dt><dd>{selected.source||"-"}</dd></div></dl></article>
-            <article><h4>Follow Up</h4><p>{selected.notes||"Belum ada catatan follow up."}</p><div className="samples-v2-quick-actions">{selected.sample_status==="sent"&&<button onClick={()=>void quickStatus(selected,"received")}>Mark Received</button>}{selected.sample_status==="received"&&<button onClick={()=>void quickStatus(selected,"content_pending")}>Content Pending</button>}{selected.sample_status==="content_pending"&&<button className="primary" onClick={()=>void quickStatus(selected,"content_done")}>Content Done</button>}{selected.sample_status==="content_done"&&<span className="samples-v2-complete">Sample workflow selesai.</span>}</div></article>
+            <article className="samples-v2-product-card"><div className="samples-v2-card-title"><div><span>PRODUCT & SHIPPING</span><h4>Informasi sample</h4></div><button type="button" onClick={()=>openEdit(selected)}>Edit Data</button></div><dl><div><dt>SKU</dt><dd>{selected.sku||"-"}</dd></div><div className="product-row"><dt>Product</dt><dd>{selected.product_name||"-"}</dd></div><div><dt>Tracking</dt><dd>{selected.tracking||"-"}</dd></div><div><dt>Source</dt><dd>{selected.source||"-"}</dd></div></dl></article>
+            <article className="samples-v2-followup-card"><div className="samples-v2-card-title"><div><span>NEXT ACTION</span><h4>Follow Up</h4></div></div><p>{selected.notes||"Belum ada catatan follow up. Gunakan action di bawah untuk memperbarui progress sample."}</p><div className="samples-v2-quick-actions">{selected.sample_status==="sent"&&<button className="primary" onClick={()=>void quickStatus(selected,"received")}>Tandai Diterima</button>}{selected.sample_status==="received"&&<button className="primary" onClick={()=>void quickStatus(selected,"content_pending")}>Mulai Content Pending</button>}{selected.sample_status==="content_pending"&&<button className="primary" onClick={()=>void quickStatus(selected,"content_done")}>Tandai Content Done</button>}{selected.sample_status==="content_done"&&<span className="samples-v2-complete">Sample workflow selesai.</span>}{selected.sample_status==="returned"&&<span className="samples-v2-complete neutral">Sample sudah dikembalikan.</span>}{selected.sample_status==="cancelled"&&<span className="samples-v2-complete danger">Sample dibatalkan.</span>}</div></article>
           </section>
         </>}
       </section>
