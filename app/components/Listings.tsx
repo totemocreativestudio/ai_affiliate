@@ -7,6 +7,7 @@ import {CreatorAutocomplete,ProductAutocomplete,CreatorSearchResult,ProductSearc
 type Creator={
   id:number;creator_code:string|null;name:string|null;username:string|null;platform:string|null;
   affiliate_id:string|null;phone:string|null;payment_type:string|null;ratecard:number|null;status:string|null;
+  profile_url?:string|null;avatar_url?:string|null;social_links?:Record<string,string>|null;social_profile_updated_at?:string|null;
 };
 type Product={id:number;sku:string;product_name:string|null;category:string|null;cost_price:number|null};
 type Listing={
@@ -34,6 +35,11 @@ const ACTIVITY_STAGE:Record<string,string>={
 const EMPTY_FORM:FormState={data_date:"",creator_id:"",creator_name:"",platform:"",product_master_id:"",product_hpp:"0",stage:"New Lead",payment_type:"",ratecard:"",posting_date:"",post_link:"",next_action:"",agreement_id:"",notes:""};
 const money=(value:any)=>"Rp "+new Intl.NumberFormat("id-ID",{maximumFractionDigits:0}).format(Number(value||0));
 const dateLabel=(value:string|null)=>value?new Date(value+"T00:00:00").toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"}):"-";
+const SOCIAL_FIELDS=[
+  ["instagram","Instagram"],["tiktok","TikTok"],["facebook","Facebook"],["lemon8","Lemon8"],
+  ["youtube","YouTube"],["threads","Threads"],["x","X / Twitter"],["other","Lainnya"]
+] as const;
+const emptySocial=()=>Object.fromEntries(SOCIAL_FIELDS.map(([key])=>[key,""])) as Record<string,string>;
 
 function stageTone(stage:string|null){
   const value=String(stage||"New Lead").toLowerCase();
@@ -78,12 +84,16 @@ export default function Listings({workspaceId}:{workspaceId:string}){
   const [detailLoading,setDetailLoading]=useState(false);
   const [error,setError]=useState("");
   const [message,setMessage]=useState("");
+  const [socialOpen,setSocialOpen]=useState(false);
+  const [socialSaving,setSocialSaving]=useState(false);
+  const [socialForm,setSocialForm]=useState<Record<string,string>>(emptySocial());
+  const [avatarInput,setAvatarInput]=useState("");
 
   async function loadData(){
     setLoading(true);setError("");
     const [listingResult,creatorResult,productResult]=await Promise.all([
       supabase.from("listings").select("id,data_date,creator_id,creator_name,platform,product_master_id,product_name,sku,product_hpp,stage,payment_type,ratecard,posting_date,post_link,next_action,agreement_id,notes").eq("workspace_id",workspaceId).order("id",{ascending:false}),
-      supabase.from("creators").select("id,creator_code,name,username,platform,affiliate_id,phone,payment_type,ratecard,status").eq("workspace_id",workspaceId).order("name").limit(7770),
+      supabase.from("creators").select("id,creator_code,name,username,platform,affiliate_id,phone,payment_type,ratecard,status,profile_url,avatar_url,social_links,social_profile_updated_at").eq("workspace_id",workspaceId).order("name").limit(7770),
       supabase.from("product_master").select("id,sku,product_name,category,cost_price").eq("workspace_id",workspaceId).order("sku").limit(1000),
     ]);
     if(listingResult.error)setError(listingResult.error.message); else {
@@ -245,6 +255,41 @@ export default function Listings({workspaceId}:{workspaceId:string}){
     setSaving(false);setMessage("Aktivitas creator ditambahkan.");setActivityFor(null);await loadData();
   }
 
+  function openSocialProfile(){
+    if(!selectedCreator){setError("Creator belum terhubung ke Master Creator.");return}
+    const links=selectedCreator.social_links&&typeof selectedCreator.social_links==="object"?selectedCreator.social_links:{};
+    setSocialForm({...emptySocial(),...links});
+    setAvatarInput(selectedCreator.avatar_url||"");
+    setError("");setMessage("");setSocialOpen(true);
+  }
+
+  async function saveSocialProfile(){
+    if(!selectedCreator)return;
+    setSocialSaving(true);setError("");setMessage("");
+    try{
+      const response=await fetch("/api/social-profile/resolve",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          workspace_id:workspaceId,
+          creator_id:selectedCreator.id,
+          links:socialForm,
+          avatar_url:avatarInput.trim()||null
+        })
+      });
+      const result=await response.json();
+      if(!response.ok||!result.ok)throw new Error(result.error||"Gagal menyimpan profil sosial.");
+      const updated:Creator={...selectedCreator,...result.creator};
+      setSelectedCreator(updated);
+      setCreators(prev=>prev.map(item=>item.id===updated.id?{...item,...updated}:item));
+      setMasterCreators(prev=>prev.map(item=>item.id===updated.id?{...item,...updated}:item));
+      setSocialOpen(false);
+      setMessage(result.warning||"Link sosial dan foto profil creator diperbarui.");
+    }catch(err:any){
+      setError(err?.message||"Gagal menyimpan profil sosial.");
+    }finally{setSocialSaving(false)}
+  }
+
   const platforms=useMemo(()=>[...new Set(rows.map(x=>x.platform).filter(Boolean) as string[])].sort(),[rows]);
   const visibleRows=useMemo(()=>rows.filter(row=>{
     const q=search.trim().toLowerCase();
@@ -266,6 +311,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
   const masterCreatorPages=Math.max(1,Math.ceil(masterCreatorTotal/100));
   const creatorName=selectedCreator?.name||selectedCreator?.username||selected?.creator_name||"Creator";
   const initials=creatorName.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase()||"C";
+  const selectedSocialLinks=Object.entries(selectedCreator?.social_links||{}).filter(([,url])=>Boolean(String(url||"").trim()));
 
   return <section className="listing-v2-page">
     <header className="listing-v2-header">
@@ -342,7 +388,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
       <aside className="listing-v2-detail">
         {!selected?<div className="listing-v2-empty"><b>Pilih listing</b><span>Detail creator dan timeline akan tampil di sini.</span></div>:<>
           <div className="listing-v2-profile">
-            <div className="listing-v2-avatar">{initials}</div>
+            <div className={"listing-v2-avatar "+(selectedCreator?.avatar_url?"has-photo":"")}>{selectedCreator?.avatar_url?<img src={selectedCreator.avatar_url} alt={creatorName} referrerPolicy="no-referrer" onError={event=>{event.currentTarget.style.display="none"}}/>:initials}</div>
             <div><span>CUSTOMER 360</span><h3>{creatorName}</h3><p>@{selectedCreator?.username||selected.creator_name||"-"} · {selected.platform||selectedCreator?.platform||"-"}</p></div>
             <span className={"listing-v2-stage "+stageTone(selected.stage)}>{selected.stage||"New Lead"}</span>
           </div>
@@ -354,6 +400,11 @@ export default function Listings({workspaceId}:{workspaceId:string}){
             <div><span>Product</span><b>{selected.product_name||"-"}</b></div>
             <div><span>SKU</span><b>{selected.sku||"-"}</b></div>
           </div>
+          <section className="listing-v2-social">
+            <div className="listing-v2-social-head"><div><span>SOCIAL PROFILE</span><h4>Link medsos creator</h4></div><button type="button" className="secondary" disabled={!selectedCreator} onClick={openSocialProfile}>{selectedSocialLinks.length?"Edit":"Tambah"}</button></div>
+            {selectedSocialLinks.length?<div className="listing-v2-social-links">{selectedSocialLinks.map(([key,url])=><a key={key} href={String(url)} target="_blank" rel="noreferrer"><span>{key==="x"?"X":key.charAt(0).toUpperCase()+key.slice(1)}</span><b>↗</b></a>)}</div>:<p className="listing-v2-social-empty">{selectedCreator?"Belum ada link sosial. Tambahkan Instagram, TikTok, Facebook, Lemon8, YouTube, atau platform lainnya.":"Hubungkan listing ke Master Creator untuk menyimpan profil sosial."}</p>}
+            {selectedCreator?.social_profile_updated_at&&<small>Profil diperbarui {new Date(selectedCreator.social_profile_updated_at).toLocaleString("id-ID")}</small>}
+          </section>
           <div className="listing-v2-detail-actions"><button className="primary" onClick={()=>openActivity(selected,"Follow Up")}>+ Tambah Follow Up</button><button className="secondary" onClick={()=>openEdit(selected)}>Edit Listing</button>{selected.post_link&&<a href={selected.post_link} target="_blank" rel="noreferrer">Buka Konten</a>}</div>
           <div className="listing-v2-timeline-head"><div><h4>Activity Timeline</h4><p>Riwayat listing, follow up, sample, konten, dan hasil creator.</p></div></div>
           {detailLoading?<div className="listing-v2-empty small">Memuat timeline...</div>:activities.length===0?<div className="listing-v2-empty small">Belum ada aktivitas.</div>:
@@ -366,12 +417,24 @@ export default function Listings({workspaceId}:{workspaceId:string}){
       <summary><div><h3>Master Creator</h3><p>Database creator workspace tetap tersedia untuk pencarian dan pengecekan data master.</p></div><span>{masterCreatorTotal.toLocaleString("id-ID")} creator</span></summary>
       <div className="listing-v2-master-body">
         <div className="listing-v2-master-search"><input value={masterCreatorSearch} onChange={e=>setMasterCreatorSearch(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();void loadMasterCreators(1,masterCreatorSearch)}}} placeholder="Cari username / nama creator / platform..."/><button className="secondary" onClick={()=>void loadMasterCreators(1,masterCreatorSearch)}>Cari</button>{masterCreatorSearch&&<button className="secondary" onClick={()=>{setMasterCreatorSearch("");void loadMasterCreators(1,"")}}>Reset</button>}</div>
-        <div className="listing-v2-table-wrap"><table><thead><tr><th>Creator / Username</th><th>Platform</th><th>Affiliate ID</th><th>Phone</th><th>Payment</th><th>Ratecard</th><th>Status</th></tr></thead><tbody>
-          {masterCreators.map(creator=><tr key={creator.id}><td><b>{creator.name||creator.username||"-"}</b>{creator.username&&creator.username!==creator.name&&<small>@{creator.username}</small>}</td><td>{creator.platform||"-"}</td><td>{creator.affiliate_id||"-"}</td><td>{creator.phone||"-"}</td><td>{creator.payment_type||"-"}</td><td>{money(creator.ratecard)}</td><td><span className="listing-v2-stage success">{creator.status||"-"}</span></td></tr>)}
+        <div className="listing-v2-table-wrap"><table><thead><tr><th>Creator / Username</th><th>Platform</th><th>Affiliate ID</th><th>Social</th><th>Phone</th><th>Payment</th><th>Ratecard</th><th>Status</th></tr></thead><tbody>
+          {masterCreators.map(creator=><tr key={creator.id}><td><div className="listing-master-creator"><span className={"listing-master-avatar "+(creator.avatar_url?"has-photo":"")}>{creator.avatar_url?<img src={creator.avatar_url} alt="" referrerPolicy="no-referrer"/>:String(creator.name||creator.username||"C").slice(0,1).toUpperCase()}</span><div><b>{creator.name||creator.username||"-"}</b>{creator.username&&creator.username!==creator.name&&<small>@{creator.username}</small>}</div></div></td><td>{creator.platform||"-"}</td><td>{creator.affiliate_id||"-"}</td><td><span className="listing-social-count">{Object.keys(creator.social_links||{}).filter(key=>Boolean(creator.social_links?.[key])).length} link</span></td><td>{creator.phone||"-"}</td><td>{creator.payment_type||"-"}</td><td>{money(creator.ratecard)}</td><td><span className="listing-v2-stage success">{creator.status||"-"}</span></td></tr>)}
         </tbody></table></div>
         <div className="pager"><span className="pager-info">Page {masterCreatorPage} / {masterCreatorPages}</span><div className="button-row"><button className="secondary" disabled={masterCreatorPage<=1} onClick={()=>void loadMasterCreators(masterCreatorPage-1,masterCreatorSearch)}>Previous</button><button className="secondary" disabled={masterCreatorPage>=masterCreatorPages} onClick={()=>void loadMasterCreators(masterCreatorPage+1,masterCreatorSearch)}>Next</button></div></div>
       </div>
     </details>
+
+    {socialOpen&&selectedCreator&&<div className="listing-v2-modal-backdrop" onMouseDown={()=>!socialSaving&&setSocialOpen(false)}>
+      <section className="listing-v2-modal listing-social-modal" onMouseDown={e=>e.stopPropagation()}>
+        <header><div><span>CREATOR SOCIAL PROFILE</span><h3>Link Medsos & Foto Profil</h3><p>{creatorName} · Lumaway membaca foto dari metadata publik jika platform menyediakannya.</p></div><button disabled={socialSaving} onClick={()=>setSocialOpen(false)}>×</button></header>
+        <div className="listing-social-form">
+          {SOCIAL_FIELDS.map(([key,label])=><label key={key}><span>{label}</span><input value={socialForm[key]||""} onChange={e=>setSocialForm(prev=>({...prev,[key]:e.target.value}))} placeholder={key==="other"?"https://platform-lain.com/profile":"https://..."}/></label>)}
+          <label className="wide"><span>Avatar URL <small>Opsional · dipakai jika foto tidak dapat dibaca otomatis</small></span><input value={avatarInput} onChange={e=>setAvatarInput(e.target.value)} placeholder="https://.../foto.jpg"/></label>
+          <div className="listing-social-preview"><span className={"listing-v2-avatar "+(avatarInput||selectedCreator.avatar_url?"has-photo":"")}>{avatarInput||selectedCreator.avatar_url?<img src={avatarInput||selectedCreator.avatar_url||""} alt="" referrerPolicy="no-referrer"/>:initials}</span><div><b>Auto Profile Photo</b><p>Saat disimpan, Lumaway mencoba membaca <code>og:image</code> / metadata publik dari link sosial. Jika platform memblokir akses publik, link tetap tersimpan dan Avatar URL manual dapat digunakan.</p></div></div>
+        </div>
+        <footer><button className="secondary" disabled={socialSaving} onClick={()=>setSocialOpen(false)}>Batal</button><button className="primary" disabled={socialSaving} onClick={()=>void saveSocialProfile()}>{socialSaving?"Membaca profil...":"Simpan & Ambil Foto"}</button></footer>
+      </section>
+    </div>}
 
     {activityFor&&<div className="listing-v2-modal-backdrop" onMouseDown={()=>!saving&&setActivityFor(null)}>
       <section className="listing-v2-modal" onMouseDown={e=>e.stopPropagation()}>
