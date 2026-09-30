@@ -17,6 +17,7 @@ const SECTION_ROUTES: Record<string, string> = {
   "automation-rules": "automation-rules",
   "goal-forecast": "goal-forecast",
   "scheduled-reports": "scheduled-reports",
+  "live-streaming": "live-streaming",
   kanban: "kanban",
   "support-tickets": "support-tickets",
   billing: "billing",

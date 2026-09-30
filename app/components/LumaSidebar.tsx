@@ -246,6 +246,10 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
                 {creatorOpsNav.map(([section,icon,label])=><a className={subActive(section)} key={section} href={routeForSection(section)} onClick={(e)=>go(e,section)}><LumaIcon name={icon}/><span>{label}</span></a>)}
               </Group>
 
+              <Group icon="performance" label="Live Streaming">
+                <a className={subActive("live-streaming")} href={routeForSection("live-streaming")} onClick={(e)=>go(e,"live-streaming")}><LumaIcon name="performance"/><span>Live Intelligence</span></a>
+              </Group>
+
               <Group icon="product" label="Product & Commerce">
                 {commerceNav.map(([section,icon,label])=><a className={subActive(section)} key={section} href={routeForSection(section)} onClick={(e)=>go(e,section)}><LumaIcon name={icon}/><span>{label}</span></a>)}
               </Group>
