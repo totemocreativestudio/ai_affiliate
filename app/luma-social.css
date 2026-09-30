@@ -57,3 +57,66 @@
 .notification-toast-close{position:absolute!important;right:9px!important;top:9px!important;width:26px!important;height:26px!important;min-width:26px!important;min-height:26px!important;padding:0!important;border:1px solid #e4e7ec!important;border-radius:8px!important;background:#fff!important;color:#667085!important;font-size:16px!important;font-weight:800!important;line-height:1!important;display:grid!important;place-items:center!important;box-shadow:none!important}
 .notification-toast-close:hover{background:#f2f4f7!important;color:#101828!important}
 .notification-toast-countdown{display:block;margin-top:7px;font-size:8px;color:#98a2b3}
+
+
+/* -------- PR77 Insight · Learning · Promotion Hub -------- */
+.content-hub-page{max-width:1500px;margin:0 auto}
+.content-hub-page>.eyebrow{font-size:8px;letter-spacing:.16em;color:#5b67d6;font-weight:850}
+.content-hub-page>h1{margin:6px 0 6px;font-size:28px;letter-spacing:-.03em}
+.content-hub-page>.muted{font-size:11px;line-height:1.5}
+.content-hub-tabs{margin-top:18px;padding:4px;border:1px solid #e5e8ee;background:#f7f8fb;border-radius:12px;width:max-content}
+.content-hub-tabs button{border:0!important;background:transparent!important;border-radius:9px!important;min-height:36px!important;padding:7px 14px!important;font-size:9px!important;font-weight:800!important}
+.content-hub-tabs button.active{background:#fff!important;color:#172033!important;box-shadow:0 2px 8px rgba(16,24,40,.08)!important}
+.content-search{min-height:42px;border-radius:11px}
+.content-search input{font-size:10px!important}
+.content-card-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.content-card{border-radius:14px;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.content-card:hover{transform:translateY(-2px);border-color:#d8dcf4;box-shadow:0 12px 26px rgba(16,24,40,.08)}
+.content-card>img,.tutorial-media-button,.content-card-placeholder{aspect-ratio:16/9}
+.content-card>img{display:block;width:100%;object-fit:cover}
+.content-card-body{padding:14px}
+.content-card-body small{font-size:8px}
+.content-card-body h3{font-size:14px;line-height:1.35;margin:7px 0}
+.content-card-body p{font-size:9.5px;line-height:1.55;min-height:44px}
+.content-card-body a,.content-card-link-button{font-size:9px!important;font-weight:800!important;color:#26324a!important}
+.content-card-link-button{border:0!important;padding:0!important;min-height:0!important;background:transparent!important;box-shadow:none!important}
+.tutorial-media-button{position:relative;display:block;width:100%;padding:0!important;border:0!important;border-radius:0!important;overflow:hidden;background:#101828!important}
+.tutorial-media-button img{display:block;width:100%;height:100%;object-fit:cover}
+.tutorial-media-button>span{position:absolute;left:14px;bottom:12px;display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:rgba(15,23,42,.76);color:#fff;font-size:13px}
+.tutorial-media-button>em{position:absolute;right:12px;top:12px;padding:5px 7px;border-radius:999px;background:#ecfdf3;color:#067647;font-style:normal;font-size:7px;font-weight:850}
+.promotion-hub-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:14px 0 12px}
+.promotion-hub-head h2{margin:0;font-size:17px}.promotion-hub-head p{margin:4px 0 0;font-size:9px;color:#667085}.promotion-hub-head>span{padding:7px 9px;border-radius:9px;background:#eef2ff;color:#4656ba;font-size:8px;font-weight:800}
+.promotion-grid-v2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.promotion-card-v2{overflow:hidden;border:1px solid #e4e7ed;border-radius:16px;background:#fff;box-shadow:0 4px 16px rgba(16,24,40,.035)}
+.promotion-card-v2.featured{border-color:#c6c1ff;box-shadow:0 8px 26px rgba(91,79,215,.12)}
+.promotion-card-v2>img,.promotion-card-v2>.content-card-placeholder{display:block;width:100%;aspect-ratio:16/7;object-fit:cover}
+.promotion-card-copy{padding:14px}
+.promotion-card-copy>small{display:block;color:#7a8494;font-size:7.5px}
+.promotion-card-copy h3{margin:6px 0 4px;font-size:15px}
+.promotion-card-copy p{margin:0 0 10px;color:#667085;font-size:9px;line-height:1.5}
+.promotion-code-row{display:flex;align-items:center;gap:8px;margin:10px 0;padding:8px 9px;border:1px dashed #cbd1dd;border-radius:9px;background:#f8f9fc}
+.promotion-code-row b{flex:1;font-size:10px;letter-spacing:.06em;color:#27324a}
+.promotion-code-row button{min-height:28px!important;padding:4px 8px!important;border-radius:7px!important;font-size:7px!important}
+.promotion-card-copy>.primary{margin-top:10px;min-height:34px!important;font-size:8px!important}
+.learning-modal-backdrop{position:fixed;inset:0;z-index:2147482500;display:grid;place-items:center;padding:24px;background:rgba(15,23,42,.42);backdrop-filter:blur(4px)}
+.learning-modal{width:min(980px,calc(100vw - 30px));max-height:90vh;overflow:auto;border:1px solid #e4e7ed;border-radius:18px;background:#fff;box-shadow:0 30px 100px rgba(15,23,42,.26)}
+.learning-modal>header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:18px;border-bottom:1px solid #edf0f3}
+.learning-modal>header span{font-size:7px;color:#5968d0;font-weight:850;letter-spacing:.13em}
+.learning-modal>header h2{margin:5px 0 5px;font-size:22px}.learning-modal>header p{margin:0;color:#667085;font-size:9.5px;line-height:1.5}
+.learning-modal>header>button{display:grid;place-items:center;width:34px;height:34px;min-height:34px!important;padding:0!important;border-radius:50%!important;font-size:18px!important}
+.learning-modal-cover{padding:14px 18px 0}.learning-modal-cover img{display:block;width:100%;aspect-ratio:16/7;object-fit:cover;border-radius:13px;border:1px solid #e7eaf0}
+.learning-social-video-links{display:flex;gap:6px;flex-wrap:wrap;padding:12px 18px}
+.learning-social-video-links a{padding:6px 8px;border:1px solid #e0e4ea;border-radius:8px;color:#475467;text-decoration:none;font-size:8px;font-weight:750}
+.learning-step-list{display:grid;gap:9px;padding:4px 18px 18px}
+.learning-step-list article{display:grid;grid-template-columns:38px minmax(0,1fr);gap:11px;padding:12px;border:1px solid #e7eaf0;border-radius:12px;background:#fbfcfd}
+.learning-step-list article>span{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:#eef1ff;color:#4b5ac2;font-size:9px;font-weight:850}
+.learning-step-list h3{margin:0;font-size:11px}.learning-step-list p{margin:4px 0 8px;color:#667085;font-size:8.5px;line-height:1.55}
+.learning-step-list img{display:block;width:min(520px,100%);border:1px solid #e4e7ed;border-radius:9px;margin:8px 0}
+.learning-step-list button{min-height:31px!important;padding:5px 8px!important;font-size:7.5px!important}
+.learning-modal>footer{position:sticky;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 18px;border-top:1px solid #e8ebef;background:rgba(255,255,255,.96);backdrop-filter:blur(7px)}
+.learning-modal>footer>div{display:flex;gap:6px}.learning-modal>footer>div span{padding:4px 7px;border-radius:999px;background:#f2f4f7;color:#667085;font-size:7px;font-weight:750}
+.learning-modal>footer>.primary{min-height:34px!important;font-size:8px!important}
+@media(max-width:1100px){.content-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:820px){.promotion-grid-v2{grid-template-columns:1fr}.promotion-hub-head{align-items:flex-start;flex-direction:column}}
+@media(max-width:680px){.content-card-grid{grid-template-columns:1fr}.content-hub-tabs{display:grid;grid-template-columns:repeat(3,1fr);width:100%}.content-hub-tabs button{padding:7px 8px!important}.learning-modal-backdrop{padding:0}.learning-modal{width:100vw;height:100dvh;max-height:none;border-radius:0}.learning-modal>header h2{font-size:18px}.learning-step-list article{grid-template-columns:30px 1fr}.learning-step-list article>span{width:28px;height:28px}.promotion-card-v2>img{aspect-ratio:16/9}}
+@media(prefers-reduced-motion:reduce){.content-card{transition:none}}
