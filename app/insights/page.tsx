@@ -1,5 +1,2 @@
-import {redirect} from "next/navigation";
-
-export default function InsightsAliasPage(){
-  redirect("/web/insights");
-}
+export {dynamic,metadata} from "../web/insights/page";
+export {default} from "../web/insights/page";
