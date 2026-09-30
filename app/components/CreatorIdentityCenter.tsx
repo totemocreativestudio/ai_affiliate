@@ -6,7 +6,7 @@ import {navigateToSection} from "../../lib/luma-navigation";
 import Creator360Modal from "./Creator360Modal";
 
 type Row=Record<string,any>;
-type Group={group_key:string;duplicate_count:number;match_reason:string;creators:Row[]};
+type Group={group_key:string;duplicate_count:number;match_reason:string;review_decision?:string;review_note?:string;reviewed_at?:string|null;creators:Row[]};
 
 const fmt=(v:any)=>Number(v||0).toLocaleString("id-ID");
 const label=(row:Row)=>String(row?.name||row?.username||row?.creator_code||("Creator #"+row?.id));
@@ -28,10 +28,13 @@ export default function CreatorIdentityCenter({workspaceId}:{workspaceId:string}
   const [merging,setMerging]=useState(false);
   const [impact,setImpact]=useState<Record<string,number>>({});
   const [creator360Id,setCreator360Id]=useState<number|null>(null);
+  const [reviewState,setReviewState]=useState<"pending"|"confirmed_duplicate"|"not_duplicate"|"all">("pending");
+  const [reviewNote,setReviewNote]=useState("");
+  const [reviewBusy,setReviewBusy]=useState(false);
 
-  async function load(q=search){
+  async function load(q=search,state=reviewState){
     setLoading(true);setError("");
-    const {data:payload,error:e}=await supabase.rpc("luma_creator_identity_candidates_v1",{p_workspace_id:workspaceId,p_search:q.trim()||null,p_limit:50});
+    const {data:payload,error:e}=await supabase.rpc("luma_creator_identity_candidates_v2",{p_workspace_id:workspaceId,p_search:q.trim()||null,p_review_state:state,p_limit:50});
     if(e){setError(e.message);setData(null)}
     else{
       const next=(payload||{}) as Row;setData(next);
@@ -47,7 +50,7 @@ export default function CreatorIdentityCenter({workspaceId}:{workspaceId:string}
     setLoading(false);
   }
 
-  useEffect(()=>{void load("")},[workspaceId]);
+  useEffect(()=>{void load("",reviewState)},[workspaceId,reviewState]);
 
   const groups=(data?.groups||[]) as Group[];
   const selected=groups.find(g=>g.group_key===selectedKey)||groups[0]||null;
@@ -55,7 +58,7 @@ export default function CreatorIdentityCenter({workspaceId}:{workspaceId:string}
   const secondaries=(selected?.creators||[]).filter(x=>secondaryIds.includes(Number(x.id))&&Number(x.id)!==Number(primaryId));
 
   function pickGroup(group:Group){
-    setSelectedKey(group.group_key);setMessage("");setError("");
+    setSelectedKey(group.group_key);setMessage("");setError("");setReviewNote(group.review_note||"");
     const best=[...group.creators].sort((a,b)=>Number(b.link_score||0)-Number(a.link_score||0)||Number(b.completeness||0)-Number(a.completeness||0))[0];
     setPrimaryId(Number(best.id));
     setSecondaryIds(group.creators.filter(x=>Number(x.id)!==Number(best.id)).map(x=>Number(x.id)));
@@ -77,6 +80,20 @@ export default function CreatorIdentityCenter({workspaceId}:{workspaceId:string}
     setImpact(totals);setVerifyCode(String(Math.floor(100+Math.random()*900)));setVerifyInput("");setConfirmOpen(true);
   }
 
+  async function reviewGroup(decision:"pending"|"confirmed_duplicate"|"not_duplicate"){
+    if(!selected)return;
+    setReviewBusy(true);setError("");setMessage("");
+    const {data:result,error:e}=await supabase.rpc("luma_review_creator_identity_group_v1",{
+      p_workspace_id:workspaceId,p_group_key:selected.group_key,p_decision:decision,p_note:reviewNote.trim()||null
+    });
+    setReviewBusy(false);
+    if(e){setError(e.message);return}
+    if(result?.ok){
+      setMessage(decision==="not_duplicate"?"Group ditandai bukan duplikat.":decision==="confirmed_duplicate"?"Group dikonfirmasi sebagai duplikat.":"Status review dikembalikan ke pending.");
+      await load(search,reviewState);
+    }
+  }
+
   async function merge(){
     if(!primaryId||verifyInput!==verifyCode)return;
     setMerging(true);setError("");
@@ -94,21 +111,21 @@ export default function CreatorIdentityCenter({workspaceId}:{workspaceId:string}
 
   return <section id="creator-identity" className="legacy-page-anchor creator-identity-page">
     <header className="creator-id-head"><div><span>AFFILIATE & CREATOR</span><h1>Creator Identity Center</h1><p>Satukan record creator yang sama menjadi satu canonical creator tanpa menghapus histori operasional.</p></div><div className="button-row"><button className="secondary" onClick={()=>navigateToSection("data-health")}>Data Health</button><button className="secondary" onClick={()=>void load(search)} disabled={loading}>Refresh</button></div></header>
-    <div className="creator-id-stats"><article><span>Active Creator</span><b>{loading?"—":fmt(data?.active_creators)}</b></article><article><span>Duplicate Groups</span><b>{loading?"—":fmt(data?.duplicate_groups)}</b></article><article><span>Duplicate Records</span><b>{loading?"—":fmt(data?.duplicate_records)}</b></article><article><span>Review Queue</span><b>{loading?"—":fmt(groups.length)}</b></article></div>
-    <div className="creator-id-toolbar"><input value={search} onChange={e=>setSearch(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")void load(search)}} placeholder="Cari creator, username, affiliate ID..."/><button className="primary" onClick={()=>void load(search)}>Cari</button>{search&&<button className="secondary" onClick={()=>{setSearch("");void load("")}}>Reset</button>}</div>
+    <div className="creator-id-stats"><article><span>Active Creator</span><b>{loading?"—":fmt(data?.active_creators)}</b></article><article><span>Duplicate Groups</span><b>{loading?"—":fmt(data?.duplicate_groups)}</b></article><article><span>Pending Review</span><b>{loading?"—":fmt(data?.pending_groups)}</b></article><article><span>Confirmed Duplicate</span><b>{loading?"—":fmt(data?.confirmed_groups)}</b></article><article><span>Not Duplicate</span><b>{loading?"—":fmt(data?.ignored_groups)}</b></article><article><span>Current Queue</span><b>{loading?"—":fmt(groups.length)}</b></article></div>
+    <div className="creator-id-toolbar"><input value={search} onChange={e=>setSearch(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")void load(search,reviewState)}} placeholder="Cari creator, username, affiliate ID..."/><select value={reviewState} onChange={e=>setReviewState(e.target.value as any)}><option value="pending">Pending Review</option><option value="confirmed_duplicate">Confirmed Duplicate</option><option value="not_duplicate">Not Duplicate</option><option value="all">Semua Status</option></select><button className="primary" onClick={()=>void load(search,reviewState)}>Cari</button>{search&&<button className="secondary" onClick={()=>{setSearch("");void load("",reviewState)}}>Reset</button>}</div>
     {error&&<div className="flash error">{error}</div>}{message&&<div className="flash success">{message}</div>}
 
     <div className="creator-id-layout">
       <aside className="creator-id-groups">
-        <div className="creator-id-section-head"><h3>Duplicate Queue</h3><p>Pilih group untuk review.</p></div>
+        <div className="creator-id-section-head"><h3>Duplicate Queue</h3><p>Pilih group untuk review · {reviewState.replaceAll("_"," ")}.</p></div>
         {groups.map(group=><button type="button" key={group.group_key} className={"creator-id-group-card "+(selectedKey===group.group_key?"active":"")} onClick={()=>pickGroup(group)}><div className="creator-id-avatar">{label(group.creators?.[0]||{}).slice(0,1).toUpperCase()}</div><div><strong>{label(group.creators?.[0]||{})}</strong><span>@{group.creators?.[0]?.username||"-"} · {group.creators?.[0]?.platform||"-"}</span><small>{group.match_reason}</small></div><b>{group.duplicate_count}</b></button>)}
         {!loading&&!groups.length&&<div className="creator-id-empty"><b>Tidak ada duplicate group.</b><span>Coba pencarian lain atau kembali ke Data Health.</span></div>}
       </aside>
 
       <section className="creator-id-detail">
         {!selected?<div className="creator-id-empty large"><b>Pilih duplicate group.</b></div>:<>
-          <div className="creator-id-detail-head"><div><span>IDENTITY MATCH</span><h2>{selected.match_reason}</h2><p>{selected.group_key}</p></div><div className="button-row">{primary&&<button className="secondary" onClick={()=>setCreator360Id(Number(primary.id))}>Customer 360</button>}<button className="primary" disabled={!primaryId||!secondaries.length} onClick={()=>void review()}>Review Merge · {secondaries.length}</button></div></div>
-          <div className="creator-id-guidance"><b>Pilih 1 canonical creator.</b><span>Record lain akan diarsipkan sebagai Merged. Alias lama tetap dipakai untuk upload berikutnya.</span></div>
+          <div className="creator-id-detail-head"><div><span>IDENTITY MATCH</span><h2>{selected.match_reason}</h2><p>{selected.group_key}</p></div><div className="button-row">{primary&&<button className="secondary" onClick={()=>setCreator360Id(Number(primary.id))}>Customer 360</button>}<button className="primary" disabled={!primaryId||!secondaries.length} onClick={()=>void review()}>Review Merge · {secondaries.length}</button></div></div><div className={"creator-review-status decision-"+(selected.review_decision||"pending")}><span>Status Review</span><b>{(selected.review_decision||"pending").replaceAll("_"," ")}</b>{selected.reviewed_at&&<small>{new Date(selected.reviewed_at).toLocaleString("id-ID")}</small>}</div>
+          <div className="creator-id-guidance"><b>Pilih 1 canonical creator.</b><span>Record lain akan diarsipkan sebagai Merged. Alias lama tetap dipakai untuk upload berikutnya.</span></div><div className="creator-review-actions"><label><span>Catatan review</span><textarea value={reviewNote} onChange={e=>setReviewNote(e.target.value)} placeholder="Opsional: alasan duplicate / bukan duplicate..."/></label><div><button type="button" className="secondary" disabled={reviewBusy} onClick={()=>void reviewGroup("not_duplicate")}>Bukan Duplikat</button><button type="button" className="secondary" disabled={reviewBusy} onClick={()=>void reviewGroup("pending")}>Kembalikan Pending</button><button type="button" className="primary" disabled={reviewBusy} onClick={()=>void reviewGroup("confirmed_duplicate")}>Konfirmasi Duplikat</button></div></div>
           <div className="creator-id-records">{selected.creators.map(row=>{const id=Number(row.id),canonical=id===Number(primaryId);return <article key={id} className={canonical?"canonical":""}><div className="creator-id-record-top"><label className="creator-id-radio"><input type="radio" checked={canonical} onChange={()=>pickPrimary(id)}/><span/></label><div className="creator-id-avatar">{label(row).slice(0,1).toUpperCase()}</div><div className="creator-id-record-copy"><div><strong>{label(row)}</strong>{canonical&&<em>CANONICAL</em>}</div><span>@{row.username||"-"} · {row.platform||"-"} · ID {row.id}</span><small>{row.affiliate_id?"Affiliate ID "+row.affiliate_id:"Affiliate ID belum ada"}</small></div><div className="creator-id-record-score"><b>{fmt(row.link_score)}</b><span>linked data</span></div></div><div className="creator-id-refchips">{refs(row).map(([key,value])=><span key={key}><b>{fmt(value)}</b>{key}</span>)}<span>{fmt(row.completeness)}/5 profile fields</span></div>{!canonical&&<label className="creator-id-include"><input type="checkbox" checked={secondaryIds.includes(id)} onChange={()=>setSecondaryIds(curr=>curr.includes(id)?curr.filter(x=>x!==id):[...curr,id])}/><span>Gabungkan ke canonical creator</span></label>}</article>})}</div>
         </>}
       </section>
