@@ -1,6 +1,2 @@
-import {redirect} from "next/navigation";
-
-export default async function InsightAliasDetail({params}:{params:Promise<{slug:string}>}){
-  const {slug}=await params;
-  redirect(`/web/insights/${encodeURIComponent(slug)}`);
-}
+export {dynamic,generateMetadata} from "../../web/insights/[slug]/page";
+export {default} from "../../web/insights/[slug]/page";
