@@ -19,6 +19,7 @@ import { APP_BASE, isAuthPath, navigateToSection, routeForSection, sectionFromPa
 import ProductMaster from "./components/ProductMaster";
 import Listings from "./components/Listings";
 import Shipping from "./components/Shipping";
+import CampaignTracker from "./components/CampaignTracker";
 import CreatorSamples from "./components/CreatorSamples";
 import RatecardMaster from "./components/RatecardMaster";
 import UploadCenter from "./components/UploadCenter";
@@ -473,6 +474,7 @@ export default function LumawayWorkspaceApp() {
           <section id="product-master" className="legacy-page-anchor"><div className="eyebrow">MASTER DATA</div><ProductMaster workspaceId={workspace.id} /></section>
           <section id="listings" className="legacy-page-anchor"><Listings workspaceId={workspace.id} /></section>
           <section id="shipping" className="legacy-page-anchor"><Shipping workspaceId={workspace.id} /></section>
+          <section id="campaign-tracker" className="legacy-page-anchor"><CampaignTracker workspaceId={workspace.id} /></section>
           <section id="creator-samples" className="legacy-page-anchor"><CreatorSamples workspaceId={workspace.id} /></section>
           <section id="ratecard" className="legacy-page-anchor"><RatecardMaster workspaceId={workspace.id} /></section>
         </>}
