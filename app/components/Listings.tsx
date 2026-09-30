@@ -140,6 +140,21 @@ export default function Listings({workspaceId}:{workspaceId:string}){
     return()=>window.removeEventListener("lumaway-database-updated",refresh as EventListener);
   },[workspaceId,masterCreatorSearch]);
 
+  useEffect(()=>{
+    const onQuick=(event:Event)=>{const detail=(event as CustomEvent).detail;if(detail?.type==="listing")openAdd()};
+    const onSelect=(event:Event)=>{
+      const detail=(event as CustomEvent).detail;
+      if(detail?.type==="listing"){
+        const row=rows.find(item=>item.id===Number(detail.id));if(row){setSelected(row);setSearch(row.creator_name||row.product_name||String(detail.title||""))}
+      }else if(detail?.type==="creator"){
+        const row=rows.find(item=>item.creator_id===Number(detail.id))||rows.find(item=>String(item.creator_name||"").toLowerCase()===String(detail.title||"").toLowerCase());
+        setSearch(String(detail.title||""));if(row)setSelected(row);
+      }
+    };
+    window.addEventListener("lumaway-quick-create",onQuick as EventListener);window.addEventListener("lumaway-global-select",onSelect as EventListener);
+    return()=>{window.removeEventListener("lumaway-quick-create",onQuick as EventListener);window.removeEventListener("lumaway-global-select",onSelect as EventListener)};
+  },[rows]);
+
   function updateField(field:keyof FormState,value:string){setForm(prev=>({...prev,[field]:value}))}
 
   function openAdd(){

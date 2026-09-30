@@ -104,6 +104,12 @@ export default function CampaignTracker({workspaceId}:{workspaceId:string}){
 
   useEffect(()=>{void load()},[workspaceId]);
   useEffect(()=>{void loadCreatorRows(selectedId)},[selectedId,workspaceId]);
+  useEffect(()=>{
+    const onQuick=(event:Event)=>{const detail=(event as CustomEvent).detail;if(detail?.type==="campaign")openCampaignAdd()};
+    const onSelect=(event:Event)=>{const detail=(event as CustomEvent).detail;if(detail?.type!=="campaign")return;setSelectedId(Number(detail.id));setSearch("")};
+    window.addEventListener("lumaway-quick-create",onQuick as EventListener);window.addEventListener("lumaway-global-select",onSelect as EventListener);
+    return()=>{window.removeEventListener("lumaway-quick-create",onQuick as EventListener);window.removeEventListener("lumaway-global-select",onSelect as EventListener)};
+  },[]);
   const selected=campaigns.find(x=>x.id===selectedId)||null;
   const selectedBanners=useMemo(()=>Array.isArray(selected?.banner_urls)?selected!.banner_urls.filter(Boolean).map(String).slice(0,3):[],[selected?.id,selected?.banner_urls]);
   const newBannerPreviews=useMemo(()=>bannerFiles.map(file=>URL.createObjectURL(file)),[bannerFiles]);

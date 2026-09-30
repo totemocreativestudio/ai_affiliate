@@ -62,6 +62,12 @@ export default function Shipping({workspaceId}:Props){
   setLoading(false);
  }
  useEffect(()=>{void loadData()},[workspaceId]);
+ useEffect(()=>{
+  const onQuick=(event:Event)=>{const detail=(event as CustomEvent).detail;if(detail?.type==="shipping")openAdd()};
+  const onSelect=(event:Event)=>{const detail=(event as CustomEvent).detail;if(detail?.type!=="shipping")return;const row=rows.find(item=>item.id===Number(detail.id));setSearch(String(detail.title||""));if(row)setPreview(row)};
+  window.addEventListener("lumaway-quick-create",onQuick as EventListener);window.addEventListener("lumaway-global-select",onSelect as EventListener);
+  return()=>{window.removeEventListener("lumaway-quick-create",onQuick as EventListener);window.removeEventListener("lumaway-global-select",onSelect as EventListener)};
+ },[rows]);
 
  function openAdd(){setEditingId(null);setForm({...EMPTY_FORM,data_date:new Date().toISOString().slice(0,10),reference_no:"LUMA-"+Date.now().toString().slice(-8)});setCreatorSearch("");setProductSearch("");setManualCreatorConfirmed(false);setError("");setShowForm(true)}
  function openEdit(row:ShippingRow){setEditingId(row.id);setForm({data_date:row.data_date||"",creator_id:row.creator_id?.toString()||"",creator_name:row.creator_name||"",platform:row.platform||"",product_master_id:row.product_master_id?.toString()||"",qty:String(row.qty||1),product_cost:String(row.product_cost||0),shipping_cost:String(row.shipping_cost||0),courier:row.courier||"",tracking:row.tracking||"",status:row.status||"Pending",reference_no:row.reference_no||"",receiver_name:row.receiver_name||row.creator_name||"",receiver_phone:row.receiver_phone||"",receiver_address:row.receiver_address||"",sender_name:row.sender_name||"",sender_phone:row.sender_phone||"",sender_address:row.sender_address||"",service:row.service||"",branch:row.branch||"",weight:String(row.weight||0),insurance_amount:String(row.insurance_amount||0),cod_amount:String(row.cod_amount||0),package_contents:row.package_contents||row.product_name||"",notes:row.notes||"",shipped_at:row.shipped_at||"",delivered_at:row.delivered_at||""});setCreatorSearch(row.creator_name||"");setProductSearch(row.sku?(row.sku+(row.product_name?" - "+row.product_name:"")):"");setManualCreatorConfirmed(!row.creator_id&&Boolean(row.creator_name));setShowForm(true)}

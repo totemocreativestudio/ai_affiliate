@@ -51,6 +51,11 @@ const CATEGORY_LABELS: Record<string, string> = {
   creator_on_fire_daily: "Creator On Fire · Harian",
   creator_on_fire_weekly: "Creator On Fire · Mingguan",
   creator_on_fire_monthly: "Creator On Fire · Bulanan",
+  campaign_due: "Campaign",
+  campaign_overdue: "Campaign",
+  task_due: "Task",
+  shipping_delivered: "Shipping",
+  listing_follow_up: "Listing",
 };
 
 function categoryLabel(category: string) {
@@ -68,6 +73,7 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
   const dismissedToastKeys = useRef<Set<string>>(new Set());
 
   async function load() {
+    try{await supabase.rpc("luma_refresh_operational_notifications_v1",{p_workspace_id:workspaceId})}catch{}
     const [globalRes, directRes] = await Promise.all([
       supabase
         .from("luma_notifications")
@@ -235,8 +241,9 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
             <div><strong>Notifications</strong><span>{unread} belum dibaca</span></div>
             <button onClick={() => void markAll()}>Mark all read</button>
           </div>
+          {categoryOptions.length>2&&<div className="notification-filters">{categoryOptions.map(option=><button key={option} className={categoryFilter===option?"active":""} onClick={()=>setCategoryFilter(option)}>{option==="all"?"Semua":option}</button>)}</div>}
           <div className="notification-list">
-            {rows.length ? rows.map((row) => (
+            {visibleRows.length ? visibleRows.map((row) => (
               <button key={row.key} className={`notification-item ${row.read ? "read" : "unread"}`} onClick={() => void markRead(row, true)}>
                 {row.image_url && <img src={row.image_url} alt="" />}
                 <div>

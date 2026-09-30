@@ -38,6 +38,12 @@ export default function ProductMaster({workspaceId}:{workspaceId:string}){
  }
  useEffect(()=>{void loadProducts();try{const saved=localStorage.getItem("lumaway_product_master_view") as ViewMode|null;if(saved&&["table","grid","list"].includes(saved))setView(saved)}catch{}},[workspaceId]);
  useEffect(()=>{const fn=()=>void loadProducts();window.addEventListener("lumaway-database-updated",fn);return()=>window.removeEventListener("lumaway-database-updated",fn)},[workspaceId]);
+ useEffect(()=>{
+  const onQuick=(event:Event)=>{const detail=(event as CustomEvent).detail;if(detail?.type==="product")openAdd()};
+  const onSelect=(event:Event)=>{const detail=(event as CustomEvent).detail;if(detail?.type!=="product")return;setSearch(String(detail.title||""));setExpanded(prev=>new Set(prev).add(Number(detail.id)))};
+  window.addEventListener("lumaway-quick-create",onQuick as EventListener);window.addEventListener("lumaway-global-select",onSelect as EventListener);
+  return()=>{window.removeEventListener("lumaway-quick-create",onQuick as EventListener);window.removeEventListener("lumaway-global-select",onSelect as EventListener)};
+ },[]);
 
  const mappingsByProduct=useMemo(()=>{const map=new Map<number,PlatformItem[]>();for(const x of platformItems)map.set(x.product_master_id,[...(map.get(x.product_master_id)||[]),x]);return map},[platformItems]);
  const variantsByProduct=useMemo(()=>{const map=new Map<number,ProductVariant[]>();for(const x of variants)map.set(x.product_master_id,[...(map.get(x.product_master_id)||[]),x]);return map},[variants]);
