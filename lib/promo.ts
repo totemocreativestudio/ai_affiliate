@@ -23,7 +23,8 @@ export async function resolvePromo(admin:any,userId:string,code:string,target:Pr
   const type=String(promo.promo_type);
   if(target!=="generic"&&Number(promo.min_purchase_amount||0)>0&&Number(baseAmount||0)<Number(promo.min_purchase_amount||0))throw new Error("Minimum transaksi promo belum terpenuhi.");
   if(Array.isArray(promo.valid_weekdays)&&promo.valid_weekdays.length){
-    const day=new Date().getDay();
+    const key=new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Jakarta",weekday:"short"}).format(new Date());
+    const day=({Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6} as Record<string,number>)[key];
     if(!promo.valid_weekdays.map((x:any)=>Number(x)).includes(day))throw new Error("Kode promo tidak berlaku hari ini.");
   }
   if(promo.new_user_only){
