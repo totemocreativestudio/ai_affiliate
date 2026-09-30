@@ -32,8 +32,12 @@ async function findOrders(admin:any,orderCode:string,invoiceId:string,transactio
 }
 
 export async function POST(req:NextRequest){
+  let admin:any=null;
+  let eventId:number|null=null;
+  let claimedOrderCode="";
+  let claimedStatus="";
   try{
-    const admin=adminClient();
+    admin=adminClient();
     const expected=await getServerSecret(admin,"luma_mayar_webhook_token");
     if(!expected)return NextResponse.json({ok:false,error:"Mayar webhook token belum dikonfigurasi."},{status:503});
     const received=new URL(req.url).searchParams.get("token")||req.headers.get("x-mayar-token")||"";
@@ -47,24 +51,40 @@ export async function POST(req:NextRequest){
     const invoiceId=String(data?.paymentLinkId||data?.productId||data?.product_id||data?.invoiceId||data?.invoice?.id||extra?.invoiceId||"");
     const transactionId=String(data?.transactionId||data?.transaction_id||data?.id||"");
     const eventKey=String(body?.eventId||body?.id||body?.event||"mayar")+"|"+String(transactionId||invoiceId||createHash("sha256").update(raw).digest("hex").slice(0,24));
+    claimedOrderCode=orderCode;
+    claimedStatus=String(data?.status||body?.event||"");
 
-    await admin.from("luma_payment_webhook_events").upsert({provider:"mayar",event_key:eventKey,order_code:orderCode||null,status:String(data?.status||body?.event||""),payload:body},{onConflict:"provider,event_key",ignoreDuplicates:true});
+    const {data:claim,error:claimError}=await admin.rpc("luma_claim_payment_webhook_event_v1",{
+      p_provider:"mayar",p_event_key:eventKey,p_order_code:orderCode||null,
+      p_status:claimedStatus||null,p_payload:body
+    });
+    if(claimError)throw claimError;
+    eventId=Number(claim?.event_id||0)||null;
+    if(!claim?.claimed)return NextResponse.json({ok:true,duplicate:true,processed:true});
+
+    const finish=async(ok:boolean,status?:string,error?:string)=>{
+      if(!eventId)return;
+      await admin.rpc("luma_finish_payment_webhook_event_v1",{
+        p_event_id:eventId,p_ok:ok,p_order_code:claimedOrderCode||null,
+        p_status:status||claimedStatus||null,p_error:error||null
+      });
+    };
 
     const orders=await findOrders(admin,orderCode,invoiceId,transactionId);
     const order=orders.sub||orders.token;
-    if(!order)return NextResponse.json({ok:true,ignored:true,reason:"order_not_found"});
-    await admin.from("luma_payment_webhook_events").update({order_code:order.order_code}).eq("provider","mayar").eq("event_key",eventKey);
+    if(!order){await finish(true,"ignored_order_not_found");return NextResponse.json({ok:true,ignored:true,reason:"order_not_found"})}
+    claimedOrderCode=String(order.order_code||orderCode||"");
 
     const key=await getServerSecret(admin,"luma_mayar_api_key");
-    if(!key)return NextResponse.json({ok:false,error:"Mayar API key belum tersedia."},{status:503});
+    if(!key){await finish(false,"config_error","Mayar API key belum tersedia.");return NextResponse.json({ok:false,error:"Mayar API key belum tersedia."},{status:503})}
     const verifyId=String(order.payment_session_id||invoiceId||"");
-    if(!verifyId)return NextResponse.json({ok:false,error:"Mayar invoice id tidak tersedia."},{status:422});
+    if(!verifyId){await finish(false,"invalid_invoice","Mayar invoice id tidak tersedia.");return NextResponse.json({ok:false,error:"Mayar invoice id tidak tersedia."},{status:422})}
 
     const verifyRes=await fetch(`https://api.mayar.id/hl/v2/invoices/${encodeURIComponent(verifyId)}`,{headers:{Authorization:`Bearer ${key}`,Accept:"application/json"},cache:"no-store"});
     const verify=await verifyRes.json().catch(()=>({}));
-    if(!verifyRes.ok||!verify?.data)return NextResponse.json({ok:false,error:"Gagal memverifikasi invoice Mayar."},{status:502});
+    if(!verifyRes.ok||!verify?.data){await finish(false,"verification_failed","Gagal memverifikasi invoice Mayar.");return NextResponse.json({ok:false,error:"Gagal memverifikasi invoice Mayar."},{status:502})}
     const invoice=verify.data;
-    if(!eqAmount(invoice.amount,order.amount))return NextResponse.json({ok:false,error:"Nominal invoice Mayar tidak sesuai order."},{status:409});
+    if(!eqAmount(invoice.amount,order.amount)){await finish(false,"amount_mismatch","Nominal invoice Mayar tidak sesuai order.");return NextResponse.json({ok:false,error:"Nominal invoice Mayar tidak sesuai order."},{status:409})}
 
     const status=String(invoice.status||"").toLowerCase();
     if(status!=="paid"){
@@ -72,6 +92,7 @@ export async function POST(req:NextRequest){
         const table=orders.sub?"luma_subscription_orders":"luma_topup_orders";
         const nextStatus=status==="closed"?"expired":status;await admin.from(table).update({status:nextStatus,provider_payload:{webhook:body,verified_invoice:invoice}}).eq("id",order.id).neq("status","paid");if(order.checkout_intent_id)await admin.from("luma_payment_checkout_intents").update({status:"expired",updated_at:new Date().toISOString()}).eq("id",order.checkout_intent_id);
       }
+      await finish(true,status||"ignored");
       return NextResponse.json({ok:true,ignored:true,verified_status:status||"unknown"});
     }
 
@@ -81,11 +102,18 @@ export async function POST(req:NextRequest){
       const {data:result,error}=await admin.rpc("luma_complete_subscription",{p_order_code:order.order_code,p_payment_reference:paymentRef||null,p_provider_payload:{webhook:body,verified_invoice:invoice}});
       if(error)throw error;
       if(order.checkout_intent_id)await admin.from("luma_payment_checkout_intents").update({status:"paid",payment_reference:paymentRef||null,updated_at:new Date().toISOString()}).eq("id",order.checkout_intent_id);if(!result?.already_paid)await sendExternalCustomerNotice(admin,{userId:order.user_id,workspaceId:order.workspace_id,kind:"subscription_paid",title:"Langganan Lumaway aktif",message:`Pembayaran ${order.order_code} via Mayar.id berhasil. Paket ${order.luma_subscription_plans?.name||"Lumaway"} senilai ${money(order.amount)} telah aktif.`,actionUrl:app});
+      await finish(true,"paid");
       return NextResponse.json({ok:true,type:"subscription",result,verified:true});
     }
     const {data:result,error}=await admin.rpc("luma_complete_topup",{p_order_code:order.order_code,p_payment_reference:paymentRef||null,p_provider_payload:{webhook:body,verified_invoice:invoice}});
     if(error)throw error;
     if(order.checkout_intent_id)await admin.from("luma_payment_checkout_intents").update({status:"paid",payment_reference:paymentRef||null,updated_at:new Date().toISOString()}).eq("id",order.checkout_intent_id);if(!result?.already_paid)await sendExternalCustomerNotice(admin,{userId:order.user_id,workspaceId:order.workspace_id,kind:"token_paid",title:"Top up token berhasil",message:`Pembayaran ${order.order_code} via Mayar.id berhasil. ${Number(order.package_tokens||0)} token senilai ${money(order.amount)} telah ditambahkan.`,actionUrl:app});
+    await finish(true,"paid");
     return NextResponse.json({ok:true,type:"token",result,verified:true});
-  }catch(error:any){return NextResponse.json({ok:false,error:error?.message||"Mayar webhook gagal diproses."},{status:400})}
+  }catch(error:any){
+    if(admin&&eventId){
+      try{await admin.rpc("luma_finish_payment_webhook_event_v1",{p_event_id:eventId,p_ok:false,p_order_code:claimedOrderCode||null,p_status:claimedStatus||null,p_error:String(error?.message||"Mayar webhook gagal diproses.")})}catch{}
+    }
+    return NextResponse.json({ok:false,error:error?.message||"Mayar webhook gagal diproses."},{status:400})
+  }
 }
