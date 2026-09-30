@@ -6,6 +6,7 @@ const SECTION_ROUTES: Record<string, string> = {
   tutorial: "tutorial",
   "excel-sync": "excel-sync",
   database: "database",
+  "data-health": "data-health",
   agreements: "agreements",
   "affiliate-support": "affiliate-support",
   "ai-analytics": "ai-analytics",

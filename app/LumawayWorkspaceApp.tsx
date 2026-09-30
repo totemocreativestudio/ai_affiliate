@@ -24,6 +24,7 @@ import CreatorSamples from "./components/CreatorSamples";
 import RatecardMaster from "./components/RatecardMaster";
 import UploadCenter from "./components/UploadCenter";
 import DatabaseCenter from "./components/DatabaseCenter";
+import DataHealthCenter from "./components/DataHealthCenter";
 import AIAnalytics from "./components/AIAnalytics";
 import LumaSidebar from "./components/LumaSidebar";
 import LegacyDashboard from "./components/LegacyDashboard";
@@ -468,6 +469,7 @@ export default function LumawayWorkspaceApp() {
           <LegacyDashboard workspaceId={workspace.id} />
           <UploadCenter workspaceId={workspace.id} />
           <DatabaseCenter workspaceId={workspace.id} />
+          <DataHealthCenter workspaceId={workspace.id} />
           <AIAnalytics workspaceId={workspace.id} />
           <ContentHub workspaceId={workspace.id} userId={profile.id} />
           <SocialLumaway workspaceId={workspace.id} userId={profile.id} />
