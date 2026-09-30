@@ -10,6 +10,7 @@ import InternalExcelGrid from "./InternalExcelGrid";
 import UserProfile from "./UserProfile";
 import AdminDashboard from "./AdminDashboard";
 import {CreatorAutocomplete,ProductAutocomplete,CreatorSearchResult,ProductSearchResult,resolveOrCreateCreator} from "./SmartAutocomplete";
+import TutorialCenter from "./TutorialCenter";
 
 type Row=Record<string,any>;
 const fmt=(v:any)=>new Intl.NumberFormat("id-ID").format(Number(v||0));
@@ -23,7 +24,7 @@ export default function RestoredLegacyModules({workspaceId,userId,isAdmin}:{work
     <LumaAffiliateCenter workspaceId={workspaceId} userId={userId}/>
     <PromoStudioV2 workspaceId={workspaceId} userId={userId}/>
     <KanbanBoard workspaceId={workspaceId} userId={userId}/>
-    <Tutorials workspaceId={workspaceId}/>
+    <TutorialCenter workspaceId={workspaceId}/>
     <BillingCenter workspaceId={workspaceId} userId={userId}/>
     <UserProfile workspaceId={workspaceId} userId={userId}/>
   </>;
@@ -135,10 +136,4 @@ function AffiliateSupport({workspaceId}:{workspaceId:string}){
   useEffect(()=>{Promise.all([supabase.from("agreements").select("*").eq("workspace_id",workspaceId).limit(100),supabase.from("creator_samples").select("*").eq("workspace_id",workspaceId).limit(100)]).then(([a,s])=>{setAgreements((a.data||[]) as Row[]);setSamples((s.data||[]) as Row[])})},[workspaceId]);
   const eligible=agreements.filter(x=>String(x.bonus_eligible).toLowerCase()==="yes"&&String(x.document_status).toLowerCase()==="approved");
   return <section id="affiliate-support" className="legacy-page-anchor"><div className="eyebrow">CREATOR SUPPORT</div><h1>Affiliate Support Program</h1><div className="kpis"><div className="kpi"><small>Agreement</small><b>{fmt(agreements.length)}</b></div><div className="kpi"><small>Eligible Bonus</small><b>{fmt(eligible.length)}</b></div><div className="kpi"><small>Creator Samples</small><b>{fmt(samples.length)}</b></div></div><div className="card"><p>Eligibility final = Bonus Eligible <b>Yes</b> + Agreement Document <b>Approved</b>.</p><Table rows={eligible} columns={["creator_name","platform","brand","product_name","document_status","support_status","bonus_eligible"]}/></div><div className="card"><h3>Sample Snapshot</h3><Table rows={samples} columns={["creator_name","platform","sku","product_name","sample_status","sent_date","qty","product_value","tracking"]}/></div></section>
-}
-
-function Tutorials({workspaceId}:{workspaceId:string}){
-  const supabase=createClient();const [rows,setRows]=useState<Row[]>([]);
-  useEffect(()=>{supabase.from("tutorials").select("*").eq("workspace_id",workspaceId).order("id",{ascending:true}).limit(100).then(({data})=>setRows((data||[]) as Row[]))},[workspaceId]);
-  return <section id="tutorial" className="legacy-page-anchor"><div className="eyebrow">LEARNING</div><h1>Tutorial</h1><p className="muted">Panduan penggunaan LUMA yang dikelola owner melalui Admin Dashboard.</p><div className="card"><h3>Materi Tutorial</h3><Table rows={rows} columns={["title","category","description","video_url","status","created_at"]}/></div></section>
 }

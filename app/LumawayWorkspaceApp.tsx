@@ -16,6 +16,7 @@ import "./lumaway-auth-v7.css";
 import "./automation-rules.css";
 import "./goal-forecast.css";
 import "./scheduled-reports.css";
+import "./tutorial-center.css";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../lib/supabase-browser";
 import { APP_BASE, isAuthPath, navigateToSection, routeForSection, sectionFromPath } from "../lib/luma-navigation";
