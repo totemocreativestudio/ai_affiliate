@@ -1,5 +1,13 @@
 -- PR78C: Payment and promotion guardrails
 
+alter table public.luma_payment_webhook_events
+  add column if not exists processing_status text not null default 'received'
+    check(processing_status in ('received','processing','processed','failed')),
+  add column if not exists processed_at timestamptz,
+  add column if not exists last_error text,
+  add column if not exists attempts integer not null default 1;
+
+
 create unique index if not exists uq_luma_promo_redemption_target
   on public.luma_promo_redemptions(promo_id,user_id,target_type,target_reference);
 
