@@ -175,6 +175,7 @@ export default function ImportMappingWizard({file,dataType,platform,workspaceId,
   const supabase=useMemo(()=>createClient(),[]);
   const fields=useMemo(()=>fieldsFor(dataType),[dataType]);
   const [rows,setRows]=useState<Row[]>([]);
+  const [totalRows,setTotalRows]=useState(0);
   const [headers,setHeaders]=useState<string[]>([]);
   const [mapping,setMapping]=useState<Record<string,string>>({});
   const [detected,setDetected]=useState(platform);
@@ -185,7 +186,7 @@ export default function ImportMappingWizard({file,dataType,platform,workspaceId,
   useEffect(()=>{
     let alive=true;
     async function run(){
-      setRows([]);setHeaders([]);setMapping({});setMessage("");setSaved(false);
+      setRows([]);setTotalRows(0);setHeaders([]);setMapping({});setMessage("");setSaved(false);
       if(!file){onChange({mapping:{},valid:false,detectedPlatform:platform,totalRows:0,headers:[]});return}
       setLoading(true);
       try{
@@ -202,7 +203,7 @@ export default function ImportMappingWizard({file,dataType,platform,workspaceId,
             .eq("workspace_id",workspaceId).eq("data_type",dataType).eq("platform",nextDetected).eq("signature",sig).maybeSingle();
           if(preset?.mapping&&typeof preset.mapping==="object"){nextMapping={...automatic,...preset.mapping};loaded=true}
         }catch{}
-        setRows(parsed.slice(0,5));setHeaders(nextHeaders);setDetected(nextDetected);setMapping(nextMapping);
+        setRows(parsed.slice(0,5));setTotalRows(parsed.length);setHeaders(nextHeaders);setDetected(nextDetected);setMapping(nextMapping);
         setMessage(loaded?"Mapping workspace tersimpan ditemukan. Periksa preview sebelum import.":"Auto Map selesai. Periksa kolom yang belum sesuai.");
       }catch(error:any){
         if(!alive)return;setMessage(error?.message||"File tidak dapat dibaca.");
@@ -216,8 +217,8 @@ export default function ImportMappingWizard({file,dataType,platform,workspaceId,
   const mappedFields=useMemo(()=>fields.filter(field=>mapping[field.output]),[fields,mapping]);
 
   useEffect(()=>{
-    onChange({mapping,valid,detectedPlatform:detected,totalRows:rows.length?Math.max(rows.length,0):0,headers});
-  },[mapping,valid,detected,headers,rows.length]);
+    onChange({mapping,valid,detectedPlatform:detected,totalRows,headers});
+  },[mapping,valid,detected,headers,totalRows]);
 
   async function save(){
     if(!headers.length||!valid)return;
@@ -241,7 +242,7 @@ export default function ImportMappingWizard({file,dataType,platform,workspaceId,
 
     {loading?<div className="import-preview-loading"><i/><span>Membaca header, platform, dan struktur file...</span></div>:headers.length>0&&<>
       <header className="import-wizard-summary">
-        <div><span>FILE TERBACA</span><strong>{file.name}</strong><small>{headers.length} kolom · {detected}</small></div>
+        <div><span>FILE TERBACA</span><strong>{file.name}</strong><small>{totalRows.toLocaleString("id-ID")} row · {headers.length} kolom · {detected}</small></div>
         <div><b>{mappedFields.length}/{fields.length}</b><span>field terpetakan</span></div>
       </header>
 
