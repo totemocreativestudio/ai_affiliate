@@ -15,6 +15,7 @@ import "./lumaway-auth-access-v6.css";
 import "./lumaway-auth-v7.css";
 import "./automation-rules.css";
 import "./goal-forecast.css";
+import "./scheduled-reports.css";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../lib/supabase-browser";
 import { APP_BASE, isAuthPath, navigateToSection, routeForSection, sectionFromPath } from "../lib/luma-navigation";
@@ -25,6 +26,7 @@ import CampaignTracker from "./components/CampaignTracker";
 import DailyBriefCenter from "./components/DailyBriefCenter";
 import AutomationRulesCenter from "./components/AutomationRulesCenter";
 import GoalForecastCenter from "./components/GoalForecastCenter";
+import ScheduledReportCenter from "./components/ScheduledReportCenter";
 import CreatorSamples from "./components/CreatorSamples";
 import RatecardMaster from "./components/RatecardMaster";
 import UploadCenter from "./components/UploadCenter";
@@ -488,6 +490,7 @@ export default function LumawayWorkspaceApp() {
           <DailyBriefCenter workspaceId={workspace.id} />
           <AutomationRulesCenter workspaceId={workspace.id} />
           <GoalForecastCenter workspaceId={workspace.id} />
+          <ScheduledReportCenter workspaceId={workspace.id} />
           <section id="campaign-tracker" className="legacy-page-anchor"><CampaignTracker workspaceId={workspace.id} /></section>
           <section id="creator-samples" className="legacy-page-anchor"><CreatorSamples workspaceId={workspace.id} /></section>
           <section id="ratecard" className="legacy-page-anchor"><RatecardMaster workspaceId={workspace.id} /></section>

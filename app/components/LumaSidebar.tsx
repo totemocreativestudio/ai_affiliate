@@ -254,6 +254,7 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
                 <a className={subActive("daily-brief")} href={routeForSection("daily-brief")} onClick={(e) => go(e, "daily-brief")}><LumaIcon name="recommendation" />Daily Brief</a>
                 <a className={subActive("automation-rules")} href={routeForSection("automation-rules")} onClick={(e) => go(e, "automation-rules")}><LumaIcon name="kanban" />Automation Rules</a>
                 <a className={subActive("goal-forecast")} href={routeForSection("goal-forecast")} onClick={(e) => go(e, "goal-forecast")}><LumaIcon name="performance" />Goal & Forecast</a>
+                <a className={subActive("scheduled-reports")} href={routeForSection("scheduled-reports")} onClick={(e) => go(e, "scheduled-reports")}><LumaIcon name="content" />Scheduled Report</a>
                 <a className={subActive("campaign-tracker")} href={routeForSection("campaign-tracker")} onClick={(e) => go(e, "campaign-tracker")}><LumaIcon name="performance" />Campaign Tracker</a>
                 <a className={subActive("promo-studio")} href={routeForSection("promo-studio")} onClick={(e) => go(e, "promo-studio")}><LumaIcon name="broadcast" />Promo Studio</a>
                 <a className={subActive("kanban")} href={routeForSection("kanban")} onClick={(e) => go(e, "kanban")}><LumaIcon name="kanban" />Kanban</a>

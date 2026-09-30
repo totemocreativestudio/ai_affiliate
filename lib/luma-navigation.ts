@@ -16,6 +16,7 @@ const SECTION_ROUTES: Record<string, string> = {
   "daily-brief": "daily-brief",
   "automation-rules": "automation-rules",
   "goal-forecast": "goal-forecast",
+  "scheduled-reports": "scheduled-reports",
   kanban: "kanban",
   "support-tickets": "support-tickets",
   billing: "billing",
