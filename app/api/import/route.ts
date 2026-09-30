@@ -997,12 +997,13 @@ export async function POST(req: NextRequest) {
       await notifyTopCreators(admin,workspaceId,ctx.user.id).catch(()=>undefined);
 
       if(dataType==="performance"||dataType==="sales"){
-        await admin.rpc("luma_sync_workspace_campaign_performance_v1",{
+        const {error:campaignSyncError}=await admin.rpc("luma_sync_workspace_campaign_performance_v1",{
           p_workspace_id:workspaceId,
           p_start_date:start||null,
           p_end_date:end||start||null,
           p_platform:platform||null
-        }).catch(()=>undefined);
+        });
+        if(campaignSyncError)console.warn("Campaign performance auto-sync skipped:",campaignSyncError.message);
       }
     }
 
