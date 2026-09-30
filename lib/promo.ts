@@ -21,7 +21,7 @@ export async function resolvePromo(admin:any,userId:string,code:string,target:Pr
   if(promo.max_uses!=null&&totalUsage>=Number(promo.max_uses))throw new Error("Kuota promo sudah habis.");
   if(totalUserUsage>=Number(promo.per_user_limit||1))throw new Error("Kode promo sudah pernah digunakan.");
   const type=String(promo.promo_type);
-  if(Number(promo.min_purchase_amount||0)>0&&Number(baseAmount||0)<Number(promo.min_purchase_amount||0))throw new Error("Minimum transaksi promo belum terpenuhi.");
+  if(target!=="generic"&&Number(promo.min_purchase_amount||0)>0&&Number(baseAmount||0)<Number(promo.min_purchase_amount||0))throw new Error("Minimum transaksi promo belum terpenuhi.");
   if(Array.isArray(promo.valid_weekdays)&&promo.valid_weekdays.length){
     const day=new Date().getDay();
     if(!promo.valid_weekdays.map((x:any)=>Number(x)).includes(day))throw new Error("Kode promo tidak berlaku hari ini.");
