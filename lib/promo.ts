@@ -21,6 +21,19 @@ export async function resolvePromo(admin:any,userId:string,code:string,target:Pr
   if(promo.max_uses!=null&&totalUsage>=Number(promo.max_uses))throw new Error("Kuota promo sudah habis.");
   if(totalUserUsage>=Number(promo.per_user_limit||1))throw new Error("Kode promo sudah pernah digunakan.");
   const type=String(promo.promo_type);
+  if(Number(promo.min_purchase_amount||0)>0&&Number(baseAmount||0)<Number(promo.min_purchase_amount||0))throw new Error("Minimum transaksi promo belum terpenuhi.");
+  if(Array.isArray(promo.valid_weekdays)&&promo.valid_weekdays.length){
+    const day=new Date().getDay();
+    if(!promo.valid_weekdays.map((x:any)=>Number(x)).includes(day))throw new Error("Kode promo tidak berlaku hari ini.");
+  }
+  if(promo.new_user_only){
+    const {count}=await admin.from("luma_subscription_orders").select("id",{head:true,count:"exact"}).eq("user_id",userId).eq("status","paid");
+    if(Number(count||0)>0)throw new Error("Promo ini khusus user baru.");
+  }
+  if(promo.renewal_only){
+    const {count}=await admin.from("luma_subscription_orders").select("id",{head:true,count:"exact"}).eq("user_id",userId).eq("status","paid");
+    if(Number(count||0)<1)throw new Error("Promo ini khusus perpanjangan.");
+  }
   if(target==="subscription"){
     if(!["subscription_percent","subscription_amount"].includes(type))throw new Error("Kode promo tidak berlaku untuk langganan.");
     const allowed=(promo.applicable_plan_codes||[]) as string[];
@@ -36,6 +49,8 @@ export async function resolvePromo(admin:any,userId:string,code:string,target:Pr
   const value=Number(promo.value||0);
   if(type.endsWith("_percent"))discount=Math.min(Number(baseAmount||0),Math.round(Number(baseAmount||0)*Math.min(100,value)/100));
   if(type.endsWith("_amount"))discount=Math.min(Number(baseAmount||0),value);
+  const maxDiscount=Math.max(0,Math.min(12000,Number(promo.max_discount_amount??12000)));
+  if(discount>0)discount=Math.min(discount,maxDiscount);
   if(type==="free_tokens")bonusTokens=Math.max(0,Math.floor(value));
   if(type==="extend_days")extendDays=Math.max(0,Math.floor(value));
   return {promo,effect:{discount_amount:discount,final_amount:Math.max(0,Number(baseAmount||0)-discount),bonus_tokens:bonusTokens,extend_days:extendDays}};
