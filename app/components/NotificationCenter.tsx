@@ -18,6 +18,7 @@ type NotificationRow = {
   published_at: string | null;
   created_at: string;
   read: boolean;
+  priority: "critical" | "action" | "info";
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -61,6 +62,12 @@ const CATEGORY_LABELS: Record<string, string> = {
 function categoryLabel(category: string) {
   return CATEGORY_LABELS[category] || category.replaceAll("_", " ");
 }
+function priorityOf(category:string):"critical"|"action"|"info"{
+  if(["payment_failed","withdrawal_failed","maintenance","campaign_overdue"].includes(category))return "critical";
+  if(["campaign_due","task_due","listing_follow_up","payment_pending","ticket_reply","payment_expired","withdrawal_pending","live_data_health"].includes(category))return "action";
+  return "info";
+}
+function priorityLabel(priority:"critical"|"action"|"info"){return priority==="critical"?"Critical":priority==="action"?"Action":"Info"}
 
 export default function NotificationCenter({ workspaceId, userId }: { workspaceId: string; userId: string }) {
   const supabase = useMemo(() => createClient(), []);
@@ -69,12 +76,15 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
   const [toast, setToast] = useState<NotificationRow | null>(null);
   const [toastSeconds, setToastSeconds] = useState<number | null>(null);
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState<"all"|"critical"|"action"|"info">("all");
+  const [toastEnabled,setToastEnabled]=useState(true);
+  const [criticalOnly,setCriticalOnly]=useState(false);
   const firstLoad = useRef(true);
   const dismissedToastKeys = useRef<Set<string>>(new Set());
 
   async function load() {
     try{await supabase.rpc("luma_refresh_operational_notifications_v1",{p_workspace_id:workspaceId})}catch{}
-    const [globalRes, directRes] = await Promise.all([
+    const [globalRes, directRes, stateRes, prefRes] = await Promise.all([
       supabase
         .from("luma_notifications")
         .select("id,title,body,category,action_url,action_label,image_url,published_at,created_at")
@@ -87,7 +97,11 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
         .eq("workspace_id", workspaceId)
         .order("created_at", { ascending: false })
         .limit(60),
+      supabase.from("luma_user_notification_state").select("source_type,source_id,snoozed_until,archived_at").eq("workspace_id",workspaceId).eq("user_id",userId),
+      supabase.rpc("luma_notification_preferences_v1",{p_workspace_id:workspaceId}),
     ]);
+    if(!prefRes.error&&prefRes.data){setToastEnabled(prefRes.data.toast_enabled!==false);setCriticalOnly(Boolean(prefRes.data.critical_toast_only))}
+    const notificationState=new Map<string,any>((stateRes.data||[]).map((item:any)=>[`${item.source_type}-${item.source_id}`,item]));
 
     const globals = (globalRes.data || []) as any[];
     const ids = globals.map((item) => item.id);
@@ -115,6 +129,7 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
       published_at: item.published_at || item.created_at,
       created_at: item.created_at,
       read: readIds.has(Number(item.id)),
+      priority: priorityOf(item.category || "info"),
     }));
 
     const directRows: NotificationRow[] = (directRes.data || []).map((item: any) => ({
@@ -130,20 +145,29 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
       published_at: item.created_at,
       created_at: item.created_at,
       read: Boolean(item.is_read),
+      priority: priorityOf(item.kind || "info"),
     }));
 
+    const now=Date.now();
     const list = [...globalRows, ...directRows]
+      .filter(item=>{
+        const state=notificationState.get(`${item.source}-${item.id}`);
+        if(state?.archived_at)return false;
+        if(state?.snoozed_until&&new Date(state.snoozed_until).getTime()>now)return false;
+        return true;
+      })
       .sort((a, b) => new Date(b.published_at || b.created_at).getTime() - new Date(a.published_at || a.created_at).getTime())
       .slice(0, 80);
 
     const unreadCandidate = list.find((item) =>
       !item.read &&
       !dismissedToastKeys.current.has(item.key) &&
-      (firstLoad.current || !rows.some((old) => old.key === item.key))
+      (firstLoad.current || !rows.some((old) => old.key === item.key)) &&
+      item.priority !== "info"
     );
-    if (unreadCandidate && !toast) {
+    if (unreadCandidate && !toast && toastEnabled && (!criticalOnly || unreadCandidate.priority==="critical")) {
       setToast(unreadCandidate);
-      setToastSeconds(unreadCandidate.source==="broadcast"?3:7);
+      setToastSeconds(unreadCandidate.priority==="critical"?8:5);
     }
 
     firstLoad.current = false;
@@ -180,9 +204,14 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
     return ["all", ...Array.from(labels.keys()).sort((a,b)=>a.localeCompare(b,"id"))];
   }, [rows]);
   const visibleRows = useMemo(
-    () => categoryFilter === "all" ? rows : rows.filter((row) => categoryLabel(row.category) === categoryFilter),
-    [rows, categoryFilter],
+    () => rows.filter((row) => (categoryFilter === "all" || categoryLabel(row.category) === categoryFilter) && (priorityFilter==="all" || row.priority===priorityFilter)),
+    [rows, categoryFilter, priorityFilter],
   );
+  const priorityCounts=useMemo(()=>({
+    critical:rows.filter(row=>row.priority==="critical").length,
+    action:rows.filter(row=>row.priority==="action").length,
+    info:rows.filter(row=>row.priority==="info").length,
+  }),[rows]);
 
   function dismissToast(row: NotificationRow) {
     dismissedToastKeys.current.add(row.key);
@@ -208,6 +237,18 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
       setOpen(false);
       navigateLumawayUrl(row.action_url);
     }
+  }
+
+  async function setNotificationState(row:NotificationRow,action:"snooze"|"archive"){
+    const payload:any={workspace_id:workspaceId,user_id:userId,source_type:row.source,source_id:row.id,updated_at:new Date().toISOString()};
+    if(action==="archive")payload.archived_at=new Date().toISOString();
+    else payload.snoozed_until=new Date(Date.now()+60*60*1000).toISOString();
+    await supabase.from("luma_user_notification_state").upsert(payload,{onConflict:"workspace_id,user_id,source_type,source_id"});
+    setRows(previous=>previous.filter(item=>item.key!==row.key));
+  }
+  async function saveToastPreference(next:boolean){
+    setToastEnabled(next);
+    await supabase.from("luma_user_notification_preferences").upsert({workspace_id:workspaceId,user_id:userId,toast_enabled:next,critical_toast_only:criticalOnly,updated_at:new Date().toISOString()},{onConflict:"workspace_id,user_id"});
   }
 
   async function markAll() {
@@ -241,18 +282,23 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
             <div><strong>Notifications</strong><span>{unread} belum dibaca</span></div>
             <button onClick={() => void markAll()}>Mark all read</button>
           </div>
+          <div className="notification-priority-tabs">{(["all","critical","action","info"] as const).map(option=><button key={option} className={priorityFilter===option?"active":""} onClick={()=>setPriorityFilter(option)}>{option==="all"?"Semua":priorityLabel(option)}{option!=="all"?` ${priorityCounts[option]}`:""}</button>)}</div>
+          <label className="notification-toast-pref"><input type="checkbox" checked={toastEnabled} onChange={e=>void saveToastPreference(e.target.checked)}/> Toast Critical/Action</label>
           {categoryOptions.length>2&&<div className="notification-filters">{categoryOptions.map(option=><button key={option} className={categoryFilter===option?"active":""} onClick={()=>setCategoryFilter(option)}>{option==="all"?"Semua":option}</button>)}</div>}
           <div className="notification-list">
             {visibleRows.length ? visibleRows.map((row) => (
-              <button key={row.key} className={`notification-item ${row.read ? "read" : "unread"}`} onClick={() => void markRead(row, true)}>
-                {row.image_url && <img src={row.image_url} alt="" />}
-                <div>
-                  <span className={`notification-category n-${row.category}`}>{categoryLabel(row.category)}</span>
-                  <strong>{row.title}</strong>
-                  <p>{row.body}</p>
-                  <small>{row.published_at ? new Date(row.published_at).toLocaleString("id-ID") : ""}{row.action_label ? ` · ${row.action_label}` : ""}</small>
-                </div>
-              </button>
+              <article key={row.key} className={`notification-item notification-item-v2 ${row.read ? "read" : "unread"}`}>
+                <button type="button" className="notification-item-main" onClick={() => void markRead(row, true)}>
+                  {row.image_url && <img src={row.image_url} alt="" />}
+                  <div>
+                    <span className={`notification-priority ${row.priority}`}>{priorityLabel(row.priority)}</span><span className={`notification-category n-${row.category}`}>{categoryLabel(row.category)}</span>
+                    <strong>{row.title}</strong>
+                    <p>{row.body}</p>
+                    <small>{row.published_at ? new Date(row.published_at).toLocaleString("id-ID") : ""}{row.action_label ? ` · ${row.action_label}` : ""}</small>
+                  </div>
+                </button>
+                <div className="notification-row-actions"><button type="button" onClick={()=>void setNotificationState(row,"snooze")}>Snooze 1j</button><button type="button" onClick={()=>void setNotificationState(row,"archive")}>Arsip</button></div>
+              </article>
             )) : <div className="empty-state"><strong>Belum ada notifikasi.</strong></div>}
           </div>
         </div>
@@ -261,7 +307,7 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
       {toast && (
         <div className="notification-toast" role="status" aria-live="polite">
           <button className="notification-toast-main" onClick={() => void markRead(toast, true)}>
-            <span className={`notification-category n-${toast.category}`}>{categoryLabel(toast.category)}</span>
+            <span className={`notification-priority ${toast.priority}`}>{priorityLabel(toast.priority)}</span><span className={`notification-category n-${toast.category}`}>{categoryLabel(toast.category)}</span>
             <strong>{toast.title}</strong>
             <p>{toast.body}</p>
             {toastSeconds!==null&&<small className="notification-toast-countdown">Tutup otomatis dalam {toastSeconds}s</small>}
