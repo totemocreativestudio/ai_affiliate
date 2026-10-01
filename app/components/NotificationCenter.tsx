@@ -287,16 +287,18 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
           {categoryOptions.length>2&&<div className="notification-filters">{categoryOptions.map(option=><button key={option} className={categoryFilter===option?"active":""} onClick={()=>setCategoryFilter(option)}>{option==="all"?"Semua":option}</button>)}</div>}
           <div className="notification-list">
             {visibleRows.length ? visibleRows.map((row) => (
-              <button key={row.key} className={`notification-item ${row.read ? "read" : "unread"}`} onClick={() => void markRead(row, true)}>
-                {row.image_url && <img src={row.image_url} alt="" />}
-                <div>
-                  <span className={`notification-priority ${row.priority}`}>{priorityLabel(row.priority)}</span><span className={`notification-category n-${row.category}`}>{categoryLabel(row.category)}</span>
-                  <strong>{row.title}</strong>
-                  <p>{row.body}</p>
-                  <small>{row.published_at ? new Date(row.published_at).toLocaleString("id-ID") : ""}{row.action_label ? ` · ${row.action_label}` : ""}</small>
-                  <span className="notification-row-actions"><button type="button" onClick={event=>{event.stopPropagation();void setNotificationState(row,"snooze")}}>Snooze 1j</button><button type="button" onClick={event=>{event.stopPropagation();void setNotificationState(row,"archive")}}>Arsip</button></span>
-                </div>
-              </button>
+              <article key={row.key} className={`notification-item notification-item-v2 ${row.read ? "read" : "unread"}`}>
+                <button type="button" className="notification-item-main" onClick={() => void markRead(row, true)}>
+                  {row.image_url && <img src={row.image_url} alt="" />}
+                  <div>
+                    <span className={`notification-priority ${row.priority}`}>{priorityLabel(row.priority)}</span><span className={`notification-category n-${row.category}`}>{categoryLabel(row.category)}</span>
+                    <strong>{row.title}</strong>
+                    <p>{row.body}</p>
+                    <small>{row.published_at ? new Date(row.published_at).toLocaleString("id-ID") : ""}{row.action_label ? ` · ${row.action_label}` : ""}</small>
+                  </div>
+                </button>
+                <div className="notification-row-actions"><button type="button" onClick={()=>void setNotificationState(row,"snooze")}>Snooze 1j</button><button type="button" onClick={()=>void setNotificationState(row,"archive")}>Arsip</button></div>
+              </article>
             )) : <div className="empty-state"><strong>Belum ada notifikasi.</strong></div>}
           </div>
         </div>
