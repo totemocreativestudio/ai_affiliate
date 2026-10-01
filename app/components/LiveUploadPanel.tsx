@@ -28,7 +28,7 @@ export default function LiveUploadPanel({workspaceId,onOpenHosts}:{workspaceId:s
  async function loadHosts(){const x=await supabase.from("live_hosts").select("id,name,username,platform,host_type").eq("workspace_id",workspaceId).eq("status","active").order("name");setHosts(x.data||[])}
  async function loadStores(){const x=await supabase.from("live_store_profiles").select("id,platform,store_name,store_id,store_username").eq("workspace_id",workspaceId).eq("status","active").order("store_name");setStores(x.data||[])}
  useEffect(()=>{void loadHistory();void loadHosts();void loadStores();try{const saved=sessionStorage.getItem("lumaway-live-upload-context:"+workspaceId);if(saved)setContext(prev=>({...prev,...JSON.parse(saved)}))}catch{}},[workspaceId]);
- useEffect(()=>{try{sessionStorage.setItem("lumaway-live-upload-context:"+workspaceId,JSON.stringify(context))}catch{}},[workspaceId,context]);
+ useEffect(()=>{try{sessionStorage.setItem("lumaway-live-upload-context:"+workspaceId,JSON.stringify(context))}catch{}},[workspaceId,context]);\n useEffect(()=>{if(context.host_id&&detection&&!compatibleHosts.some((h:any)=>h.id===context.host_id))setContext(prev=>({...prev,host_id:""}))},[detection?.platform,hosts,context.host_id]);
 
  async function choose(f:File){
   setFile(f);setMsg("Membaca dan mendeteksi format file...");setRows([]);setParsed(null);setDetection(null);setDelimiter("");setSourceSheet("");
