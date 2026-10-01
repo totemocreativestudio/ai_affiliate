@@ -14,7 +14,7 @@ export default function SpendingCenter({workspaceId}:{workspaceId:string}){
   if(!start||!end)return;
   setLoading(true);setError("");
   const [x,s]=await Promise.all([
-    supabase.rpc("luma_spending_center_v1",{p_workspace_id:workspaceId,p_start_date:start,p_end_date:end,p_platform:platform||null,p_store_name:store||null}),
+    supabase.rpc("luma_spending_center_v2",{p_workspace_id:workspaceId,p_start_date:start,p_end_date:end,p_platform:platform||null,p_store_name:store||null}),
     supabase.from("shipping").select("store_name").eq("workspace_id",workspaceId).not("store_name","is",null).limit(1500)
   ]);
   if(x.error){setError(x.error.message);setData({})}else setData(x.data||{});
@@ -25,7 +25,8 @@ export default function SpendingCenter({workspaceId}:{workspaceId:string}){
 
  const b=data.breakdown||{},daily=data.daily||[],rows=data.shipping_rows||[];
  const parts=[
-  ["HPP Produk",b.hpp],
+  ["HPP Penjualan",b.sales_hpp],
+  ["HPP Sample Creator",b.sample_hpp],
   ["Komisi Creator",b.creator_commission],
   ["Ads Spend Support",b.ads_spend],
   ["Ongkir Affiliate",b.affiliate_shipping],
@@ -40,9 +41,9 @@ export default function SpendingCenter({workspaceId}:{workspaceId:string}){
   {error&&<div className="shipping-v2-alert">{error}</div>}
   {loading?<div className="live-loading">Menghitung spending...</div>:<>
    <div className="spending-summary">
-    <article className="primary"><span>Total Spending</span><strong>{money(total)}</strong><small>HPP + Komisi + Ads + seluruh ongkir yang relevan</small></article>
+    <article className="primary"><span>Total Spending</span><strong>{money(total)}</strong><small>HPP sales + sample + Komisi + Ads + seluruh ongkir yang relevan</small></article>
     <article><span>Operations Shipping Spend</span><strong>{money(Number(b.operations_shipping||0)+Number(b.operations_insurance||0))}</strong><small>{num(data.shipment_rows)} shipment non-cancelled</small></article>
-    <article><span>Affiliate Cost</span><strong>{money(Number(b.hpp||0)+Number(b.creator_commission||0)+Number(b.affiliate_shipping||0))}</strong><small>HPP + komisi + affiliate shipping</small></article>
+    <article><span>Affiliate Cost</span><strong>{money(Number(b.hpp||0)+Number(b.creator_commission||0)+Number(b.affiliate_shipping||0))}</strong><small>HPP sales + sample + komisi + affiliate shipping</small></article>
     <article><span>Ads Support</span><strong>{money(b.ads_spend)}</strong><small>Sesuai periode / platform / store aktif</small></article>
    </div>
 
