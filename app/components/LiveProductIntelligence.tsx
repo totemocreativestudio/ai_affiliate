@@ -10,9 +10,9 @@ const no=(v:any)=>Math.round(Number(v||0)).toLocaleString("id-ID");
 const norm=(v:any)=>String(v||"").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"");
 const month=()=>{const d=new Date(),y=d.getFullYear(),m=d.getMonth();return{start:new Date(y,m,1).toISOString().slice(0,10),end:new Date(y,m+1,0).toISOString().slice(0,10)}};
 
-export default function LiveProductIntelligence({workspaceId}:{workspaceId:string}){
- const supabase=useMemo(()=>createClient(),[]),r=month();
- const [start,setStart]=useState(r.start),[end,setEnd]=useState(r.end),[platform,setPlatform]=useState(""),[search,setSearch]=useState("");
+export default function LiveProductIntelligence({workspaceId,start,end}:{workspaceId:string;start:string;end:string}){
+ const supabase=useMemo(()=>createClient(),[]);
+ const [platform,setPlatform]=useState(""),[search,setSearch]=useState("");
  const [data,setData]=useState<Row>({}),[products,setProducts]=useState<Row[]>([]),[busy,setBusy]=useState(false),[msg,setMsg]=useState("");
  const [mapping,setMapping]=useState<Row|null>(null),[selectedMaster,setSelectedMaster]=useState("");
 
@@ -69,7 +69,7 @@ export default function LiveProductIntelligence({workspaceId}:{workspaceId:strin
 
   <div className="lpi-separation"><b>Domain terpisah.</b> Mapping Product Master hanya digunakan untuk SKU, nama, gambar, kategori dan HPP. GMV, Qty, Click, Add to Cart dan attribution di bawah ini tidak masuk ke dashboard Affiliate.</div>
 
-  <div className="lpi-toolbar"><input type="date" value={start} onChange={e=>setStart(e.target.value)}/><span>→</span><input type="date" value={end} onChange={e=>setEnd(e.target.value)}/><select value={platform} onChange={e=>setPlatform(e.target.value)}><option value="">Semua Platform</option><option value="Shopee">Shopee</option><option value="TikTok">TikTok</option></select><input value={search} onChange={e=>setSearch(e.target.value)} onKeyDown={e=>e.key==="Enter"&&void load()} placeholder="Cari SKU / nama produk"/><button onClick={()=>void load()}>Cari</button><button className="secondary" disabled={busy} onClick={()=>void autoMap()}>{busy?"Memproses...":"Auto Map Product"}</button></div>
+  <div className="lpi-toolbar"><div className="live-shared-period"><span>Periode Live</span><b>{start} → {end}</b></div><select value={platform} onChange={e=>setPlatform(e.target.value)}><option value="">Semua Platform</option><option value="Shopee">Shopee</option><option value="TikTok">TikTok</option></select><input value={search} onChange={e=>setSearch(e.target.value)} onKeyDown={e=>e.key==="Enter"&&void load()} placeholder="Cari SKU / nama produk"/><button onClick={()=>void load()}>Cari</button><button className="secondary" disabled={busy} onClick={()=>void autoMap()}>{busy?"Memproses...":"Auto Map Product"}</button></div>
   {msg&&<div className="live-upload-msg">{msg}</div>}
 
   <div className="lpi-kpis">{[
