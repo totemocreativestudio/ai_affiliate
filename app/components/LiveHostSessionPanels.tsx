@@ -8,37 +8,61 @@ const month=()=>{const d=new Date(),y=d.getFullYear(),m=d.getMonth();return{star
 
 export function Host360Panel({workspaceId}:{workspaceId:string}){
  const supabase=useMemo(()=>createClient(),[]),r=month();
+ const emptyForm={name:"",username:"",platform:"TikTok",host_type:"inhouse",ratecard:"",phone:"",email:"",notes:""};
  const [hosts,setHosts]=useState<any[]>([]),[q,setQ]=useState(""),[selected,setSelected]=useState<any>(null),[detail,setDetail]=useState<any>(null),[open,setOpen]=useState(false);
- const [form,setForm]=useState({name:"",username:"",platform:"TikTok",host_type:"inhouse",ratecard:"",phone:"",email:"",notes:""});
- async function loadHosts(){const x=await supabase.from("live_hosts").select("*").eq("workspace_id",workspaceId).order("name");setHosts(x.data||[])}
+ const [form,setForm]=useState(emptyForm),[editId,setEditId]=useState(""),[busy,setBusy]=useState(false),[msg,setMsg]=useState("");
+ async function loadHosts(){const x=await supabase.from("live_hosts").select("*").eq("workspace_id",workspaceId).eq("status","active").order("name");setHosts(x.data||[])}
  async function loadDetail(id:string){const x=await supabase.rpc("luma_live_host_360_v1",{p_workspace_id:workspaceId,p_host_id:id,p_start:r.start,p_end:r.end});setDetail(x.data||{})}
  useEffect(()=>{void loadHosts()},[workspaceId]);
  useEffect(()=>{if(selected?.id)void loadDetail(selected.id)},[selected?.id]);
+ function openCreate(){setEditId("");setForm(emptyForm);setMsg("");setOpen(true)}
+ function openEdit(host:any){setEditId(String(host.id));setForm({name:host.name||"",username:host.username||"",platform:host.platform||"TikTok",host_type:host.host_type||"inhouse",ratecard:String(host.ratecard??""),phone:host.phone||"",email:host.email||"",notes:host.notes||""});setMsg("");setOpen(true)}
  async function save(){
-   const payload={workspace_id:workspaceId,name:form.name.trim(),username:form.username.trim()||null,platform:form.platform,host_type:form.host_type,ratecard:Number(form.ratecard||0),phone:form.phone||null,email:form.email||null,notes:form.notes||null,status:"active"};
-   if(!payload.name)return;
-   const x=await supabase.from("live_hosts").insert(payload).select("*").single();
-   if(!x.error){setOpen(false);setForm({name:"",username:"",platform:"TikTok",host_type:"inhouse",ratecard:"",phone:"",email:"",notes:""});await loadHosts();setSelected(x.data)}
+   const payload={workspace_id:workspaceId,name:form.name.trim(),username:form.username.trim()||null,platform:form.platform,host_type:form.host_type,ratecard:Number(form.ratecard||0),phone:form.phone||null,email:form.email||null,notes:form.notes||null,status:"active",updated_at:new Date().toISOString()};
+   if(!payload.name){setMsg("Nama host wajib diisi.");return}
+   setBusy(true);setMsg("");
+   const x=editId
+     ? await supabase.from("live_hosts").update(payload).eq("workspace_id",workspaceId).eq("id",editId).select("*").single()
+     : await supabase.from("live_hosts").insert(payload).select("*").single();
+   if(x.error){setMsg(x.error.message);setBusy(false);return}
+   setOpen(false);setEditId("");setForm(emptyForm);await loadHosts();setSelected(x.data);setDetail(null);setBusy(false)
+ }
+ async function removeHost(host:any){
+   if(!host?.id||busy)return;
+   if(!window.confirm(`Hapus host "${host.name}"? Jika host sudah dipakai pada session/import, host akan dinonaktifkan agar histori tetap aman.`))return;
+   setBusy(true);setMsg("");
+   const [sessions,imports]=await Promise.all([
+     supabase.from("live_sessions").select("id",{count:"exact",head:true}).eq("workspace_id",workspaceId).eq("host_id",host.id),
+     supabase.from("live_imports").select("id",{count:"exact",head:true}).eq("workspace_id",workspaceId).eq("host_id",host.id)
+   ]);
+   if(sessions.error||imports.error){setMsg(sessions.error?.message||imports.error?.message||"Gagal memeriksa relasi host.");setBusy(false);return}
+   const used=Number(sessions.count||0)+Number(imports.count||0)>0;
+   const x=used
+     ? await supabase.from("live_hosts").update({status:"inactive",updated_at:new Date().toISOString()}).eq("workspace_id",workspaceId).eq("id",host.id)
+     : await supabase.from("live_hosts").delete().eq("workspace_id",workspaceId).eq("id",host.id);
+   if(x.error){setMsg(x.error.message);setBusy(false);return}
+   setMsg(used?"Host sudah dipakai pada histori, jadi dinonaktifkan dan disembunyikan tanpa merusak data lama.":"Host berhasil dihapus permanen.");
+   setSelected(null);setDetail(null);await loadHosts();setBusy(false)
  }
  const filtered=hosts.filter(h=>(h.name+" "+(h.username||"")).toLowerCase().includes(q.toLowerCase()));
  const t=detail?.totals||{},h=detail?.host||selected||{};
  return <div className="host360-wrap">
-  <div className="host360-toolbar"><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Cari nama atau username host..."/><button onClick={()=>setOpen(true)}>+ Tambah Host</button></div>
+  <div className="host360-toolbar"><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Cari nama atau username host..."/><button onClick={openCreate}>+ Tambah Host</button></div>{msg&&<div className="live-upload-msg">{msg}</div>}
   <div className="host360-grid">
    <aside>{filtered.length?filtered.map(host=><button key={host.id} className={selected?.id===host.id?"active":""} onClick={()=>setSelected(host)}><span className="host-avatar">{host.name.slice(0,1).toUpperCase()}</span><span><strong>{host.name}</strong><small>{host.username||host.platform} · {host.host_type}</small></span></button>):<div className="host-empty">Belum ada host.</div>}</aside>
-   <main>{selected?<><div className="host360-hero"><div className="host-avatar big">{h.name?.slice(0,1).toUpperCase()}</div><div><span>HOST 360</span><h2>{h.name}</h2><p>{h.username||"-"} · {h.platform||"-"} · {h.host_type||"-"}</p></div><div className="host-rate"><small>Ratecard</small><b>{rp(h.ratecard)}</b></div></div>
+   <main>{selected?<><div className="host360-hero"><div className="host-avatar big">{h.name?.slice(0,1).toUpperCase()}</div><div><span>HOST 360</span><h2>{h.name}</h2><p>{h.username||"-"} · {h.platform||"-"} · {h.host_type||"-"}</p></div><div className="host-rate"><small>Ratecard</small><b>{rp(h.ratecard)}</b><div className="host-master-actions"><button type="button" onClick={()=>openEdit(selected)}>Edit</button><button type="button" className="danger-lite" disabled={busy} onClick={()=>void removeHost(selected)}>Hapus</button></div></div></div>
     <div className="host-kpis">{[["GMV",rp(t.gmv)],["Orders",no(t.orders)],["Duration",no(t.duration_minutes)+" min"],["Revenue/Hour",rp(t.revenue_per_hour)],["Peak Viewer",no(t.peak_viewers)],["Avg Viewer",no(t.avg_viewers)]].map(([l,v])=><article key={l}><span>{l}</span><strong>{v}</strong></article>)}</div>
     <div className="host-signal"><article><span>BEST HOUR</span><h3>{detail?.best_hour?.hour_bucket!=null?String(detail.best_hour.hour_bucket).padStart(2,"0")+":00":"Belum terbaca"}</h3><p>{detail?.best_hour?.gmv?rp(detail.best_hour.gmv):"Butuh data beberapa sesi."}</p></article><article><span>BEST GIMMICK</span><h3>{detail?.best_gimmick?.gimmick||"Belum terbaca"}</h3><p>{detail?.best_gimmick?.gmv?rp(detail.best_gimmick.gmv):"Tambahkan gimmick pada sesi live."}</p></article></div>
     <section className="host-history"><header><span>SESSION HISTORY</span><h3>Riwayat live</h3></header>{(detail?.history||[]).length?(detail.history||[]).map((x:any)=><article key={x.id}><div><strong>{x.title}</strong><small>{x.session_date} · {x.platform} · {x.gimmick||"Tanpa gimmick"}</small></div><div><b>{rp(x.gmv)}</b><small>{no(x.orders)} orders · {no(x.duration_minutes)} min</small></div></article>):<div className="host-empty">Belum ada session untuk host ini.</div>}</section>
    </>:<div className="host-empty large">Pilih host untuk membuka Host 360.</div>}</main>
   </div>
-  {open&&<div className="host-modal-bg" onClick={()=>setOpen(false)}><div className="host-modal" onClick={e=>e.stopPropagation()}><header><div><span>HOST MASTER</span><h2>Tambah Host</h2></div><button onClick={()=>setOpen(false)}>×</button></header><div className="host-form">
+  {open&&<div className="host-modal-bg" onClick={()=>!busy&&setOpen(false)}><div className="host-modal" onClick={e=>e.stopPropagation()}><header><div><span>HOST MASTER</span><h2>{editId?"Edit Host":"Tambah Host"}</h2></div><button disabled={busy} onClick={()=>setOpen(false)}>×</button></header><div className="host-form">
    <label>Nama<input value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></label><label>Username<input value={form.username} onChange={e=>setForm({...form,username:e.target.value})}/></label>
    <label>Platform<select value={form.platform} onChange={e=>setForm({...form,platform:e.target.value})}><option>TikTok</option><option>Shopee</option><option>Instagram</option><option>Other</option></select></label>
    <label>Tipe<select value={form.host_type} onChange={e=>setForm({...form,host_type:e.target.value})}><option value="inhouse">Inhouse</option><option value="outhouse">Outhouse</option></select></label>
    <label>Ratecard<input inputMode="numeric" value={form.ratecard} onChange={e=>setForm({...form,ratecard:e.target.value})}/></label><label>Phone<input value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/></label>
    <label>Email<input value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></label><label>Notes<input value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></label>
-  </div><footer><button onClick={()=>setOpen(false)}>Batal</button><button onClick={()=>void save()}>Simpan Host</button></footer></div></div>}
+  </div>{msg&&<div className="live-upload-msg">{msg}</div>}<footer><button disabled={busy} onClick={()=>setOpen(false)}>Batal</button><button disabled={busy} onClick={()=>void save()}>{busy?"Menyimpan...":editId?"Simpan Perubahan":"Simpan Host"}</button></footer></div></div>}
  </div>
 }
 
