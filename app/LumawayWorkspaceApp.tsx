@@ -22,6 +22,7 @@ import "./live-host-session.css";
 import "./live-upload.css";
 import "./live-campaign.css";
 import "./live-analytics.css";
+import "./affiliate360-search.css";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../lib/supabase-browser";
 import { APP_BASE, isAuthPath, navigateToSection, routeForSection, sectionFromPath } from "../lib/luma-navigation";
@@ -34,6 +35,7 @@ import AutomationRulesCenter from "./components/AutomationRulesCenter";
 import GoalForecastCenter from "./components/GoalForecastCenter";
 import ScheduledReportCenter from "./components/ScheduledReportCenter";
 import LiveStreamingCenter from "./components/LiveStreamingCenter";
+import Affiliate360Search from "./components/Affiliate360Search";
 import CreatorSamples from "./components/CreatorSamples";
 import RatecardMaster from "./components/RatecardMaster";
 import UploadCenter from "./components/UploadCenter";
@@ -499,6 +501,7 @@ export default function LumawayWorkspaceApp() {
           <GoalForecastCenter workspaceId={workspace.id} />
           <ScheduledReportCenter workspaceId={workspace.id} />
           <LiveStreamingCenter workspaceId={workspace.id} />
+          <Affiliate360Search workspaceId={workspace.id} />
           <section id="campaign-tracker" className="legacy-page-anchor"><CampaignTracker workspaceId={workspace.id} /></section>
           <section id="creator-samples" className="legacy-page-anchor"><CreatorSamples workspaceId={workspace.id} /></section>
           <section id="ratecard" className="legacy-page-anchor"><RatecardMaster workspaceId={workspace.id} /></section>
