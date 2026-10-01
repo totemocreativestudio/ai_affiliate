@@ -6,7 +6,7 @@ import {CreatorAutocomplete,ProductAutocomplete,CreatorSearchResult,ProductSearc
 import ListingFollowupInsights from "./ListingFollowupInsights";
 import ListingFollowupQueue from "./ListingFollowupQueue";
 import ListingFollowupCalendar from "./ListingFollowupCalendar";
-import ListingQuickMessage from "./ListingQuickMessage";
+import ListingQuickMessage from "./ListingQuickMessage";\nimport ListingContactReadiness from "./ListingContactReadiness";
 
 type Creator={
   id:number;creator_code:string|null;name:string|null;username:string|null;platform:string|null;
@@ -356,7 +356,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
 
     {error&&<div className="listing-v2-alert error">{error}</div>}
     {message&&<div className="listing-v2-alert success">{message}</div>}
-    <ListingFollowupQueue workspaceId={workspaceId}/>
+    <ListingContactReadiness workspaceId={workspaceId}/>\n    <ListingFollowupQueue workspaceId={workspaceId}/>
     <ListingFollowupCalendar workspaceId={workspaceId}/>
     <ListingFollowupInsights workspaceId={workspaceId} startDate={dateStart||undefined} endDate={dateEnd||undefined}/>
 

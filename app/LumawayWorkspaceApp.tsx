@@ -28,7 +28,7 @@ import "./spending-center.css";
 import "./listing-followup-insights.css";
 import "./listing-followup-queue.css";
 import "./listing-followup-calendar.css";
-import "./listing-quick-message.css";
+import "./listing-quick-message.css";\nimport "./listing-contact-readiness.css";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../lib/supabase-browser";
 import { APP_BASE, isAuthPath, navigateToSection, routeForSection, sectionFromPath } from "../lib/luma-navigation";
