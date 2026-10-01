@@ -243,6 +243,7 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
               </details>
 
               <Group icon="creator" label="Affiliate & Creator">
+                <a className={subActive("affiliate-360")} href={routeForSection("affiliate-360")} onClick={(e)=>go(e,"affiliate-360")}><LumaIcon name="creator"/><span>Affiliate 360</span></a>
                 {creatorOpsNav.map(([section,icon,label])=><a className={subActive(section)} key={section} href={routeForSection(section)} onClick={(e)=>go(e,section)}><LumaIcon name={icon}/><span>{label}</span></a>)}
               </Group>
 
