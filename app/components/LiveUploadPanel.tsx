@@ -21,7 +21,7 @@ export default function LiveUploadPanel({workspaceId,onOpenHosts}:{workspaceId:s
  const [busy,setBusy]=useState(false),[removingId,setRemovingId]=useState(""),[msg,setMsg]=useState(""),[history,setHistory]=useState<any[]>([]),[hosts,setHosts]=useState<any[]>([]),[stores,setStores]=useState<any[]>([]);
  const [detection,setDetection]=useState<LiveDetection|null>(null),[parsed,setParsed]=useState<ParsedLivePayload|null>(null),[fileHash,setFileHash]=useState(""),[delimiter,setDelimiter]=useState(""),[sourceSheet,setSourceSheet]=useState("");
  const [context,setContext]=useState({store_name:"",store_id:"",store_username:"",host_id:""});
- const headers=Object.keys(rows[0]||{});
+ const headers=Object.keys(rows[0]||{});\n const compatibleHosts=hosts.filter((h:any)=>{const hp=clean(h.platform).toLowerCase(),dp=clean(detection?.platform).toLowerCase();return !dp||dp==="unknown"||!hp||hp==="all"||hp.includes(dp)||dp.includes(hp)});
 
  async function loadHistory(){const x=await supabase.from("live_imports").select("*,live_hosts(name,username)").eq("workspace_id",workspaceId).order("created_at",{ascending:false}).limit(25);setHistory(x.data||[])}
  async function loadHosts(){const x=await supabase.from("live_hosts").select("id,name,username,platform,host_type").eq("workspace_id",workspaceId).eq("status","active").order("name");setHosts(x.data||[])}
@@ -99,9 +99,9 @@ export default function LiveUploadPanel({workspaceId,onOpenHosts}:{workspaceId:s
     <label>Nama Toko<input value={context.store_name} onChange={e=>setContext({...context,store_name:e.target.value})} placeholder="Contoh: Gascomp Official Store"/></label>
     <label>ID Toko<input value={context.store_id} onChange={e=>setContext({...context,store_id:e.target.value})} placeholder="Contoh: 780912857"/></label>
     <label>Username Toko<input value={context.store_username} onChange={e=>setContext({...context,store_username:e.target.value})} placeholder="@username_toko"/></label>
-    <label>Host<select value={context.host_id} onChange={e=>setContext({...context,host_id:e.target.value})}><option value="">Pilih Host</option>{hosts.map(h=><option key={h.id} value={h.id}>{h.name}{h.username?" · "+h.username:""} · {h.platform}</option>)}</select></label>
+    <label>Host<select value={context.host_id} onChange={e=>setContext({...context,host_id:e.target.value})}><option value="">Pilih Host</option>{compatibleHosts.map(h=><option key={h.id} value={h.id}>{h.name}{h.username?" · "+h.username:""} · {h.platform||"Semua Platform"}</option>)}</select></label>
    </div>
-   <div className="live-context-help"><span>{hosts.length?hosts.length+" host aktif tersedia":"Belum ada host aktif."}</span><button type="button" onClick={()=>onOpenHosts?.()}>+ Tambah Host di Host 360</button></div>
+   <div className="live-context-help"><span>{compatibleHosts.length?compatibleHosts.length+" host aktif sesuai platform tersedia":hosts.length?"Belum ada host yang cocok dengan platform file ini.":"Belum ada host aktif."}</span><button type="button" onClick={()=>onOpenHosts?.()}>+ Tambah Host di Host 360</button></div>
   </section>
 
   {msg&&<div className="live-upload-msg">{msg}</div>}
