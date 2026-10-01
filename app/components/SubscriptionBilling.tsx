@@ -22,9 +22,10 @@ export default function SubscriptionBilling({ workspaceId, userId }: { workspace
   const [promoInfo, setPromoInfo] = useState<any>(null);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState<number | null>(null);
+  const [featuredPromos,setFeaturedPromos]=useState<Row[]>([]);
 
   async function load() {
-    const [p, s, o] = await Promise.all([
+    const [p, s, o, f] = await Promise.all([
       supabase.from("luma_subscription_plans").select("*").eq("status", "active").order("sort_order"),
       supabase
         .from("luma_user_subscriptions")
@@ -37,10 +38,12 @@ export default function SubscriptionBilling({ workspaceId, userId }: { workspace
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(50),
+      supabase.from("luma_promo_codes").select("id,code,title,description,campaign_label,promo_type,value,min_purchase_amount,short_terms,banner_portrait_url,banner_landscape_url,ends_at").eq("active",true).eq("is_published",true).eq("is_featured",true).order("created_at",{ascending:false}).limit(5),
     ]);
     setPlans((p.data || []) as Row[]);
     setSubs((s.data || []) as Row[]);
     setOrders((o.data || []) as Row[]);
+    setFeaturedPromos((f.data||[]) as Row[]);
   }
 
   useEffect(() => {
@@ -195,6 +198,13 @@ export default function SubscriptionBilling({ workspaceId, userId }: { workspace
           <div className="subscription-progress-bar"><i style={{width: subscriptionProgress.pct + "%"}} /></div>
         </div>
       </div>
+
+      {featuredPromos.length>0&&<div className="subscription-promo-spotlight">
+        {featuredPromos.map((fp,index)=>{const pct=String(Number(fp.value||0).toLocaleString("id-ID",{maximumFractionDigits:2}));return <article className={"promo-spot-card "+(index===0?"primary":"")} key={fp.id}>
+          <div className="promo-spot-art">{fp.banner_landscape_url?<img src={fp.banner_landscape_url} alt={fp.title}/>:<><span className="promo-orbit one"/><span className="promo-orbit two"/><div className="promo-screen-mock"><i/><i/><i/><b>LUMAWAY</b></div></>}</div>
+          <div className="promo-spot-copy"><span>{fp.campaign_label||"PROMOTION"}</span><h3>{fp.title}</h3><strong>{fp.promo_type.includes("percent")?pct+"% SAVING":"SPECIAL DEAL"}</strong><p>{fp.description||("Untuk transaksi mulai "+money(fp.min_purchase_amount||0))}</p><small>{fp.short_terms||("Berlaku untuk transaksi mulai "+money(fp.min_purchase_amount||0)+".")}</small><button onClick={()=>{setPromo(String(fp.code||"").toUpperCase());setPromoInfo(null);localStorage.setItem("lumaway_promo_code",String(fp.code||"").toUpperCase());window.dispatchEvent(new CustomEvent("lumaway-promo-code",{detail:{code:String(fp.code||"").toUpperCase()}}));setMsg("Promo "+fp.code+" siap digunakan saat checkout.")}}>Gunakan promo</button></div>
+        </article>})}
+      </div>}
 
       <div className="card">
         <div className="section-head">
