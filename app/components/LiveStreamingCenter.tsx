@@ -12,8 +12,8 @@ const month=()=>{const d=new Date(),y=d.getFullYear(),m=d.getMonth();return{star
 
 export default function LiveStreamingCenter({workspaceId}:{workspaceId:string}){
  const supabase=useMemo(()=>createClient(),[]),initial=month();
- const [start,setStart]=useState(initial.start),[end,setEnd]=useState(initial.end),[data,setData]=useState<any>(null),[loading,setLoading]=useState(true),[tab,setTab]=useState("overview");
- async function load(){setLoading(true);const r=await supabase.rpc("luma_live_overview_v1",{p_workspace_id:workspaceId,p_start:start,p_end:end});setData(r.data||{});setLoading(false)}
+ const [start,setStart]=useState(initial.start),[end,setEnd]=useState(initial.end),[data,setData]=useState<any>(null),[sourceData,setSourceData]=useState<any>({}),[loading,setLoading]=useState(true),[tab,setTab]=useState("overview");
+ async function load(){setLoading(true);const [r,s]=await Promise.all([supabase.rpc("luma_live_overview_v1",{p_workspace_id:workspaceId,p_start:start,p_end:end}),supabase.rpc("luma_live_source_summary_v1",{p_workspace_id:workspaceId,p_start:start,p_end:end})]);setData(r.data||{});setSourceData(s.data||{});setLoading(false)}
  useEffect(()=>{void load()},[workspaceId,start,end]);
  const t=data?.totals||{}, daily=data?.daily||[], hosts=data?.hosts||[];
  const max=Math.max(...daily.map((x:any)=>Number(x.gmv||0)),1);
@@ -24,6 +24,10 @@ export default function LiveStreamingCenter({workspaceId}:{workspaceId:string}){
   <div className="live-separation-note"><b>Data terpisah:</b> GMV, Orders, Viewer dan jumlah sesi pada modul ini tidak menambah total Affiliate Performance.</div>
   <div className="live-tabs">{[["overview","Overview"],["analytics","Analytics"],["health","Data Health"],["upload","Upload Center"],["sessions","Session Planner"],["hosts","Host 360"],["campaigns","Campaign Tracker"],["budget","Production & Budget"]].map(([k,l])=><button key={k} className={tab===k?"active":""} onClick={()=>setTab(k)}>{l}</button>)}</div>
   {loading?<div className="live-loading">Menyiapkan Live Streaming Intelligence...</div>:tab==="overview"?<>
+   <div className="live-source-platforms">
+    <article><header><span>TIKTOK LIVE SOURCE</span><b>Daily Core Stats</b></header><div><strong>{rp(sourceData?.tiktok?.gmv)}</strong><small>GMV attributed</small></div><footer><span>{no(sourceData?.tiktok?.orders)} SKU order</span><span>{no(sourceData?.tiktok?.qty)} produk</span><span>{no(sourceData?.tiktok?.live_streams)} siaran</span><span>{no(sourceData?.tiktok?.impressions)} tayangan</span></footer></article>
+    <article><header><span>SHOPEE LIVE SOURCE</span><b>Session Export</b></header><div><strong>{rp(sourceData?.shopee?.gmv_created)}</strong><small>GMV pesanan dibuat</small></div><footer><span>{rp(sourceData?.shopee?.gmv_ready)} ready to ship</span><span>{no(sourceData?.shopee?.orders_created)} order</span><span>{no(sourceData?.shopee?.orders_ready)} ready</span><span>{no(sourceData?.shopee?.sessions)} sesi</span></footer></article>
+   </div>
    <div className="live-kpis">{cards.map(([l,v])=><article key={l}><span>{l}</span><strong>{v}</strong></article>)}</div>
    <div className="live-grid">
     <article className="live-chart"><header><div><span>GMV TREND</span><h2>Performa per hari</h2></div><small>{daily.length} hari terdata</small></header><div>{daily.length>1?<svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d={path} fill="none" vectorEffect="non-scaling-stroke"/><line x1="0" y1="94" x2="100" y2="94"/></svg>:<div className="live-empty">Belum cukup data. Upload performance live per sesi untuk membentuk trend.</div>}</div></article>
