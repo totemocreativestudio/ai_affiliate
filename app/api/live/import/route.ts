@@ -112,7 +112,9 @@ export async function POST(req:NextRequest){
 
   const ctx=await getServerContext(workspaceId);if(!ctx.canManage)return NextResponse.json({ok:false,error:"Role Anda tidak dapat melakukan import."},{status:403});const {admin}=ctx;
   const hostCheck=await admin.from("live_hosts").select("id,status,name,username,platform").eq("workspace_id",workspaceId).eq("id",hostId).maybeSingle();
-  if(hostCheck.error||!hostCheck.data?.id||hostCheck.data.status!=="active")return NextResponse.json({ok:false,error:"Host tidak valid atau tidak aktif. Tambahkan/pilih host dari Host 360."},{status:400});\n  const hostPlatform=clean(hostCheck.data?.platform).toLowerCase(),dataPlatform=platform.toLowerCase();\n  if(hostPlatform&&hostPlatform!=="all"&&dataPlatform&&dataPlatform!=="unknown"&&!hostPlatform.includes(dataPlatform)&&!dataPlatform.includes(hostPlatform))return NextResponse.json({ok:false,error:`Host ${hostCheck.data?.name||""} tidak sesuai dengan platform ${platform}. Pilih host yang sesuai atau perbarui Host 360.`},{status:400});
+  if(hostCheck.error||!hostCheck.data?.id||hostCheck.data.status!=="active")return NextResponse.json({ok:false,error:"Host tidak valid atau tidak aktif. Tambahkan/pilih host dari Host 360."},{status:400});
+  const hostPlatform=clean(hostCheck.data?.platform).toLowerCase(),dataPlatform=platform.toLowerCase();
+  if(hostPlatform&&hostPlatform!=="all"&&dataPlatform&&dataPlatform!=="unknown"&&!hostPlatform.includes(dataPlatform)&&!dataPlatform.includes(hostPlatform))return NextResponse.json({ok:false,error:`Host ${hostCheck.data?.name||""} tidak sesuai dengan platform ${platform}. Pilih host yang sesuai atau perbarui Host 360.`},{status:400});
   const storeProfile=await admin.from("live_store_profiles").upsert({
     workspace_id:workspaceId,platform,store_name:storeName,store_id:storeId,store_username:storeUsername,status:"active",created_by:ctx.user.id,updated_at:new Date().toISOString()
   },{onConflict:"workspace_id,platform,store_id"});
