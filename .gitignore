@@ -10,3 +10,10 @@ __pycache__/
 *.pyc
 backups/
 source-backups/
+# local-only - surya workspace (jangan commit, ada secret lokal)
+.config/
+agents.md
+claude.md
+context.md
+references/
+tsconfig.tsbuildinfo

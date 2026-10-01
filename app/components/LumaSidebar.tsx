@@ -193,7 +193,7 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
               </Group>
 
               <Group icon="performance" label="Live Streaming">
-                <a className={subActive("live-streaming")} href={routeForSection("live-streaming")} onClick={(e)=>go(e,"live-streaming")}><LumaIcon name="performance"/><span>Live Intelligence</span></a>
+                <a className={subActive("live-streaming")} href={routeForSection("live-streaming")} onClick={(e)=>go(e,"live-streaming")}><LumaIcon name="performance"/><span>Live Streaming</span></a>
               </Group>
 
               <Group icon="product" label="Product & Commerce">
@@ -211,7 +211,7 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
               </Group>
 
               <Group icon="ticket" label="Support & Billing">
-                <a className={subActive("support-tickets")} href={routeForSection("support-tickets")} onClick={(e) => go(e, "support-tickets")}><LumaIcon name="ticket" />Status & Riwayat Tiket</a>
+                <a className={subActive("support-tickets")} href={routeForSection("support-tickets")} onClick={(e) => go(e, "support-tickets")}><LumaIcon name="ticket" />Ticket Status & History</a>
                 <a className={subActive("billing")} href={routeForSection("billing")} onClick={(e) => go(e, "billing")}><LumaIcon name="billing" />Billing & Token</a>
                 <a className={subActive("luma-affiliate")} href={routeForSection("luma-affiliate")} onClick={(e) => go(e, "luma-affiliate")}><LumaIcon name="referral" />Luma Affiliate</a>
               </Group>
