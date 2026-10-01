@@ -524,3 +524,6 @@ html[data-theme="dark"] .lumaway-loading-screen{background:#080e1b!important;col
   .report-data-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
   .report-data-bar-row{grid-template-columns:90px minmax(0,1fr) 70px}
 }
+
+/* PR80F Unified Kanban domains */
+.kanban-domain-tabs{display:inline-flex;gap:4px;padding:4px;background:#f0f1f5;border:1px solid #e2e4eb;border-radius:12px;margin:10px 0 12px}.kanban-domain-tabs button{border:0;background:transparent;border-radius:9px;padding:9px 14px;font-weight:800;color:#6d7183;cursor:pointer}.kanban-domain-tabs button.active{background:#fff;color:#282c40;box-shadow:0 3px 12px rgba(32,36,70,.08)}.kanban-live-links{display:flex;gap:5px;flex-wrap:wrap;margin:9px 0 2px}.kanban-live-links span{font-size:9px;padding:5px 7px;border-radius:7px;background:#eef4ff;color:#496d9f;font-weight:800}
