@@ -48,7 +48,7 @@ export async function resolvePromo(admin:any,userId:string,code:string,target:Pr
   const value=Number(promo.value||0);
   if(type.endsWith("_percent"))discount=Math.min(Number(baseAmount||0),Math.round(Number(baseAmount||0)*Math.min(100,value)/100));
   if(type.endsWith("_amount"))discount=Math.min(Number(baseAmount||0),value);
-  const maxDiscount=Math.max(0,Math.min(12000,Number(promo.max_discount_amount??12000)));
+  const maxDiscount=Math.max(0,Math.min(29000,Number(promo.max_discount_amount??29000)));
   if(discount>0)discount=Math.min(discount,maxDiscount);
   if(type==="free_tokens")bonusTokens=Math.max(0,Math.floor(value));
   if(type==="extend_days")extendDays=Math.max(0,Math.floor(value));
