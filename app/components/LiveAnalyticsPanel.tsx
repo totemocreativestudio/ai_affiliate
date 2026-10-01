@@ -21,7 +21,7 @@ function Donut({items}:{items:any[]}){
 
 export default function LiveAnalyticsPanel({workspaceId,start,end}:{workspaceId:string;start:string;end:string}){
  const supabase=useMemo(()=>createClient(),[]);
- const [[data,setData]=useState<any>({}),[sourceData,setSourceData]=useState<any>({}),[metric,setMetric]=useState("gmv"),[source,setSource]=useState("unified"),[loading,setLoading]=useState(true);
+ const [data,setData]=useState<any>({}),[sourceData,setSourceData]=useState<any>({}),[metric,setMetric]=useState("gmv"),[source,setSource]=useState("unified"),[loading,setLoading]=useState(true);
  async function load(){setLoading(true);const [x,s]=await Promise.all([supabase.rpc("luma_live_analytics_v2",{p_workspace_id:workspaceId,p_start:start,p_end:end}),supabase.rpc("luma_live_source_analytics_v1",{p_workspace_id:workspaceId,p_start:start,p_end:end})]);setData(x.data||{});setSourceData(s.data||{});setLoading(false)}
  useEffect(()=>{void load()},[workspaceId,start,end]);
  const byDay=data.by_day||[],byHour=data.by_hour||[],byHost=data.by_host||[],byGimmick=data.by_gimmick||[],byPlatform=data.by_platform||[],bySession=data.by_session||[];
