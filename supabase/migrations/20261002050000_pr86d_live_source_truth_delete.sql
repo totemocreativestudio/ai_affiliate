@@ -12,12 +12,27 @@ as $$
 declare
   v_daily int:=0; v_product int:=0; v_overview int:=0; v_traffic int:=0;
   v_session_perf int:=0; v_sessions int:=0; v_imports int:=0;
+  v_created_by uuid;
 begin
   if auth.uid() is null then raise exception 'Authentication required' using errcode='42501'; end if;
   if not public.luma_has_workspace(p_workspace_id) and not public.luma_is_admin() then
     raise exception 'Workspace access denied' using errcode='42501';
   end if;
   if nullif(trim(coalesce(p_import_id,'')),'') is null then raise exception 'Import ID required'; end if;
+
+  select created_by into v_created_by
+  from public.live_imports
+  where workspace_id=p_workspace_id and import_id=p_import_id
+  limit 1;
+  if v_created_by is null then raise exception 'Import not found'; end if;
+  if v_created_by<>auth.uid()
+     and not public.luma_is_admin()
+     and not exists(
+       select 1 from public.workspace_members wm
+       where wm.workspace_id=p_workspace_id and wm.user_id=auth.uid()
+         and lower(coalesce(wm.membership_role,'')) in ('owner','admin')
+     )
+  then raise exception 'Only uploader or workspace owner can delete this import' using errcode='42501'; end if;
 
   delete from public.live_daily_performance
   where workspace_id=p_workspace_id and source_import_id=p_import_id;
