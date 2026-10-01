@@ -1,14 +1,18 @@
 {
-  "name": "Lumaway — Affiliate Intelligence",
+  "name": "Lumaway — Business Intelligence Workspace",
   "short_name": "Lumaway",
-  "description": "Lumaway Affiliate Intelligence Workspace — Light Up Your Potential.",
-  "start_url": "/app.lumaway/dashboard",
+  "description": "Lumaway Business Intelligence Operating Workspace — Light Up Your Potential.",
+  "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#0b1020",
+  "background_color": "#f7f8fb",
   "theme_color": "#635bff",
-  "categories": ["business", "productivity", "analytics"],
+  "categories": [
+    "business",
+    "productivity",
+    "analytics"
+  ],
   "icons": [
     {
       "src": "/luma-mark.png",
@@ -18,8 +22,22 @@
     }
   ],
   "shortcuts": [
-    {"name": "Dashboard", "url": "/app.lumaway/dashboard"},
-    {"name": "AI Analytics", "url": "/app.lumaway/ai-analytics"},
-    {"name": "Billing & Token", "url": "/app.lumaway/billing"}
+    {
+      "name": "Dashboard",
+      "short_name": "Today",
+      "url": "/dashboard"
+    },
+    {
+      "name": "Follow Up",
+      "url": "/listings"
+    },
+    {
+      "name": "Live Streaming",
+      "url": "/live-streaming"
+    },
+    {
+      "name": "Upload Center",
+      "url": "/upload"
+    }
   ]
 }
