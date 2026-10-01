@@ -2,6 +2,7 @@ import {createHash,randomBytes,randomInt} from "crypto";
 import {NextRequest,NextResponse} from "next/server";
 import {createClient} from "@supabase/supabase-js";
 import {sendWhatsAppOtpWithFailover} from "../../../../lib/whatsapp-router";
+import {getServerSecret} from "../../../../lib/server-secrets";
 
 export const runtime="nodejs";
 
@@ -12,6 +13,12 @@ const normalizePhone=(input:string)=>{
   else if(value.startsWith("62"))value="+"+value;
   else if(value&&!value.startsWith("+"))value="+"+value;
   return value;
+};
+const phoneVariants=(phone:string)=>{
+  const normalized=normalizePhone(phone);
+  const digits=normalized.replace(/\D/g,"");
+  const local=digits.startsWith("62")?"0"+digits.slice(2):digits;
+  return [...new Set([normalized,digits,local])];
 };
 const sha=(value:string)=>createHash("sha256").update(value).digest("hex");
 const codeHash=(code:string,salt:string)=>sha(`${code}:${salt}`);
@@ -32,9 +39,10 @@ async function audit(admin:any,status:string,requestType:string,phoneHash:string
 }
 
 async function profileForPhone(admin:any,phone:string){
-  const {data:byPhone}=await admin.from("profiles").select("id,email,active").eq("phone",phone).eq("active",true).limit(1).maybeSingle();
+  const variants=phoneVariants(phone);
+  const {data:byPhone}=await admin.from("profiles").select("id,email,active,phone,whatsapp").in("phone",variants).eq("active",true).limit(1).maybeSingle();
   if(byPhone)return byPhone;
-  const {data:byWhatsapp}=await admin.from("profiles").select("id,email,active").eq("whatsapp",phone).eq("active",true).limit(1).maybeSingle();
+  const {data:byWhatsapp}=await admin.from("profiles").select("id,email,active,phone,whatsapp").in("whatsapp",variants).eq("active",true).limit(1).maybeSingle();
   return byWhatsapp||null;
 }
 
@@ -48,14 +56,23 @@ function tokenHashFromLink(data:any){
   }catch{return ""}
 }
 
+async function sendEmailFallback(admin:any,email:string,code:string){
+  const key=await getServerSecret(admin,"luma_resend_api_key");
+  if(!key)return false;
+  const {data}=await admin.from("luma_platform_settings").select("setting_value").eq("setting_key","email_from").maybeSingle();
+  const from=String(process.env.LUMA_EMAIL_FROM||data?.setting_value||"Lumaway <marketing@lumaway.online>").trim();
+  const html=`<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:24px"><div style="font-size:12px;font-weight:800;color:#5266d8">LUMAWAY.</div><h2>Kode login Lumaway</h2><p>Provider WhatsApp sedang tidak tersedia. Gunakan kode berikut untuk melanjutkan login. Kode berlaku 5 menit.</p><div style="font-size:30px;letter-spacing:.22em;font-weight:800;padding:18px;background:#f4f3ff;border-radius:12px;text-align:center">${code}</div><p style="font-size:12px;color:#667085">Jangan bagikan kode ini kepada siapa pun.</p></div>`;
+  const r=await fetch("https://api.resend.com/emails",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({from,to:[email],subject:"Kode login Lumaway",html})});
+  return r.ok;
+}
+
 export async function POST(req:NextRequest){
   const url=process.env.NEXT_PUBLIC_SUPABASE_URL;
   const secret=process.env.SUPABASE_SECRET_KEY||process.env.SUPABASE_SERVICE_ROLE_KEY;
   if(!url||!secret)return NextResponse.json({ok:false,error:"Konfigurasi server Auth belum lengkap."},{status:503});
 
   const admin=createClient(url,secret,{auth:{persistSession:false,autoRefreshToken:false}});
-  let body:any={};
-  try{body=await req.json()}catch{}
+  let body:any={};try{body=await req.json()}catch{}
   const action=String(body.action||"request").toLowerCase();
   const phone=normalizePhone(String(body.phone||""));
   if(!/^\+[1-9][0-9]{8,14}$/.test(phone))return NextResponse.json({ok:false,error:"Nomor WhatsApp tidak valid."},{status:400});
@@ -83,10 +100,15 @@ export async function POST(req:NextRequest){
     try{
       const sent=await sendWhatsAppOtpWithFailover(admin,phone,code);
       await audit(admin,"success","request",phoneHash,ipHash,String(sent.reference||""));
-      return NextResponse.json({ok:true,requested:true,expires_in:300});
+      return NextResponse.json({ok:true,requested:true,expires_in:300,channel:"whatsapp",provider:sent.provider});
     }catch(error:any){
+      const fallback=await sendEmailFallback(admin,String(profile.email),code).catch(()=>false);
+      if(fallback){
+        await audit(admin,"fallback_email","request",phoneHash,ipHash,undefined,String(error?.message||"whatsapp provider unavailable"));
+        return NextResponse.json({ok:true,requested:true,expires_in:300,channel:"email_fallback"});
+      }
       await audit(admin,"error","request",phoneHash,ipHash,undefined,String(error?.message||"unknown"));
-      return NextResponse.json({ok:false,error:"Kode OTP WhatsApp belum dapat dikirim. Coba lagi beberapa saat."},{status:502});
+      return NextResponse.json({ok:false,error:"Kode login belum dapat dikirim melalui WhatsApp maupun email akun. Coba lagi beberapa saat."},{status:502});
     }
   }
 
