@@ -8,6 +8,12 @@ type Row=Record<string,any>;
 const rp=(v:any)=>v===null||v===undefined?"-":"Rp "+Math.round(Number(v||0)).toLocaleString("id-ID");
 const no=(v:any)=>Math.round(Number(v||0)).toLocaleString("id-ID");
 const norm=(v:any)=>String(v||"").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"");
+const tokens=(v:any)=>new Set(norm(v).split(/(?=[a-z])|[^a-z0-9]+/).filter((x:string)=>x.length>2&&!["gascomp","official","store","produk","terbaik","aman","hemat","garansi","sni"].includes(x)));
+function similarity(a:any,b:any){
+ const A=tokens(a),B=tokens(b);if(!A.size||!B.size)return 0;
+ let inter=0;for(const x of A)if(B.has(x))inter++;
+ return inter/Math.max(A.size,B.size);
+}
 const month=()=>{const d=new Date(),y=d.getFullYear(),m=d.getMonth();return{start:new Date(y,m,1).toISOString().slice(0,10),end:new Date(y,m+1,0).toISOString().slice(0,10)}};
 
 export default function LiveProductIntelligence({workspaceId,start,end}:{workspaceId:string;start:string;end:string}){
@@ -35,17 +41,24 @@ export default function LiveProductIntelligence({workspaceId,start,end}:{workspa
     supabase.from("product_master").select("id,sku,product_name").eq("workspace_id",workspaceId).limit(3000)
    ]);
    if(live.error)throw live.error;if(master.error)throw master.error;
-   const bySku=new Map((master.data||[]).filter((x:any)=>x.sku).map((x:any)=>[norm(x.sku),x]));
-   const byName=new Map((master.data||[]).filter((x:any)=>x.product_name).map((x:any)=>[norm(x.product_name),x]));
-   let mapped=0;
+   const masters=(master.data||[]);
+   const bySku=new Map(masters.filter((x:any)=>x.sku).map((x:any)=>[norm(x.sku),x]));
+   const byName=new Map(masters.filter((x:any)=>x.product_name).map((x:any)=>[norm(x.product_name),x]));
+   let mapped=0,review=0;
    for(const row of live.data||[]){
-    const pm=(row.source_sku&&bySku.get(norm(row.source_sku)))||byName.get(norm(row.product_name_raw));
-    if(!pm)continue;
-    const method=row.source_sku&&norm(row.source_sku)===norm(pm.sku)?"exact_sku":"exact_name";
-    const u=await supabase.from("live_product_performance").update({product_master_id:pm.id,mapped_sku:pm.sku,mapped_product_name:pm.product_name,mapping_method:method,mapping_confidence:method==="exact_sku"?1:.98,mapped_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("workspace_id",workspaceId).eq("id",row.id);
+    let pm:any=(row.source_sku&&bySku.get(norm(row.source_sku)))||byName.get(norm(row.product_name_raw));
+    let method="exact_name",confidence=.98;
+    if(row.source_sku&&pm&&norm(row.source_sku)===norm(pm.sku)){method="exact_sku";confidence=1}
+    if(!pm){
+      const ranked=masters.map((x:any)=>({pm:x,score:similarity(row.product_name_raw,x.product_name)})).sort((a:any,b:any)=>b.score-a.score);
+      const best=ranked[0],second=ranked[1];
+      if(best&&best.score>=.78&&best.score-Number(second?.score||0)>=.08){pm=best.pm;method="fuzzy_name";confidence=Math.min(.95,best.score)}
+      else{review++;continue}
+    }
+    const u=await supabase.from("live_product_performance").update({product_master_id:pm.id,mapped_sku:pm.sku,mapped_product_name:pm.product_name,mapping_method:method,mapping_confidence:confidence,mapped_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("workspace_id",workspaceId).eq("id",row.id);
     if(!u.error)mapped++;
    }
-   setMsg(mapped+" row Live berhasil dihubungkan ke Product Master. Data Affiliate tidak diubah.");
+   setMsg(mapped+" row Live berhasil dihubungkan ke Product Master"+(review?" · "+review+" row sengaja ditahan untuk review karena kecocokan belum cukup aman.":"")+". Data Affiliate tidak diubah.");
    await load();window.dispatchEvent(new CustomEvent("lumaway-live-updated"));
   }catch(e:any){setMsg(e?.message||"Auto mapping gagal.")}finally{setBusy(false)}
  }
