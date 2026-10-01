@@ -10,16 +10,16 @@ type DashboardFilter={start:string;end:string;platform:string;store:string;prese
 
 const MODULES:Array<{section:string;title:string;icon:IconName}>=[
  {section:"dashboard",title:"Dashboard",icon:"dashboard"},
- {section:"upload",title:"Upload Center",icon:"upload"},
+ {section:"upload",title:"Upload Center",icon:"data"},
  {section:"listings",title:"Listings",icon:"listing"},
- {section:"campaign-tracker",title:"Campaign Tracker",icon:"campaign"},
- {section:"live-streaming",title:"Live Streaming",icon:"live"},
+ {section:"campaign-tracker",title:"Campaign Tracker",icon:"performance"},
+ {section:"live-streaming",title:"Live Streaming",icon:"performance"},
  {section:"affiliate-360",title:"Affiliate 360",icon:"creator"},
  {section:"product-master",title:"Product Master",icon:"product"},
  {section:"shipping",title:"Shipping",icon:"shipping"},
  {section:"spending",title:"Spending",icon:"billing"},
  {section:"goal-forecast",title:"Goal & Forecast",icon:"performance"},
- {section:"automation-rules",title:"Automation",icon:"workflow"},
+ {section:"automation-rules",title:"Automation",icon:"settings"},
  {section:"scheduled-reports",title:"Scheduled Report",icon:"content"},
 ];
 
