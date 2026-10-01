@@ -1,6 +1,7 @@
 "use client";
 import {useEffect,useMemo,useState} from "react";
 import {createClient} from "../../lib/supabase-browser";
+import {Host360Panel,SessionPlannerPanel} from "./LiveHostSessionPanels";
 const rp=(v:any)=>"Rp "+Math.round(Number(v||0)).toLocaleString("id-ID");
 const no=(v:any)=>Math.round(Number(v||0)).toLocaleString("id-ID");
 const month=()=>{const d=new Date(),y=d.getFullYear(),m=d.getMonth();return{start:new Date(y,m,1).toISOString().slice(0,10),end:new Date(y,m+1,0).toISOString().slice(0,10)}};
@@ -25,7 +26,7 @@ export default function LiveStreamingCenter({workspaceId}:{workspaceId:string}){
     <article className="live-ranking"><header><span>HOST RANKING</span><h2>Kontribusi GMV</h2></header>{hosts.length?hosts.map((h:any,i:number)=><div key={h.id}><b>#{i+1}</b><span><strong>{h.name}</strong><small>{h.username||h.host_type} · {no(h.duration_minutes)} menit</small></span><em>{rp(h.gmv)}</em></div>):<div className="live-empty">Belum ada host. Tambahkan host pada Host 360.</div>}</article>
    </div>
    <div className="live-insight-grid"><article><span>AUTO INSIGHT</span><h3>{Number(t.revenue_per_hour||0)>0?"Revenue per hour sudah terbaca":"Belum ada baseline live"}</h3><p>{Number(t.revenue_per_hour||0)>0?"Setiap jam live menghasilkan rata-rata "+rp(t.revenue_per_hour)+". Bandingkan antar host dan gimmick setelah beberapa sesi terkumpul.":"Mulai dari membuat Host dan Session. Insight akan muncul otomatis saat performance sesi tersedia."}</p></article><article><span>EFFICIENCY</span><h3>{no(t.orders_per_hour)} order / jam</h3><p>Gunakan metrik ini untuk membandingkan session yang durasinya berbeda.</p></article><article><span>VIEWER SIGNAL</span><h3>{no(t.peak_viewers)} peak viewers</h3><p>Peak dan average viewer akan dipakai untuk menemukan jam dan gimmick paling efektif.</p></article></div>
-  </>:<LivePlaceholder tab={tab}/>}
+  </>:tab==="sessions"?<SessionPlannerPanel workspaceId={workspaceId}/>:tab==="hosts"?<Host360Panel workspaceId={workspaceId}/>:<LivePlaceholder tab={tab}/>}
  </section>
 }
 

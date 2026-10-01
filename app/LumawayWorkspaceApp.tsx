@@ -18,6 +18,7 @@ import "./goal-forecast.css";
 import "./scheduled-reports.css";
 import "./tutorial-center.css";
 import "./live-streaming.css";
+import "./live-host-session.css";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../lib/supabase-browser";
 import { APP_BASE, isAuthPath, navigateToSection, routeForSection, sectionFromPath } from "../lib/luma-navigation";
