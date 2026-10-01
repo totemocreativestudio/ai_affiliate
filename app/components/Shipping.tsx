@@ -94,6 +94,7 @@ export default function Shipping({workspaceId}:Props){
   return [row.reference_no,row.tracking,row.creator_name,row.receiver_name,row.platform,row.sku,row.product_name,row.courier,row.service,row.status].filter(Boolean).some(v=>String(v).toLowerCase().includes(q));
  }),[rows,search,activeTab,dateStart,dateEnd]);
  const counts=useMemo(()=>Object.fromEntries(STATUS_TABS.map(tab=>[tab,tab==="All"?rows.length:rows.filter(row=>String(row.status||"Pending").toLowerCase()===tab.toLowerCase()).length])),[rows]);
+ const visibleShippingSpend=useMemo(()=>visibleRows.reduce((sum,row)=>String(row.status||"").toLowerCase()==="cancelled"?sum:sum+Number(row.shipping_cost||0)+Number(row.insurance_amount||0),0),[visibleRows]);
 
  function downloadTemplate(row:ShippingRow){const blob=new Blob([labelHtml(row)],{type:"text/html;charset=utf-8"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=(row.reference_no||("LUMA-"+row.id))+"-resi.html";a.click();URL.revokeObjectURL(url)}
  function printLabel(row:ShippingRow){const popup=window.open("","_blank","width=900,height=1100");if(!popup)return;popup.document.write(labelHtml(row));popup.document.close();popup.focus();setTimeout(()=>popup.print(),250)}
@@ -101,6 +102,7 @@ export default function Shipping({workspaceId}:Props){
 
  return <section className="shipping-v2-page">
   <header className="shipping-v2-header"><div><span>OPERATIONS</span><h2>Shipping</h2><p>Kelola pengiriman sample, produk, dan kebutuhan campaign dari satu workspace.</p></div><div className="shipping-v2-actions"><button className="secondary" onClick={exportCsv}>Export</button><button className="primary" onClick={openAdd}>+ Tambah</button></div></header>
+  <div className="shipping-v2-spend-summary"><div><span>Shipping Spend</span><strong>{money(visibleShippingSpend)}</strong><small>Shipping Cost + Insurance · tidak termasuk COD · Cancelled tidak dihitung</small></div><div><span>Visible Shipment</span><strong>{visibleRows.length.toLocaleString("id-ID")}</strong><small>Mengikuti filter aktif</small></div></div>
   <div className="shipping-v2-tabs">{STATUS_TABS.map(tab=><button key={tab} className={activeTab===tab?"active":""} onClick={()=>setActiveTab(tab)}>{tab}<span>{Number(counts[tab]||0)}</span></button>)}</div>
   <div className="shipping-v2-toolbar"><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Cari resi, creator, penerima, produk, kurir..."/><input type="date" value={dateStart} onChange={e=>setDateStart(e.target.value)}/><input type="date" value={dateEnd} onChange={e=>setDateEnd(e.target.value)}/>{(search||dateStart||dateEnd)&&<button className="secondary" onClick={()=>{setSearch("");setDateStart("");setDateEnd("")}}>Reset</button>}</div>
   {error&&<div className="shipping-v2-alert">{error}</div>}
