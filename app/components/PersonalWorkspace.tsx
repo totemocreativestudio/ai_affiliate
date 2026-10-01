@@ -42,6 +42,7 @@ export default function PersonalWorkspace({
  const [name,setName]=useState("");
  const [busy,setBusy]=useState(false);
  const [msg,setMsg]=useState("");
+ const [currentSection,setCurrentSection]=useState("dashboard");
 
  async function load(){
   const x=await supabase.rpc("luma_personal_workspace_v1",{p_workspace_id:workspaceId});
@@ -51,7 +52,7 @@ export default function PersonalWorkspace({
  useEffect(()=>{
   void load();
   const record=async()=>{
-   const section=sectionFromPath(window.location.pathname)||"dashboard";
+   const section=sectionFromPath(window.location.pathname)||"dashboard";setCurrentSection(section);
    await supabase.rpc("luma_record_recent_section_v1",{p_workspace_id:workspaceId,p_section:section,p_title:sectionTitle(section)});
    await load();
   };
@@ -66,7 +67,7 @@ export default function PersonalWorkspace({
   setBusy(true);setMsg("");
   const {data:{user}}=await supabase.auth.getUser();
   if(!user){setBusy(false);return}
-  const section=sectionFromPath(window.location.pathname)||"dashboard";
+  const section=currentSection;
   const filter=section==="dashboard"?dashboardFilter:{};
   const x=await supabase.from("luma_saved_views").insert({
    workspace_id:workspaceId,user_id:user.id,name:n,section,filter_json:filter,sort_json:{},ui_state_json:{},is_pinned:false
@@ -118,7 +119,7 @@ export default function PersonalWorkspace({
    <div className="pw-block"><div className="pw-block-head"><b>Recently Opened</b></div><div className="pw-recent">{(data.recent||[]).slice(0,4).map((x:Row)=><button key={x.section} onClick={()=>navigateToSection(x.section)}><span>{x.title}</span><small>{new Date(x.last_opened_at).toLocaleString("id-ID",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}</small></button>)}</div></div>
   </div>
 
-  {saveOpen&&<div className="pw-modal-backdrop" onMouseDown={()=>setSaveOpen(false)}><div className="pw-modal" onMouseDown={e=>e.stopPropagation()}><header><div><span>SAVE CURRENT VIEW</span><h3>Simpan tampilan ini</h3></div><button onClick={()=>setSaveOpen(false)}>×</button></header><label>Nama View<input autoFocus value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&void saveCurrent()} placeholder="Contoh: Shopee 30 Hari"/></label><div className="pw-save-preview"><span>Section</span><b>{sectionTitle(sectionFromPath(window.location.pathname)||"dashboard")}</b>{(sectionFromPath(window.location.pathname)||"dashboard")==="dashboard"&&<small>{[dashboardFilter.preset||"custom",dashboardFilter.platform||"Semua platform",dashboardFilter.store||"Semua toko"].join(" · ")}</small>}</div><footer><button onClick={()=>setSaveOpen(false)}>Batal</button><button className="primary" disabled={busy} onClick={()=>void saveCurrent()}>{busy?"Menyimpan...":"Simpan View"}</button></footer></div></div>}
+  {saveOpen&&<div className="pw-modal-backdrop" onMouseDown={()=>setSaveOpen(false)}><div className="pw-modal" onMouseDown={e=>e.stopPropagation()}><header><div><span>SAVE CURRENT VIEW</span><h3>Simpan tampilan ini</h3></div><button onClick={()=>setSaveOpen(false)}>×</button></header><label>Nama View<input autoFocus value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&void saveCurrent()} placeholder="Contoh: Shopee 30 Hari"/></label><div className="pw-save-preview"><span>Section</span><b>{sectionTitle(currentSection)}</b>{currentSection==="dashboard"&&<small>{[dashboardFilter.preset||"custom",dashboardFilter.platform||"Semua platform",dashboardFilter.store||"Semua toko"].join(" · ")}</small>}</div><footer><button onClick={()=>setSaveOpen(false)}>Batal</button><button className="primary" disabled={busy} onClick={()=>void saveCurrent()}>{busy?"Menyimpan...":"Simpan View"}</button></footer></div></div>}
 
   {open&&<div className="pw-modal-backdrop" onMouseDown={()=>setOpen(false)}><div className="pw-modal large" onMouseDown={e=>e.stopPropagation()}><header><div><span>SAVED VIEWS</span><h3>Kelola Saved Views</h3></div><button onClick={()=>setOpen(false)}>×</button></header><div className="pw-manage-list">{(data.saved_views||[]).length?(data.saved_views||[]).map((x:Row)=><article key={x.id}><button className="pw-view-main" onClick={()=>void applyView(x)}><strong>{x.name}</strong><small>{sectionTitle(x.section)}{x.last_used_at?" · terakhir "+new Date(x.last_used_at).toLocaleDateString("id-ID"):""}</small></button><div><button onClick={()=>void toggleViewPin(x)}>{x.is_pinned?"Unpin":"Pin"}</button><button onClick={()=>void removeView(x)}>Hapus</button></div></article>):<div className="pw-mini-empty">Belum ada Saved View.</div>}</div></div></div>}
 
