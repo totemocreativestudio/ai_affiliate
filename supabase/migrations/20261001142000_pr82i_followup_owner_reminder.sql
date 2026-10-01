@@ -130,3 +130,68 @@ $$;
 
 revoke all on function public.luma_sync_listing_followup_actions_v1() from public,anon,authenticated;
 grant execute on function public.luma_sync_listing_followup_actions_v1() to service_role;
+
+
+create or replace function public.luma_listing_followup_queue_v1(
+  p_workspace_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path=public,pg_temp
+as $$
+declare result jsonb;
+begin
+  if auth.uid() is null then raise exception 'Authentication required' using errcode='42501'; end if;
+  if not public.luma_has_workspace(p_workspace_id) and not public.luma_is_admin() then
+    raise exception 'Workspace access denied' using errcode='42501';
+  end if;
+
+  with base as (
+    select
+      l.id,l.creator_id,l.creator_name,l.platform,l.product_name,l.sku,l.stage,
+      l.follow_up_channel,l.next_action,l.next_follow_up_at,l.follow_up_priority,
+      l.follow_up_completed_at,l.follow_up_owner_user_id,
+      coalesce(p.full_name,p.username,p.email) follow_up_owner_name,
+      case
+        when l.next_follow_up_at is null then 'no_schedule'
+        when l.follow_up_completed_at is not null and l.follow_up_completed_at>=l.next_follow_up_at then 'done'
+        when l.next_follow_up_at<now() then 'overdue'
+        when (l.next_follow_up_at at time zone 'Asia/Jakarta')::date=(now() at time zone 'Asia/Jakarta')::date then 'today'
+        when l.next_follow_up_at<now()+interval '7 days' then 'upcoming'
+        else 'later'
+      end queue_status
+    from public.listings l
+    left join public.profiles p on p.id=l.follow_up_owner_user_id
+    where l.workspace_id=p_workspace_id
+  ),
+  active as (
+    select * from base
+    where queue_status<>'done'
+      and (
+        stage not in ('Won / Active','Lost / Inactive')
+        or next_follow_up_at is not null
+      )
+  )
+  select jsonb_build_object(
+    'generated_at',now(),
+    'summary',jsonb_build_object(
+      'overdue',count(*) filter(where queue_status='overdue'),
+      'today',count(*) filter(where queue_status='today'),
+      'upcoming',count(*) filter(where queue_status='upcoming'),
+      'no_schedule',count(*) filter(where queue_status='no_schedule')
+    ),
+    'items',coalesce(jsonb_agg(to_jsonb(active) order by
+      case follow_up_priority when 'urgent' then 1 when 'high' then 2 when 'normal' then 3 else 4 end,
+      next_follow_up_at asc nulls last
+    ),'[]'::jsonb)
+  )
+  into result
+  from active;
+
+  return coalesce(result,'{}'::jsonb);
+end
+$$;
+
+revoke all on function public.luma_listing_followup_queue_v1(uuid) from public,anon;
+grant execute on function public.luma_listing_followup_queue_v1(uuid) to authenticated,service_role;
