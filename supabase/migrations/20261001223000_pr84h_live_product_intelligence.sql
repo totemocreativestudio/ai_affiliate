@@ -1,0 +1,1 @@
+alter table public.live_product_performance add column if not exists source_sku text, add column if not exists mapped_sku text, add column if not exists mapped_product_name text, add column if not exists mapping_method text, add column if not exists mapping_confidence numeric, add column if not exists mapped_at timestamptz;
