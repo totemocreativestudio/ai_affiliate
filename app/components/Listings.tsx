@@ -14,17 +14,18 @@ type Listing={
   id:number;data_date:string|null;creator_id:number|null;creator_name:string|null;platform:string|null;
   product_master_id:number|null;product_name:string|null;sku:string|null;product_hpp:number|null;stage:string|null;
   payment_type:string|null;ratecard:number;posting_date:string|null;post_link:string|null;next_action:string|null;
-  agreement_id:string|null;notes:string|null;
+  agreement_id:string|null;follow_up_channel:string|null;notes:string|null;
 };
 type Activity={
   id:number;listing_id:number;creator_id:number|null;activity_date:string;activity_type:string;
-  result:string|null;note:string|null;created_at:string;
+  result:string|null;note:string|null;follow_up_channel:string|null;created_at:string;
 };
 type FormState={
   data_date:string;creator_id:string;creator_name:string;platform:string;product_master_id:string;product_hpp:string;
-  stage:string;payment_type:string;ratecard:string;posting_date:string;post_link:string;next_action:string;agreement_id:string;notes:string;
+  stage:string;payment_type:string;ratecard:string;posting_date:string;post_link:string;next_action:string;agreement_id:string;follow_up_channel:string;notes:string;
 };
 
+const FOLLOW_UP_CHANNELS=["WhatsApp","DM Instagram","DM TikTok","Email","Telepon","Shopee Chat","TikTok Shop Chat","Agency / PIC","Offline","Lainnya"];
 const STAGES=["New Lead","Reach Out","Follow Up","Negotiation","Sample Sent","Content In Progress","Uploaded","Live","Won / Active","Lost / Inactive"];
 const ACTIVITY_TYPES=["Listing dibuat","Reach Out","Follow Up","Negotiation","Kirim Sample","Sample Received","Take Video","Video Upload","Live","Deal","Rejected","No Response","Catatan"];
 const ACTIVITY_STAGE:Record<string,string>={
@@ -32,7 +33,7 @@ const ACTIVITY_STAGE:Record<string,string>={
   "Sample Received":"Content In Progress","Take Video":"Content In Progress","Video Upload":"Uploaded","Live":"Live",
   "Deal":"Won / Active","Rejected":"Lost / Inactive","No Response":"Follow Up",
 };
-const EMPTY_FORM:FormState={data_date:"",creator_id:"",creator_name:"",platform:"",product_master_id:"",product_hpp:"0",stage:"New Lead",payment_type:"",ratecard:"",posting_date:"",post_link:"",next_action:"",agreement_id:"",notes:""};
+const EMPTY_FORM:FormState={data_date:"",creator_id:"",creator_name:"",platform:"",product_master_id:"",product_hpp:"0",stage:"New Lead",payment_type:"",ratecard:"",posting_date:"",post_link:"",next_action:"",agreement_id:"",follow_up_channel:"",notes:""};
 const money=(value:any)=>"Rp "+new Intl.NumberFormat("id-ID",{maximumFractionDigits:0}).format(Number(value||0));
 const dateLabel=(value:string|null)=>value?new Date(value+"T00:00:00").toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"}):"-";
 const SOCIAL_FIELDS=[
@@ -63,6 +64,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
   const [search,setSearch]=useState("");
   const [platformFilter,setPlatformFilter]=useState("");
   const [stageFilter,setStageFilter]=useState("");
+  const [channelFilter,setChannelFilter]=useState("");
   const [dateStart,setDateStart]=useState("");
   const [dateEnd,setDateEnd]=useState("");
 
@@ -77,7 +79,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
   const [selectedCreator,setSelectedCreator]=useState<Creator|null>(null);
   const [activities,setActivities]=useState<Activity[]>([]);
   const [activityFor,setActivityFor]=useState<Listing|null>(null);
-  const [activityForm,setActivityForm]=useState({activity_date:new Date().toISOString().slice(0,10),activity_type:"Follow Up",result:"",note:""});
+  const [activityForm,setActivityForm]=useState({activity_date:new Date().toISOString().slice(0,10),activity_type:"Follow Up",follow_up_channel:"",result:"",note:""});
 
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState(false);
@@ -92,7 +94,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
   async function loadData(){
     setLoading(true);setError("");
     const [listingResult,creatorResult,productResult]=await Promise.all([
-      supabase.from("listings").select("id,data_date,creator_id,creator_name,platform,product_master_id,product_name,sku,product_hpp,stage,payment_type,ratecard,posting_date,post_link,next_action,agreement_id,notes").eq("workspace_id",workspaceId).order("id",{ascending:false}),
+      supabase.from("listings").select("id,data_date,creator_id,creator_name,platform,product_master_id,product_name,sku,product_hpp,stage,payment_type,ratecard,posting_date,post_link,next_action,agreement_id,follow_up_channel,notes").eq("workspace_id",workspaceId).order("id",{ascending:false}),
       supabase.from("creators").select("id,creator_code,name,username,platform,affiliate_id,phone,payment_type,ratecard,status,profile_url,avatar_url,social_links,social_profile_updated_at").eq("workspace_id",workspaceId).order("name").limit(7770),
       supabase.from("product_master").select("id,sku,product_name,category,cost_price").eq("workspace_id",workspaceId).order("sku").limit(1000),
     ]);
@@ -121,7 +123,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
     if(!row){setActivities([]);setSelectedCreator(null);return}
     setDetailLoading(true);
     const activitiesResult=await supabase.from("listing_activities")
-      .select("id,listing_id,creator_id,activity_date,activity_type,result,note,created_at")
+      .select("id,listing_id,creator_id,activity_date,activity_type,follow_up_channel,result,note,created_at")
       .eq("workspace_id",workspaceId).eq("listing_id",row.id)
       .order("activity_date",{ascending:false}).order("id",{ascending:false});
     if(activitiesResult.error)setError(activitiesResult.error.message);
@@ -179,7 +181,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
       platform:row.platform||"",product_master_id:row.product_master_id?.toString()||"",product_hpp:String(row.product_hpp||0),
       stage:row.stage||"New Lead",payment_type:row.payment_type||"",ratecard:row.ratecard?.toString()||"",
       posting_date:row.posting_date||"",post_link:row.post_link||"",next_action:row.next_action||"",
-      agreement_id:row.agreement_id||"",notes:row.notes||"",
+      agreement_id:row.agreement_id||"",follow_up_channel:row.follow_up_channel||"",notes:row.notes||"",
     });
     setCreatorSearch(row.creator_name||"");setProductSearch(row.sku||row.product_name||"");setManualCreatorConfirmed(!row.creator_id&&Boolean(row.creator_name));
     setError("");setShowForm(true);
@@ -202,7 +204,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
       platform:form.platform||creator?.platform||null,product_master_id:form.product_master_id?Number(form.product_master_id):null,
       product_name:product?.product_name||null,sku:product?.sku||null,product_hpp:product?.cost_price!=null?Number(product.cost_price):Number(form.product_hpp||0),
       stage:form.stage||"New Lead",payment_type:form.payment_type||null,ratecard:form.ratecard?Number(form.ratecard):0,
-      posting_date:form.posting_date||null,post_link:form.post_link||null,next_action:form.next_action||null,agreement_id:form.agreement_id||null,notes:form.notes||null,
+      posting_date:form.posting_date||null,post_link:form.post_link||null,next_action:form.next_action||null,agreement_id:form.agreement_id||null,follow_up_channel:form.follow_up_channel||null,notes:form.notes||null,
     };
 
     if(editingId!==null){
@@ -216,7 +218,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
         await supabase.from("listing_activities").insert({
           workspace_id:workspaceId,listing_id:result.data.id,creator_id:payload.creator_id,
           activity_date:payload.data_date||new Date().toISOString().slice(0,10),activity_type:"Listing dibuat",
-          result:payload.stage,note:payload.notes,created_by:user?.id||null,
+          result:payload.stage,follow_up_channel:payload.follow_up_channel,note:payload.notes,created_by:user?.id||null,
         });
       }
     }
@@ -232,7 +234,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
   }
 
   function openActivity(row:Listing,type="Follow Up"){
-    setActivityFor(row);setActivityForm({activity_date:new Date().toISOString().slice(0,10),activity_type:type,result:"",note:""});
+    setActivityFor(row);setActivityForm({activity_date:new Date().toISOString().slice(0,10),activity_type:type,follow_up_channel:row.follow_up_channel||"",result:"",note:""});
   }
 
   async function saveActivity(){
@@ -242,13 +244,13 @@ export default function Listings({workspaceId}:{workspaceId:string}){
     const insert=await supabase.from("listing_activities").insert({
       workspace_id:workspaceId,listing_id:activityFor.id,creator_id:activityFor.creator_id,
       activity_date:activityForm.activity_date,activity_type:activityForm.activity_type,
-      result:activityForm.result.trim()||null,note:activityForm.note.trim()||null,created_by:user?.id||null,
+      follow_up_channel:activityForm.follow_up_channel||null,result:activityForm.result.trim()||null,note:activityForm.note.trim()||null,created_by:user?.id||null,
     });
     if(insert.error){setSaving(false);return setError(insert.error.message)}
     const mappedStage=ACTIVITY_STAGE[activityForm.activity_type];
     if(mappedStage){
       const update=await supabase.from("listings").update({
-        stage:mappedStage,next_action:activityForm.result.trim()||activityFor.next_action||null,updated_at:new Date().toISOString(),
+        stage:mappedStage,next_action:activityForm.result.trim()||activityFor.next_action||null,follow_up_channel:activityForm.follow_up_channel||activityFor.follow_up_channel||null,updated_at:new Date().toISOString(),
       }).eq("workspace_id",workspaceId).eq("id",activityFor.id);
       if(update.error){setSaving(false);return setError(update.error.message)}
     }
@@ -295,11 +297,12 @@ export default function Listings({workspaceId}:{workspaceId:string}){
     const q=search.trim().toLowerCase();
     if(platformFilter&&row.platform!==platformFilter)return false;
     if(stageFilter&&(row.stage||"New Lead")!==stageFilter)return false;
+    if(channelFilter&&(row.follow_up_channel||"")!==channelFilter)return false;
     if(dateStart&&String(row.data_date||"")<dateStart)return false;
     if(dateEnd&&String(row.data_date||"")>dateEnd)return false;
     if(!q)return true;
-    return [row.creator_name,row.product_name,row.sku,row.platform,row.stage,row.payment_type,row.next_action].filter(Boolean).some(value=>String(value).toLowerCase().includes(q));
-  }),[rows,search,platformFilter,stageFilter,dateStart,dateEnd]);
+    return [row.creator_name,row.product_name,row.sku,row.platform,row.stage,row.payment_type,row.next_action,row.follow_up_channel].filter(Boolean).some(value=>String(value).toLowerCase().includes(q));
+  }),[rows,search,platformFilter,stageFilter,channelFilter,dateStart,dateEnd]);
 
   const stats=useMemo(()=>({
     total:rows.length,
@@ -330,9 +333,10 @@ export default function Listings({workspaceId}:{workspaceId:string}){
       <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Cari creator, produk, SKU, platform, next action..."/>
       <select value={platformFilter} onChange={e=>setPlatformFilter(e.target.value)}><option value="">Semua Platform</option>{platforms.map(x=><option key={x}>{x}</option>)}</select>
       <select value={stageFilter} onChange={e=>setStageFilter(e.target.value)}><option value="">Semua Stage</option>{STAGES.map(x=><option key={x}>{x}</option>)}</select>
+      <select value={channelFilter} onChange={e=>setChannelFilter(e.target.value)}><option value="">Semua Follow Up Via</option>{FOLLOW_UP_CHANNELS.map(x=><option key={x}>{x}</option>)}</select>
       <input type="date" value={dateStart} onChange={e=>setDateStart(e.target.value)}/>
       <input type="date" value={dateEnd} onChange={e=>setDateEnd(e.target.value)}/>
-      {(search||platformFilter||stageFilter||dateStart||dateEnd)&&<button className="secondary" onClick={()=>{setSearch("");setPlatformFilter("");setStageFilter("");setDateStart("");setDateEnd("")}}>Reset</button>}
+      {(search||platformFilter||stageFilter||channelFilter||dateStart||dateEnd)&&<button className="secondary" onClick={()=>{setSearch("");setPlatformFilter("");setStageFilter("");setChannelFilter("");setDateStart("");setDateEnd("")}}>Reset</button>}
     </div>
 
     {error&&<div className="listing-v2-alert error">{error}</div>}
@@ -362,6 +366,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
         <label><span>Posting Date</span><input type="date" value={form.posting_date} onChange={e=>updateField("posting_date",e.target.value)}/></label>
         <label><span>Post Link</span><input value={form.post_link} onChange={e=>updateField("post_link",e.target.value)} placeholder="https://..."/></label>
         <label><span>Next Action</span><input value={form.next_action} onChange={e=>updateField("next_action",e.target.value)} placeholder="Follow up / kirim brief"/></label>
+        <label><span>Follow Up Via</span><select value={form.follow_up_channel} onChange={e=>updateField("follow_up_channel",e.target.value)}><option value="">Pilih channel</option>{FOLLOW_UP_CHANNELS.map(x=><option key={x}>{x}</option>)}</select><small>Channel utama / terakhir yang dipakai untuk komunikasi creator.</small></label>
         <label><span>Agreement ID</span><input value={form.agreement_id} onChange={e=>updateField("agreement_id",e.target.value)} placeholder="Optional"/></label>
         <label className="wide"><span>Notes</span><textarea rows={3} value={form.notes} onChange={e=>updateField("notes",e.target.value)} placeholder="Catatan listing..."/></label>
       </div>
@@ -379,7 +384,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
             <td><b>{row.product_name||"-"}</b><small>{row.sku||"Tanpa SKU"}</small></td>
             <td><span className={"listing-v2-stage "+stageTone(row.stage)}>{row.stage||"New Lead"}</span></td>
             <td>{money(row.ratecard)}</td>
-            <td><b>{row.next_action||"Belum ada next action"}</b><small>{row.posting_date?`Posting ${dateLabel(row.posting_date)}`:""}</small></td>
+            <td><b>{row.next_action||"Belum ada next action"}</b><small>{row.posting_date?`Posting ${dateLabel(row.posting_date)}`:""}</small>{row.follow_up_channel&&<span className="listing-channel-badge">{row.follow_up_channel}</span>}</td>
             <td><div className="listing-v2-actions" onClick={e=>e.stopPropagation()}><button onClick={()=>setSelected(row)}>Detail</button><button onClick={()=>openActivity(row,"Follow Up")}>+ Follow Up</button><button onClick={()=>openEdit(row)}>Edit</button><button className="danger" onClick={()=>void deleteListing(row.id)}>Hapus</button></div></td>
           </tr>})}
         </tbody></table></div>}
@@ -397,6 +402,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
             <div><span>Ratecard</span><b>{money(selectedCreator?.ratecard??selected.ratecard)}</b></div>
             <div><span>Phone</span><b>{selectedCreator?.phone||"-"}</b></div>
             <div><span>Payment</span><b>{selectedCreator?.payment_type||selected.payment_type||"-"}</b></div>
+            <div><span>Follow Up Via</span><b>{selected.follow_up_channel||"-"}</b></div>
             <div><span>Product</span><b>{selected.product_name||"-"}</b></div>
             <div><span>SKU</span><b>{selected.sku||"-"}</b></div>
           </div>
@@ -408,7 +414,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
           <div className="listing-v2-detail-actions"><button className="primary" onClick={()=>openActivity(selected,"Follow Up")}>+ Tambah Follow Up</button><button className="secondary" onClick={()=>openEdit(selected)}>Edit Listing</button>{selected.post_link&&<a href={selected.post_link} target="_blank" rel="noreferrer">Buka Konten</a>}</div>
           <div className="listing-v2-timeline-head"><div><h4>Activity Timeline</h4><p>Riwayat listing, follow up, sample, konten, dan hasil creator.</p></div></div>
           {detailLoading?<div className="listing-v2-empty small">Memuat timeline...</div>:activities.length===0?<div className="listing-v2-empty small">Belum ada aktivitas.</div>:
-          <div className="listing-v2-timeline">{activities.map(activity=><article key={activity.id}><span className="dot"/><time>{dateLabel(activity.activity_date)}</time><div><b>{activity.activity_type}</b>{activity.result&&<em>{activity.result}</em>}{activity.note&&<p>{activity.note}</p>}</div></article>)}</div>}
+          <div className="listing-v2-timeline">{activities.map(activity=><article key={activity.id}><span className="dot"/><time>{dateLabel(activity.activity_date)}</time><div><b>{activity.activity_type}</b>{activity.follow_up_channel&&<span className="listing-channel-badge timeline">{activity.follow_up_channel}</span>}{activity.result&&<em>{activity.result}</em>}{activity.note&&<p>{activity.note}</p>}</div></article>)}</div>}
         </>}
       </aside>
     </div>
@@ -442,6 +448,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
         <div className="listing-v2-activity-form">
           <label><span>Tanggal</span><input type="date" value={activityForm.activity_date} onChange={e=>setActivityForm({...activityForm,activity_date:e.target.value})}/></label>
           <label><span>Aktivitas</span><select value={activityForm.activity_type} onChange={e=>setActivityForm({...activityForm,activity_type:e.target.value})}>{ACTIVITY_TYPES.map(x=><option key={x}>{x}</option>)}</select></label>
+          <label><span>Follow Up Via</span><select value={activityForm.follow_up_channel} onChange={e=>setActivityForm({...activityForm,follow_up_channel:e.target.value})}><option value="">Tidak ditentukan</option>{FOLLOW_UP_CHANNELS.map(x=><option key={x}>{x}</option>)}</select><small>Pilih channel yang benar-benar digunakan pada aktivitas ini.</small></label>
           <label><span>Hasil / Next Action</span><input value={activityForm.result} onChange={e=>setActivityForm({...activityForm,result:e.target.value})} placeholder="Contoh: Follow up 3 hari lagi"/></label>
           <label><span>Catatan</span><textarea rows={4} value={activityForm.note} onChange={e=>setActivityForm({...activityForm,note:e.target.value})} placeholder="Catatan aktivitas..."/></label>
         </div>
