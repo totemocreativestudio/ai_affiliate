@@ -1,6 +1,8 @@
 "use client";
 import {useEffect,useMemo,useState} from "react";
 import {createClient} from "../../lib/supabase-browser";
+import SmartEmptyState from "./SmartEmptyState";
+import {navigateToSection} from "../../lib/luma-navigation";
 
 type Row=Record<string,any>;
 const rp=(v:any)=>v===null||v===undefined?"-":"Rp "+Math.round(Number(v||0)).toLocaleString("id-ID");
@@ -76,7 +78,7 @@ export default function LiveProductIntelligence({workspaceId}:{workspaceId:strin
    ["Product Clicks",no(s.product_clicks)],["Add to Cart",no(s.add_to_cart)],["Live HPP",rp(s.hpp_cost)],["Contribution Margin",rp(s.contribution_margin)]
   ].map(([l,v])=><article key={l}><span>{l}</span><strong>{v}</strong></article>)}</div>
 
-  <div className="lpi-table-wrap"><table><thead><tr><th>Produk</th><th>Platform</th><th>Mapping</th><th>Live GMV</th><th>Ready GMV</th><th>Qty</th><th>Clicks</th><th>Add to Cart</th><th>Product Order Attribution</th><th>HPP</th><th>Contribution</th><th>Action</th></tr></thead><tbody>
+  {rows.length?<div className="lpi-table-wrap"><table><thead><tr><th>Produk</th><th>Platform</th><th>Mapping</th><th>Live GMV</th><th>Ready GMV</th><th>Qty</th><th>Clicks</th><th>Add to Cart</th><th>Product Order Attribution</th><th>HPP</th><th>Contribution</th><th>Action</th></tr></thead><tbody>
    {rows.map((x:Row,i:number)=><tr key={String(x.platform)+"-"+String(x.product_master_id||x.product_name)+"-"+i}>
     <td><div className="lpi-product">{x.image_url&&<img src={x.image_url} alt=""/>}<span><strong>{x.product_name||"-"}</strong><small>{x.sku||"SKU belum terhubung"}</small></span></div></td>
     <td>{x.platform}</td>
@@ -86,8 +88,7 @@ export default function LiveProductIntelligence({workspaceId}:{workspaceId:strin
     <td>{rp(x.hpp_cost)}</td><td>{rp(x.contribution_margin)}</td>
     <td><button onClick={()=>{setMapping(x);setSelectedMaster(x.product_master_id?String(x.product_master_id):"")}}>Map Product</button></td>
    </tr>)}
-   {!rows.length&&<tr><td colSpan={12}>Belum ada Live Product Performance pada periode ini.</td></tr>}
-  </tbody></table></div>
+  </tbody></table></div>:<SmartEmptyState eyebrow="LIVE PRODUCT" title="Belum ada performa produk Live" description="Upload data Shopee/TikTok Live terlebih dahulu. Setelah data masuk, GMV, Qty, Click, HPP dan contribution margin akan tampil di sini." primaryLabel="Buka Upload Center" onPrimary={()=>navigateToSection("live-streaming")} secondaryLabel="Refresh" onSecondary={()=>void load()} icon="product" checklist={["Upload data Live","Cek auto-detect & preview","Import lalu kembali ke Product Intelligence"]}/>}
 
   {mapping&&<div className="lpi-modal"><div><header><div><span>LIVE PRODUCT MAPPING</span><h3>{mapping.product_name}</h3></div><button onClick={()=>setMapping(null)}>×</button></header><p>Pilih Product Master yang mewakili produk fisik yang sama. Hanya identity/HPP yang direferensikan; data Affiliate tidak ikut digunakan.</p><label>Product Master<select value={selectedMaster} onChange={e=>setSelectedMaster(e.target.value)}><option value="">Pilih produk</option>{products.map(x=><option key={x.id} value={x.id}>{x.sku} · {x.product_name}</option>)}</select></label><footer><button onClick={()=>setMapping(null)}>Batal</button><button className="primary" disabled={busy||!selectedMaster} onClick={()=>void manualMap()}>Simpan Mapping</button></footer></div></div>}
  </section>

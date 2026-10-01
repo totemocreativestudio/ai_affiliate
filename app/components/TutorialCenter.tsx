@@ -2,6 +2,7 @@
 import {useEffect,useMemo,useState} from "react";
 import {createClient} from "../../lib/supabase-browser";
 import {navigateToSection} from "../../lib/luma-navigation";
+import SmartEmptyState from "./SmartEmptyState";
 
 type Topic={id:string;title:string;category:string;description:string;minutes:number;route:string;steps:Array<{title:string;what:string;why:string;result:string;visual:string}>};
 
@@ -94,7 +95,7 @@ export default function TutorialCenter({workspaceId}:{workspaceId:string}){
   <div className="tutorial-head"><div><div className="eyebrow">LEARNING</div><h1>Tutorial Lumaway</h1><p>Panduan praktis untuk pengguna baru. Ikuti langkah satu per satu sampai hasilnya terlihat.</p></div><div className="tutorial-progress-box"><b>{builtIn.length}</b><span>Panduan utama</span><small>{dbRows.length} materi tambahan dari Admin</small></div></div>
   <div className="tutorial-toolbar"><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Cari: upload, target, automation..."/><div>{cats.map(c=><button className={category===c?"active":""} onClick={()=>setCategory(c)} key={c}>{c}</button>)}</div></div>
   <div className="tutorial-layout">
-   <aside className="tutorial-list">{topics.map(t=><button key={t.id} className={active.id===t.id?"active":""} onClick={()=>{setActive(t);setStep(0)}}><div><strong>{t.title}</strong><span>{t.description}</span></div><small>± {t.minutes} menit</small></button>)}</aside>
+   <aside className="tutorial-list">{topics.length?topics.map(t=><button key={t.id} className={active.id===t.id?"active":""} onClick={()=>{setActive(t);setStep(0)}}><div><strong>{t.title}</strong><span>{t.description}</span></div><small>± {t.minutes} menit</small></button>):<SmartEmptyState compact eyebrow="TUTORIAL" title="Panduan tidak ditemukan" description="Tidak ada tutorial yang cocok dengan pencarian atau kategori ini." primaryLabel="Tampilkan Semua" onPrimary={()=>{setQuery("");setCategory("Semua")}} secondaryLabel="Buka Helpdesk" onSecondary={()=>navigateToSection("support")} icon="content"/>}</aside>
    <article className="tutorial-reader">
     <header><div><span>{active.category}</span><h2>{active.title}</h2></div><button onClick={()=>navigateToSection(active.route)}>Buka fitur</button></header>
     <TutorialFlowRail topic={active}/>
