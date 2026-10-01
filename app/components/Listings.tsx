@@ -398,7 +398,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
       <section className="listing-v2-main">
         <div className="listing-v2-section-head"><div><h3>Hasil Listing</h3><p>Aktivitas terbaru creator dan progres listing.</p></div><span>{visibleRows.length.toLocaleString("id-ID")} hasil</span></div>
         {loading?<div className="listing-v2-empty">Memuat Listings...</div>:visibleRows.length===0?<div className="listing-v2-empty"><b>Belum ada hasil listing.</b><span>Tambahkan listing atau ubah filter pencarian.</span></div>:
-        <div className="listing-v2-table-wrap"><table><thead><tr><th>Creator</th><th>Platform</th><th>Product / SKU</th><th>Stage</th><th>Ratecard</th><th>Latest / Next</th><th>Action</th></tr></thead><tbody>
+        <div className="listing-v2-table-wrap"><table><thead><tr><th>Creator</th><th>Platform</th><th>Contact</th><th>Product / SKU</th><th>Stage</th><th>Ratecard</th><th>Latest / Next</th><th>Action</th></tr></thead><tbody>
           {visibleRows.map(row=>{const rowCreator=creators.find(item=>item.id===row.creator_id);return <tr key={row.id} className={selected?.id===row.id?"selected":""} onClick={()=>setSelected(row)}>
             <td><div className="listing-v2-creator-cell"><span className={rowCreator?.avatar_url?"has-photo":""}>{rowCreator?.avatar_url?<img src={rowCreator.avatar_url} alt="" referrerPolicy="no-referrer"/>:String(row.creator_name||"C").slice(0,1).toUpperCase()}</span><div><b>{row.creator_name||"-"}</b><small>{dateLabel(row.data_date)}</small></div></div></td>
             <td><span className="listing-v2-platform">{row.platform||"-"}</span></td>
@@ -421,7 +421,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
           <div className="listing-v2-profile-grid">
             <div><span>Affiliate ID</span><b>{selectedCreator?.affiliate_id||"-"}</b></div>
             <div><span>Ratecard</span><b>{money(selectedCreator?.ratecard??selected.ratecard)}</b></div>
-            <div><span>Phone</span><b>{selectedCreator?.phone||"-"}</b></div>
+            <div><span>WhatsApp</span>{selectedCreator?.phone?<a className="listing-wa-direct" href={"https://wa.me/"+String(selectedCreator.phone).replace(/\\D/g,"").replace(/^0/,"62")} target="_blank" rel="noreferrer"><span className="wa-mark">WA</span><b>{selectedCreator.phone}</b></a>:<b>-</b>}</div>
             <div><span>Payment</span><b>{selectedCreator?.payment_type||selected.payment_type||"-"}</b></div>
             <div><span>Follow Up Via</span><b>{selected.follow_up_channel||"-"}</b></div>
             <div><span>Next Follow Up</span><b>{selected.next_follow_up_at?new Date(selected.next_follow_up_at).toLocaleString("id-ID"):"-"}</b></div>
@@ -435,7 +435,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
             {selectedSocialLinks.length?<div className="listing-v2-social-links">{selectedSocialLinks.map(([key,url])=><a key={key} href={String(url)} target="_blank" rel="noreferrer"><span>{key==="x"?"X":key.charAt(0).toUpperCase()+key.slice(1)}</span><b>↗</b></a>)}</div>:<p className="listing-v2-social-empty">{selectedCreator?"Belum ada link sosial. Tambahkan Instagram, TikTok, Facebook, Lemon8, YouTube, atau platform lainnya.":"Hubungkan listing ke Master Creator untuk menyimpan profil sosial."}</p>}
             {selectedCreator?.social_profile_updated_at&&<small>Profil diperbarui {new Date(selectedCreator.social_profile_updated_at).toLocaleString("id-ID")}</small>}
           </section>
-          <ListingQuickMessage workspaceId={workspaceId} listing={selected} creatorUsername={selectedCreator?.username||null} picName={followupOwners.find(x=>x.id===selected.follow_up_owner_user_id)?.safe_label||null}/>
+          <ListingQuickMessage workspaceId={workspaceId} listing={selected} creatorUsername={selectedCreator?.username||null} picName={followupOwners.find(x=>x.id===selected.follow_up_owner_user_id)?.safe_label||null} creatorPhone={selectedCreator?.phone||null}/>
           <div className="listing-v2-detail-actions"><button className="primary" onClick={()=>openActivity(selected,"Follow Up")}>+ Tambah Follow Up</button><button className="secondary" onClick={()=>openEdit(selected)}>Edit Listing</button>{selected.post_link&&<a href={selected.post_link} target="_blank" rel="noreferrer">Buka Konten</a>}</div>
           <div className="listing-v2-timeline-head"><div><h4>Activity Timeline</h4><p>Riwayat listing, follow up, sample, konten, dan hasil creator.</p></div></div>
           {detailLoading?<div className="listing-v2-empty small">Memuat timeline...</div>:activities.length===0?<div className="listing-v2-empty small">Belum ada aktivitas.</div>:
