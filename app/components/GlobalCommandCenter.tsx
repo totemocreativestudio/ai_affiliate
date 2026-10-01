@@ -7,7 +7,7 @@ import LumaIcon from "./LumaIcon";
 
 type SearchRow={
   entity_type:"creator"|"product"|"campaign"|"shipping"|"task"|"listing"|string;
-  entity_id:number;
+  entity_id:string;
   title:string;
   subtitle:string|null;
   meta:string|null;
@@ -15,7 +15,7 @@ type SearchRow={
   score:number;
 };
 
-type QuickCreateKey="product"|"listing"|"shipping"|"campaign"|"task";
+type QuickCreateKey="product"|"listing"|"shipping"|"campaign"|"task"|"live_session";
 
 const QUICK_CREATE:Array<{key:QuickCreateKey;label:string;desc:string;section:string;icon:"product"|"listing"|"shipping"|"performance"|"kanban"}>=[
   {key:"campaign",label:"Campaign",desc:"Buat campaign affiliate / influencer",section:"campaign-tracker",icon:"performance"},
@@ -23,6 +23,7 @@ const QUICK_CREATE:Array<{key:QuickCreateKey;label:string;desc:string;section:st
   {key:"shipping",label:"Shipping",desc:"Tambah pengiriman sample / produk",section:"shipping",icon:"shipping"},
   {key:"product",label:"Product",desc:"Tambah SKU induk ke Product Master",section:"product-master",icon:"product"},
   {key:"task",label:"Task",desc:"Tambah task ke Kanban",section:"kanban",icon:"kanban"},
+  {key:"live_session",label:"Live Session",desc:"Buka Session Planner Live Streaming",section:"live-streaming",icon:"performance"},
 ];
 
 function SearchIcon(){
@@ -39,6 +40,11 @@ function entityLabel(type:string){
   if(type==="shipping")return"Shipping";
   if(type==="task")return"Task";
   if(type==="listing")return"Listing";
+  if(type==="live_host")return"Live Host";
+  if(type==="live_session")return"Live Session";
+  if(type==="live_product")return"Live Product";
+  if(type==="saved_view")return"Saved View";
+  if(type==="module")return"Menu";
   return type;
 }
 
@@ -83,7 +89,7 @@ export default function GlobalCommandCenter({
     let alive=true;
     const timer=window.setTimeout(async()=>{
       setLoading(true);
-      const {data,error}=await supabase.rpc("luma_global_search_v1",{p_workspace_id:workspaceId,p_query:value,p_limit:28});
+      const {data,error}=await supabase.rpc("luma_global_search_v2",{p_workspace_id:workspaceId,p_query:value,p_limit:36});
       if(!alive)return;
       setLoading(false);
       if(error){setRows([]);return}
@@ -93,11 +99,20 @@ export default function GlobalCommandCenter({
     return()=>{alive=false;window.clearTimeout(timer)};
   },[open,query,workspaceId,supabase]);
 
-  function openResult(row:SearchRow){
+  async function openResult(row:SearchRow){
     if(accessLocked&&!["dashboard","billing","profile"].includes(row.section)){
       window.dispatchEvent(new CustomEvent("lumaway-access-locked",{detail:{requestedSection:row.section}}));
       setOpen(false);
       return;
+    }
+    if(row.entity_type==="saved_view"){
+      const {data:view}=await supabase.from("luma_saved_views").select("section,filter_json,sort_json,ui_state_json").eq("workspace_id",workspaceId).eq("id",Number(row.entity_id)).maybeSingle();
+      if(view){
+        navigateToSection(view.section);
+        setOpen(false);
+        window.setTimeout(()=>window.dispatchEvent(new CustomEvent("lumaway-apply-saved-view",{detail:{section:view.section,filter_json:view.filter_json||{},sort_json:view.sort_json||{},ui_state_json:view.ui_state_json||{}}})),80);
+        return;
+      }
     }
     navigateToSection(row.section);
     setOpen(false);
@@ -124,13 +139,13 @@ export default function GlobalCommandCenter({
   function onInputKey(event:React.KeyboardEvent<HTMLInputElement>){
     if(event.key==="ArrowDown"){event.preventDefault();setActiveIndex(index=>Math.min(rows.length-1,index+1))}
     if(event.key==="ArrowUp"){event.preventDefault();setActiveIndex(index=>Math.max(0,index-1))}
-    if(event.key==="Enter"&&rows[activeIndex]){event.preventDefault();openResult(rows[activeIndex])}
+    if(event.key==="Enter"&&rows[activeIndex]){event.preventDefault();void openResult(rows[activeIndex])}
   }
 
   return <>
     <div className="global-command-root">
       <button className="global-search-trigger" type="button" onClick={()=>{setOpen(true);setQuickOpen(false)}} aria-label="Cari di Lumaway">
-        <SearchIcon/><span>Cari creator, SKU, campaign...</span><kbd>⌘ K</kbd>
+        <SearchIcon/><span>Cari creator, host, SKU, Live, campaign...</span><kbd>⌘ K</kbd>
       </button>
       <div className="quick-create-root">
         <button className="quick-create-trigger" type="button" onClick={()=>{setQuickOpen(value=>!value);setOpen(false)}} aria-expanded={quickOpen}>
@@ -149,7 +164,7 @@ export default function GlobalCommandCenter({
       <section className="global-command-panel" role="dialog" aria-modal="true" aria-label="Pencarian global Lumaway" onMouseDown={event=>event.stopPropagation()}>
         <header>
           <SearchIcon/>
-          <input ref={inputRef} value={query} onChange={event=>setQuery(event.target.value)} onKeyDown={onInputKey} placeholder="Cari creator, SKU, produk, campaign, resi, task, atau listing..."/>
+          <input ref={inputRef} value={query} onChange={event=>setQuery(event.target.value)} onKeyDown={onInputKey} placeholder="Cari creator, host, SKU, produk Live, campaign, resi, Saved View..."/>
           <kbd>ESC</kbd>
         </header>
         <div className="global-command-body">
@@ -159,12 +174,12 @@ export default function GlobalCommandCenter({
             <p>Ketik minimal 2 karakter. Gunakan ↑ ↓ lalu Enter untuk membuka hasil.</p>
             <div>{QUICK_CREATE.slice(0,4).map(item=><button type="button" key={item.key} onClick={()=>quickCreate(item)}><LumaIcon name={item.icon}/>{item.label}</button>)}</div>
           </div>:loading?<div className="global-command-loading"><i/><span>Mencari di workspace...</span></div>:rows.length?<div className="global-command-results">
-            {rows.map((row,index)=><button type="button" key={row.entity_type+"-"+row.entity_id} className={activeIndex===index?"active":""} onMouseEnter={()=>setActiveIndex(index)} onClick={()=>openResult(row)}>
-              <span className={"global-result-icon type-"+row.entity_type}>{row.entity_type==="creator"?"C":row.entity_type==="product"?"P":row.entity_type==="campaign"?"M":row.entity_type==="shipping"?"S":row.entity_type==="task"?"T":"L"}</span>
+            {rows.map((row,index)=><button type="button" key={row.entity_type+"-"+row.entity_id} className={activeIndex===index?"active":""} onMouseEnter={()=>setActiveIndex(index)} onClick={()=>void openResult(row)}>
+              <span className={"global-result-icon type-"+row.entity_type}>{row.entity_type==="creator"?"C":row.entity_type==="product"?"P":row.entity_type==="campaign"?"M":row.entity_type==="shipping"?"S":row.entity_type==="task"?"T":row.entity_type==="live_host"?"H":row.entity_type==="live_session"?"LS":row.entity_type==="live_product"?"LP":row.entity_type==="saved_view"?"V":row.entity_type==="module"?"M":"L"}</span>
               <span className="global-result-copy"><b>{row.title}</b>{row.subtitle&&<small>{row.subtitle}</small>}</span>
               <span className="global-result-meta"><em>{entityLabel(row.entity_type)}</em>{row.meta&&<small>{row.meta}</small>}</span>
             </button>)}
-          </div>:<div className="global-command-empty"><strong>Tidak ada hasil.</strong><span>Coba nama, username, SKU, nomor resi, atau judul lain.</span></div>}
+          </div>:<div className="global-command-empty"><strong>Tidak ada hasil.</strong><span>Coba nama, username, SKU, host, session Live, Saved View, nomor resi, atau menu.</span></div>}
         </div>
         <footer><span><kbd>↑</kbd><kbd>↓</kbd> Navigasi</span><span><kbd>Enter</kbd> Buka</span><span><kbd>Esc</kbd> Tutup</span></footer>
       </section>
