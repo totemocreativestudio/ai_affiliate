@@ -28,6 +28,7 @@ const SECTION_ROUTES: Record<string, string> = {
   "product-master": "product-master",
   listings: "listings",
   shipping: "shipping",
+  spending: "spending",
   "creator-samples": "creator-samples",
   ratecard: "ratecard",
   profile: "profile",
