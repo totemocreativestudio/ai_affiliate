@@ -38,6 +38,8 @@ export default function DataHealthCenter({workspaceId}:{workspaceId:string}){
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
   const [filter,setFilter]=useState<"all"|"critical"|"warning">("all");
+  const now=new Date();const defaultStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);const defaultEnd=now.toISOString().slice(0,10);
+  const [reconStart,setReconStart]=useState(defaultStart),[reconEnd,setReconEnd]=useState(defaultEnd),[recon,setRecon]=useState<any>(null),[reconLoading,setReconLoading]=useState(false);
 
   async function load(){
     setLoading(true);setError("");
@@ -48,6 +50,14 @@ export default function DataHealthCenter({workspaceId}:{workspaceId:string}){
   }
 
   useEffect(()=>{void load()},[workspaceId]);
+  async function loadReconciliation(){
+    if(!reconStart||!reconEnd)return;
+    setReconLoading(true);
+    const {data:payload,error:rpcError}=await supabase.rpc("luma_data_reconciliation_v1",{p_workspace_id:workspaceId,p_start_date:reconStart,p_end_date:reconEnd,p_platform:null,p_store_name:null});
+    if(rpcError)setError(rpcError.message);else setRecon(payload||null);
+    setReconLoading(false);
+  }
+  useEffect(()=>{void loadReconciliation()},[workspaceId]);
   useEffect(()=>{
     const refresh=()=>void load();
     window.addEventListener("lumaway-database-updated",refresh as EventListener);
@@ -139,6 +149,19 @@ export default function DataHealthCenter({workspaceId}:{workspaceId:string}){
         </div>
       </section>
     </div>
+
+    <section className="data-health-panel data-reconciliation-panel">
+      <div className="data-health-panel-head">
+        <div><span className="eyebrow">PRODUCTION RECONCILIATION</span><h2>Dashboard vs Spending vs Source Data</h2><p>Gunakan periode yang sama untuk memastikan HPP, Sample HPP, Ongkir, dan Total Spending konsisten.</p></div>
+        <div className="data-recon-filters"><input type="date" value={reconStart} onChange={e=>setReconStart(e.target.value)}/><span>→</span><input type="date" value={reconEnd} onChange={e=>setReconEnd(e.target.value)}/><button type="button" onClick={()=>void loadReconciliation()} disabled={reconLoading}>{reconLoading?"Checking...":"Run Check"}</button></div>
+      </div>
+      {reconLoading?<div className="live-loading">Menjalankan reconciliation...</div>:recon?<><div className="data-recon-summary">
+        <article><span>Sales HPP</span><b>{new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(Number(recon.canonical?.sales_hpp||0))}</b></article>
+        <article><span>Sample HPP</span><b>{new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(Number(recon.canonical?.sample_hpp||0))}</b></article>
+        <article><span>Total Shipping</span><b>{new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(Number(recon.canonical?.total_shipping||0))}</b></article>
+        <article><span>Total Spending</span><b>{new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(Number(recon.canonical?.total_spending||0))}</b></article>
+      </div><div className="data-recon-checks">{(recon.checks||[]).map((x:any)=><article key={x.key} className={"state-"+String(x.status||"").toLowerCase()}><div><strong>{x.label}</strong><small>{x.expected!=null&&x.actual!=null?("Expected "+Number(x.expected).toLocaleString("id-ID")+" · Actual "+Number(x.actual).toLocaleString("id-ID")):x.actual!=null?("Temuan "+Number(x.actual).toLocaleString("id-ID")):""}</small></div><b>{x.status}</b></article>)}</div></>:<div className="data-health-clear compact"><strong>Belum menjalankan reconciliation.</strong><span>Pilih periode lalu jalankan pemeriksaan.</span></div>}
+    </section>
 
     <section className="data-health-panel data-health-guidance">
       <div><span>RECOMMENDED FLOW</span><h2>Sebelum import besar</h2><p>Gunakan alur baru Upload Center: <b>Upload → Mapping → Preview → Import</b>. Mapping yang sudah dikonfirmasi disimpan per workspace sehingga format file yang sama berikutnya tidak perlu diatur dari awal.</p></div>
