@@ -25,7 +25,8 @@ export default function LiveUploadPanel({workspaceId,onOpenHosts}:{workspaceId:s
 
  async function loadHistory(){const x=await supabase.from("live_imports").select("*,live_hosts(name,username)").eq("workspace_id",workspaceId).order("created_at",{ascending:false}).limit(25);setHistory(x.data||[])}
  async function loadHosts(){const x=await supabase.from("live_hosts").select("id,name,username,platform,host_type").eq("workspace_id",workspaceId).eq("status","active").order("name");setHosts(x.data||[])}
- useEffect(()=>{void loadHistory();void loadHosts()},[workspaceId]);
+ useEffect(()=>{void loadHistory();void loadHosts();try{const saved=sessionStorage.getItem("lumaway-live-upload-context:"+workspaceId);if(saved)setContext({...context,...JSON.parse(saved)})}catch{}},[workspaceId]);
+ useEffect(()=>{try{sessionStorage.setItem("lumaway-live-upload-context:"+workspaceId,JSON.stringify(context))}catch{}},[workspaceId,context]);
 
  async function choose(f:File){
   setFile(f);setMsg("Membaca dan mendeteksi format file...");setRows([]);setParsed(null);setDetection(null);setDelimiter("");setSourceSheet("");
@@ -40,6 +41,8 @@ export default function LiveUploadPanel({workspaceId,onOpenHosts}:{workspaceId:s
    setMatrix(m);
    const d=detectLiveDataset(m,sheet);setDetection(d);
    const p=normalizeLiveDataset(m,d);setParsed(p);
+   const detectedStoreId=clean(p.normalized_rows?.[0]?.source_user_id||p.overview?.source_user_id);
+   if(detectedStoreId)setContext(prev=>({...prev,store_id:prev.store_id||detectedStoreId}));
    if(d.dataset_type==="generic"){
     const genericRows=matrixObjects(m,d.header_row);setRows(genericRows);
     const lower=Object.fromEntries(Object.keys(genericRows[0]||{}).map(h=>[h.toLowerCase().replace(/[^a-z0-9]/g,""),h]));const auto:Record<string,string>={};
