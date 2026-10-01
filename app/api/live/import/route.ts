@@ -41,10 +41,10 @@ async function upsertKnownDataset(admin:any,workspaceId:string,importId:string,p
  if(datasetType==="shopee_product_list"){
   const payload=rows.map((r:any)=>({
    workspace_id:workspaceId,platform:"Shopee",source_user_id:clean(r.source_user_id)||null,period_start:r.period_start||null,period_end:r.period_end||null,store_name:clean(b.store_name)||null,store_id:clean(b.store_id)||null,store_username:clean(b.store_username)||null,
-   ranking:r.ranking,product_name_raw:clean(r.product_name_raw),product_clicks:r.product_clicks,add_to_cart:r.add_to_cart,
+   ranking:r.ranking,product_name_raw:clean(r.product_name_raw),source_sku:clean(r.source_sku)||null,product_clicks:r.product_clicks,add_to_cart:r.add_to_cart,
    product_orders_created:r.product_orders_created,product_orders_ready_to_ship:r.product_orders_ready_to_ship,
    qty_created:r.qty_created,qty_ready_to_ship:r.qty_ready_to_ship,gmv_created:r.gmv_created,gmv_ready_to_ship:r.gmv_ready_to_ship,
-   source_import_id:importId,source_row_key:`shopee:product:${keyPart(r.source_user_id)}:${r.period_start}:${r.period_end}:${keyPart(r.product_name_raw)}`,
+   source_import_id:importId,source_row_key:`shopee:product:${keyPart(r.source_user_id)}:${r.period_start}:${r.period_end}:${keyPart(r.source_sku||r.product_name_raw)}`,
    raw_payload:jsonSafe(r.raw_payload),updated_at:new Date().toISOString()
   }));
   if(payload.length){const x=await admin.from("live_product_performance").upsert(payload,{onConflict:"workspace_id,source_row_key"});if(x.error)throw x.error;persisted=payload.length}
@@ -112,7 +112,7 @@ export async function POST(req:NextRequest){
 
   const ctx=await getServerContext(workspaceId);if(!ctx.canManage)return NextResponse.json({ok:false,error:"Role Anda tidak dapat melakukan import."},{status:403});const {admin}=ctx;
   const hostCheck=await admin.from("live_hosts").select("id,status,name,username").eq("workspace_id",workspaceId).eq("id",hostId).maybeSingle();
-  if(hostCheck.error||!hostCheck.data?.id||hostCheck.data.status!=="active")return NextResponse.json({ok:false,error:"Host tidak valid atau tidak aktif. Tambahkan/pilih host dari Host 360."},{status:400});
+  if(hostCheck.error||!hostCheck.data?.id||hostCheck.data.status!=="active")return NextResponse.json({ok:false,error:"Host tidak valid atau tidak aktif. Tambahkan/pilih host dari Host 360."},{status:400});\n  const hostPlatform=clean(hostCheck.data?.platform).toLowerCase(),dataPlatform=platform.toLowerCase();\n  if(hostPlatform&&hostPlatform!=="all"&&dataPlatform&&dataPlatform!=="unknown"&&!hostPlatform.includes(dataPlatform)&&!dataPlatform.includes(hostPlatform))return NextResponse.json({ok:false,error:`Host ${hostCheck.data?.name||""} tidak sesuai dengan platform ${platform}. Pilih host yang sesuai atau perbarui Host 360.`},{status:400});
   const storeProfile=await admin.from("live_store_profiles").upsert({
     workspace_id:workspaceId,platform,store_name:storeName,store_id:storeId,store_username:storeUsername,status:"active",created_by:ctx.user.id,updated_at:new Date().toISOString()
   },{onConflict:"workspace_id,platform,store_id"});
