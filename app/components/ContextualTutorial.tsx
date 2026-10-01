@@ -87,7 +87,7 @@ export default function ContextualTutorial(){
  const current=guide.steps[Math.min(step,guide.steps.length-1)];
 
  return <>
-  <button type="button" className="context-help-trigger" onClick={()=>setOpen(true)} aria-label="Bantuan halaman ini"><LumaIcon name="support"/><span>Bantuan</span></button>
+  <button type="button" className="context-help-trigger" onClick={()=>setOpen(true)} aria-label="Panduan halaman ini"><LumaIcon name="support"/><span>Panduan</span></button>
   {open&&<div className="context-help-backdrop" onMouseDown={()=>setOpen(false)}>
    <aside className="context-help-drawer" role="dialog" aria-modal="true" aria-label={"Panduan "+guide.title} onMouseDown={e=>e.stopPropagation()}>
     <header><div><span>PANDUAN HALAMAN</span><h2>{guide.title}</h2><p>{guide.description}</p></div><button onClick={()=>setOpen(false)}>×</button></header>
