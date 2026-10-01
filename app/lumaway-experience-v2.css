@@ -393,3 +393,8 @@ input:focus,select:focus,textarea:focus{border-color:#8a80ff!important;box-shado
 .dashboard-kpi-grid,.lw-action-center,.personal-workspace-card{content-visibility:auto;contain-intrinsic-size:1px 420px}
 img[data-lw-media-ready="1"]{content-visibility:auto}
 @media(prefers-reduced-motion:reduce){.lw-route-progress,.lw-route-progress i{transition:none!important;animation:none!important}.lw-route-progress.active i{transform:none;width:100%}}
+
+/* PR85J Mobile & PWA Operational Mode */
+.pwa-operational-banner{position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:2100;display:flex;align-items:center;gap:8px;max-width:min(720px,calc(100vw - 24px));padding:8px 10px;border-radius:10px;border:1px solid #e2e5ec;background:#fff;box-shadow:0 10px 28px rgba(17,24,39,.12);font-size:9px}
+.pwa-operational-banner strong{font-size:9px}.pwa-operational-banner span{color:#6d7385}.pwa-operational-banner.offline{background:#fff8ed;border-color:#efdfbd}.pwa-operational-banner.update{background:#f4f2ff;border-color:#ddd8ff}.pwa-operational-banner button{border:0;border-radius:7px;background:#6254ef;color:#fff;padding:6px 8px;font-size:8px;font-weight:900}
+@media(max-width:760px){.mobile-quick-nav a,.mobile-quick-nav button{min-height:48px}.pwa-operational-banner{top:auto;bottom:76px;left:10px;right:10px;transform:none;max-width:none;align-items:flex-start;flex-wrap:wrap}}
