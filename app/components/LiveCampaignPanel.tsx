@@ -9,7 +9,7 @@ export default function LiveCampaignPanel({workspaceId,start,end}:{workspaceId:s
  const supabase=useMemo(()=>createClient(),[]);
  const [data,setData]=useState<any>({campaigns:[],gimmicks:[]}),[open,setOpen]=useState(false),[msg,setMsg]=useState("");
  const [form,setForm]=useState({name:"",start_date:start,end_date:end,target_gmv:"",target_orders:"",budget:"",status:"active"});
- async function load(){const x=await supabase.rpc("luma_live_campaign_overview_v1",{p_workspace_id:workspaceId,p_start:start,p_end:end});if(x.error)setMsg(x.error.message);else{setData(x.data||{campaigns:[],gimmicks:[]});setMsg("")}}
+ async function load(){const x=await supabase.rpc("luma_live_campaign_overview_v2",{p_workspace_id:workspaceId,p_start:start,p_end:end});if(x.error)setMsg(x.error.message);else{setData(x.data||{campaigns:[],gimmicks:[]});setMsg("")}}
  useEffect(()=>{setForm(f=>({...f,start_date:start,end_date:end}));void load()},[workspaceId,start,end]);
  async function save(){
   if(!form.name.trim()){setMsg("Nama campaign wajib diisi.");return}
@@ -48,7 +48,7 @@ export default function LiveCampaignPanel({workspaceId,start,end}:{workspaceId:s
        <div className="lc-card-top"><div><span className={"lc-status "+String(c.status||"draft").toLowerCase()}>{c.status||"draft"}</span><h4>{c.name}</h4><small>{c.start_date||"-"} → {c.end_date||"-"} · {no(c.sessions)} session</small></div><div className="lc-card-ach"><strong>{progress.toFixed(1)}%</strong><span>GMV achievement</span></div></div>
        <div className="lc-card-metrics"><div><span>GMV</span><b>{rp(gmv)}</b><small>Target {rp(target)}</small></div><div><span>Orders</span><b>{no(c.orders)}</b><small>{orderProgress.toFixed(1)}% target</small></div><div><span>Actual Cost</span><b>{rp(c.actual_cost)}</b><small>Budget {rp(c.budget)}</small></div><div><span>Efficiency</span><b>{Number(c.actual_cost||0)>0?(gmv/Number(c.actual_cost)).toFixed(2)+"x":"-"}</b><small>GMV / cost</small></div></div>
        <div className="lc-progress-v2"><i style={{width:String(Math.min(100,Math.max(0,progress)))+"%"}}/></div>
-       <footer><span>{target>0?rp(Math.max(0,target-gmv))+" gap ke target":"Target GMV belum diatur"}</span><b>{Number(c.budget||0)>0?budgetUse.toFixed(1)+"% budget used":"No budget"}</b></footer>
+       <footer><span>{target>0?rp(Math.max(0,target-gmv))+" gap ke target":"Target GMV belum diatur"}</span><b>{Number(c.budget||0)>0?((Number(c.actual_cost||0)/Number(c.budget||1))*100).toFixed(1)+"% budget used":"No budget"}</b></footer>
       </article>
     })}</div>:<div className="lc-empty-v2"><div>◎</div><h4>Belum ada campaign Live</h4><p>Buat campaign untuk mengelompokkan session, target GMV, target order dan budget.</p><button onClick={()=>setOpen(true)}>+ Buat Campaign Pertama</button></div>}
    </section>
