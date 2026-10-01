@@ -6,6 +6,7 @@ import { navigateToSection, routeForSection, sectionFromPath } from "../../lib/l
 import LumaIcon, { type IconName } from "./LumaIcon";
 import PWAInstallButton from "./PWAInstallButton";
 const OwnerSidebarMenu=dynamic(()=>import("./OwnerSidebarMenu"),{ssr:false});
+const OwnerSidebarFooter=dynamic(()=>import("./OwnerSidebarFooter"),{ssr:false});
 
 type Props = {
   profile: { email: string | null; full_name: string | null; role: string };
@@ -223,14 +224,14 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
           </>
         )}
 
-        <div className="sidebar-bottom">
-          {!isOwner && <PWAInstallButton />}
-          <a href={isOwner?"/administration/overview":routeForSection("profile")} className="user-chip sidebar-profile-link" onClick={(event)=>{if(isOwner){event.preventDefault();openOwner("overview")}else go(event,"profile")}}>
-            <div className="avatar">{(profile.full_name || profile.email || "U").slice(0, 1).toUpperCase()}</div>
-            <div className="sidebar-user-copy"><strong>{profile.full_name || profile.email}</strong><small>{isOwner ? "Owner · Lumaway" : `My Profile · ${workspace.name}`}</small></div>
+        {isOwner?<OwnerSidebarFooter profile={profile} onOpenOwner={openOwner} onLogout={onLogout}/>:<div className="sidebar-bottom">
+          <PWAInstallButton/>
+          <a href={routeForSection("profile")} className="user-chip sidebar-profile-link" onClick={(event)=>go(event,"profile")}>
+            <div className="avatar">{(profile.full_name||profile.email||"U").slice(0,1).toUpperCase()}</div>
+            <div className="sidebar-user-copy"><strong>{profile.full_name||profile.email}</strong><small>{`My Profile · ${workspace.name}`}</small></div>
           </a>
-          <button className="logout" onClick={onLogout}><LumaIcon name="logout" className="logout-icon" /><span className="nav-label">Logout</span></button>
-        </div>
+          <button className="logout" onClick={onLogout}><LumaIcon name="logout" className="logout-icon"/><span className="nav-label">Logout</span></button>
+        </div>}
       </aside>
     </>
   );
