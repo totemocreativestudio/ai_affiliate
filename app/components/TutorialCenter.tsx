@@ -33,12 +33,38 @@ const builtIn:Topic[]=[
   {title:"Pindahkan jadwal",what:"Drag card report ke tanggal lain.",why:"Reschedule lebih cepat tanpa membuka form.",result:"Tanggal next run berubah.",visual:"drag"},
   {title:"Cek histori",what:"Lihat status Delivered atau Failed di panel kanan.",why:"Anda bisa memastikan report benar-benar terkirim.",result:"Audit pengiriman tercatat.",visual:"history"}
  ]},
- {id:"creator360",title:"Memahami Affiliate / Creator 360",category:"Affiliate & Creator",description:"Cari creator dan baca performa, sample, agreement dan histori dalam satu konteks.",minutes:6,route:"creator-identity",steps:[
+ {id:"creator360",title:"Memahami Affiliate / Creator 360",category:"Affiliate & Creator",description:"Cari creator dan baca performa, sample, agreement dan histori dalam satu konteks.",minutes:6,route:"affiliate-360",steps:[
   {title:"Cari creator",what:"Gunakan search username atau nama creator.",why:"Search-first lebih cepat daripada membuka tabel satu per satu.",result:"Profil creator terpilih.",visual:"search"},
   {title:"Baca performance",what:"Periksa GMV, orders, qty, komisi, live, video dan sample.",why:"Metrik ringkas memberi kondisi creator secara cepat.",result:"Anda tahu kontribusi creator.",visual:"metrics"},
   {title:"Periksa timeline",what:"Baca reach out, sample, agreement dan aktivitas campaign.",why:"Timeline menjelaskan hubungan operasional, bukan hanya angka.",result:"Next action lebih jelas.",visual:"timeline"}
+ ]},
+ {id:"live-start",title:"Mulai Live Streaming dari Nol",category:"Live Streaming",description:"Tambah host, buat session, tentukan target, campaign dan gimmick.",minutes:8,route:"live-streaming",steps:[
+  {title:"Buka Live Streaming",what:"Masuk menu Live Streaming → Live Intelligence.",why:"Semua data host live in-house/out-house berada pada jalur terpisah dari Affiliate Performance.",result:"Overview Live Streaming terbuka.",visual:"live-overview"},
+  {title:"Tambah Host",what:"Buka tab Host 360 lalu klik Tambah Host. Isi nama, username, platform, tipe Inhouse/Outhouse dan ratecard.",why:"Session live harus punya identitas host agar ranking dan Host 360 akurat.",result:"Host tersimpan dan bisa dipilih saat membuat session.",visual:"host360"},
+  {title:"Buat Session",what:"Buka Session Planner → Buat Session. Pilih host, tanggal, jam, platform dan campaign.",why:"Session menjadi wadah target, performance dan biaya produksi.",result:"Session muncul pada Board dan Timeline.",visual:"session"},
+  {title:"Tambahkan Gimmick",what:"Pilih Flash Sale, Voucher Drop, Bundling, Product Demo, Giveaway atau gimmick lain.",why:"Lumaway akan membandingkan gimmick berdasarkan GMV, order, viewer dan revenue/hour.",result:"Session siap dianalisis berdasarkan gimmick.",visual:"gimmick"},
+  {title:"Isi Target & Budget",what:"Masukkan Target GMV, Orders, Viewer, Ads Budget, Host Cost, Studio Cost dan Production Cost.",why:"Target vs Achievement dan Contribution Margin membutuhkan baseline dan biaya.",result:"Sesi memiliki target dan struktur biaya yang lengkap.",visual:"target-live"}
+ ]},
+ {id:"live-upload",title:"Upload Report Live Streaming",category:"Live Streaming",description:"Import XLSX/CSV dengan mapping yang benar sampai chart terisi.",minutes:9,route:"live-streaming",steps:[
+  {title:"Siapkan report live",what:"Export laporan Live Streaming ke XLSX/CSV. Minimal siapkan kolom Date, Host, GMV dan Orders; tambahkan Viewer, Duration, Campaign dan Gimmick jika tersedia.",why:"Semakin lengkap kolom sumber, semakin lengkap analisis per host, jam dan session.",result:"File live siap diimport.",visual:"live-export"},
+  {title:"Buka Upload Center Live",what:"Masuk Live Streaming → Upload Center.",why:"Upload Live memiliki pipeline sendiri dan tidak masuk ke Affiliate Performance.",result:"Area upload Live Streaming tampil.",visual:"live-upload"},
+  {title:"Pilih file",what:"Pilih file XLSX/CSV. Lumaway membaca header dan menyiapkan mapping otomatis.",why:"Auto mapping mempercepat proses namun tetap perlu diverifikasi.",result:"Jumlah row dan Mapping Wizard muncul.",visual:"live-file"},
+  {title:"Periksa Mapping",what:"Pastikan Host Username/Name, Session Title, Date, Hour, GMV, Orders, Viewer dan Duration mengarah ke kolom yang benar.",why:"Mapping salah akan membuat chart dan Host 360 tidak akurat.",result:"Semua field penting terpetakan.",visual:"live-mapping"},
+  {title:"Preview 5 baris",what:"Periksa contoh data sebelum import.",why:"Preview adalah validasi terakhir sebelum data disimpan.",result:"Anda yakin angka dan kolom sesuai sumber.",visual:"live-preview"},
+  {title:"Import",what:"Klik Import ke Live Streaming dan tunggu status selesai.",why:"Data akan disimpan ke live_session_performance dan history import.",result:"Data Live terpisah tersimpan di workspace.",visual:"live-import"},
+  {title:"Cek Analytics",what:"Buka tab Analytics untuk melihat trend, histogram jam, Host Comparison dan Gimmick Comparison.",why:"Ini memastikan hasil import sudah terbaca secara visual.",result:"Dashboard Live mulai terisi.",visual:"live-analytics"}
+ ]},
+ {id:"live-read",title:"Membaca Live Analytics",category:"Live Streaming",description:"Cara memahami line chart, donut, histogram, heatmap dan session comparison.",minutes:7,route:"live-streaming",steps:[
+  {title:"Mulai dari trend",what:"Lihat Trend GMV/Orders/Viewer per hari.",why:"Trend memberi gambaran apakah performa membaik atau turun.",result:"Arah performa periode terlihat.",visual:"line-chart"},
+  {title:"Bandingkan Host",what:"Gunakan Host Comparison untuk melihat kontribusi GMV per host.",why:"GMV saja belum cukup; lanjutkan dengan Revenue/Hour di Host 360.",result:"Host berkontribusi terbesar teridentifikasi.",visual:"host-chart"},
+  {title:"Baca Histogram Jam",what:"Lihat GMV per jam dan Peak Hour Heatmap.",why:"Live yang sama bisa sangat berbeda performanya tergantung jam.",result:"Jam produktif mulai terlihat.",visual:"histogram"},
+  {title:"Bandingkan Gimmick",what:"Bandingkan gimmick berdasarkan GMV, Orders dan Revenue/Hour.",why:"Gimmick yang sering dipakai belum tentu paling efisien.",result:"Mechanic live yang efektif dapat diprioritaskan.",visual:"gimmick-chart"},
+  {title:"Drill-down Session",what:"Gunakan Session Comparison untuk membandingkan GMV, order, viewer dan Revenue/Hour tiap sesi.",why:"Perbandingan session membantu evaluasi host, durasi dan eksekusi.",result:"Sesi terbaik dan sesi yang perlu perbaikan terlihat.",visual:"session-table"}
  ]}
 ];
+
+
+function TutorialFlowRail({topic}:{topic:Topic}){return <div className="tutorial-flow-rail">{topic.steps.map((x,i)=><div key={i}><span>{i+1}</span><strong>{x.title}</strong>{i<topic.steps.length-1&&<i>→</i>}</div>)}</div>}
 
 function Visual({kind,index}:{kind:string;index:number}){
  return <div className="tutorial-visual">
@@ -71,6 +97,7 @@ export default function TutorialCenter({workspaceId}:{workspaceId:string}){
    <aside className="tutorial-list">{topics.map(t=><button key={t.id} className={active.id===t.id?"active":""} onClick={()=>{setActive(t);setStep(0)}}><div><strong>{t.title}</strong><span>{t.description}</span></div><small>± {t.minutes} menit</small></button>)}</aside>
    <article className="tutorial-reader">
     <header><div><span>{active.category}</span><h2>{active.title}</h2></div><button onClick={()=>navigateToSection(active.route)}>Buka fitur</button></header>
+    <TutorialFlowRail topic={active}/>
     <div className="tutorial-step-tabs">{active.steps.map((_,i)=><button key={i} onClick={()=>setStep(i)} className={step===i?"active":step>i?"done":""}>{step>i?"✓":i+1}</button>)}</div>
     <Visual kind={s.visual} index={step}/>
     <div className="tutorial-copy-grid">
