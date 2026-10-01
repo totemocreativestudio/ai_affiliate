@@ -24,12 +24,14 @@ import "./live-campaign.css";
 import "./live-analytics.css";
 import "./affiliate360-search.css";
 import "./live-data-health.css";
+import "./spending-center.css";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../lib/supabase-browser";
 import { APP_BASE, isAuthPath, navigateToSection, routeForSection, sectionFromPath } from "../lib/luma-navigation";
 import ProductMaster from "./components/ProductMaster";
 import Listings from "./components/Listings";
 import Shipping from "./components/Shipping";
+import SpendingCenter from "./components/SpendingCenter";
 import CampaignTracker from "./components/CampaignTracker";
 import DailyBriefCenter from "./components/DailyBriefCenter";
 import AutomationRulesCenter from "./components/AutomationRulesCenter";
@@ -497,6 +499,7 @@ export default function LumawayWorkspaceApp() {
           <section id="product-master" className="legacy-page-anchor"><div className="eyebrow">MASTER DATA</div><ProductMaster workspaceId={workspace.id} /></section>
           <section id="listings" className="legacy-page-anchor"><Listings workspaceId={workspace.id} /></section>
           <section id="shipping" className="legacy-page-anchor"><Shipping workspaceId={workspace.id} /></section>
+          <SpendingCenter workspaceId={workspace.id} />
           <DailyBriefCenter workspaceId={workspace.id} />
           <AutomationRulesCenter workspaceId={workspace.id} />
           <GoalForecastCenter workspaceId={workspace.id} />
