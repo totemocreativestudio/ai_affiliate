@@ -13,16 +13,16 @@ export default function LiveDataHealthPanel({workspaceId,start,end}:{workspaceId
  const supabase=useMemo(()=>createClient(),[]);
  const now=new Date(),fallbackEnd=now.toISOString().slice(0,10),fallbackStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
  const rangeStart=start||fallbackStart,rangeEnd=end||fallbackEnd;
- const [data,setData]=useState<any>(null),[rec,setRec]=useState<any>(null),[loading,setLoading]=useState(true),[msg,setMsg]=useState("");
+ const [data,setData]=useState<any>(null),[rec,setRec]=useState<any>(null),[truth,setTruth]=useState<any>(null),[loading,setLoading]=useState(true),[msg,setMsg]=useState("");
 
  async function load(){
   setLoading(true);setMsg("");
   const [x,r]=await Promise.all([
    supabase.rpc("luma_live_data_health_v1",{p_workspace_id:workspaceId}),
-   supabase.rpc("luma_live_reconciliation_v1",{p_workspace_id:workspaceId,p_start:rangeStart,p_end:rangeEnd})
+   supabase.rpc("luma_live_source_truth_qc_v1",{p_workspace_id:workspaceId,p_start:rangeStart,p_end:rangeEnd})
   ]);
-  if(x.error||r.error){setMsg(x.error?.message||r.error?.message||"Data Health gagal dimuat.");setData(x.data||null);setRec(r.data||null)}
-  else{setData(x.data||{});setRec(r.data||{})}
+  if(x.error||r.error){setMsg(x.error?.message||r.error?.message||"Data Health gagal dimuat.");setData(x.data||null);setTruth(r.data||null);setRec(r.data?.reconciliation||null)}
+  else{setData(x.data||{});setTruth(r.data||{});setRec(r.data?.reconciliation||{})}
   setLoading(false);
  }
 
@@ -68,6 +68,13 @@ export default function LiveDataHealthPanel({workspaceId,start,end}:{workspaceId
   {msg&&<div className="live-upload-msg">{msg}</div>}
   {loading?<div className="live-loading">Menjalankan reconciliation & health check...</div>:<>
    <div className={"lh-score status-"+healthLabel.toLowerCase().replaceAll(" ","-")}><div><strong>{score}</strong><span>/100</span></div><section><b>{healthLabel}</b><p>Skor ini hanya mengukur konsistensi dan kelengkapan data, bukan performa bisnis.</p></section></div>
+
+   <div className="lh-source-truth">
+    <article><span>Unified GMV</span><strong>{money(truth?.canonical?.unified?.gmv)}</strong><small>Shopee canonical + TikTok attributed</small></article>
+    <article><span>Shopee GMV</span><strong>{money(truth?.canonical?.shopee?.gmv_created)}</strong><small>{nf(truth?.canonical?.shopee?.orders_created)} orders · {nf(truth?.canonical?.shopee?.qty_created)} qty</small></article>
+    <article><span>TikTok GMV</span><strong>{money(truth?.canonical?.tiktok?.gmv)}</strong><small>{nf(truth?.canonical?.tiktok?.orders)} SKU orders · {nf(truth?.canonical?.tiktok?.qty)} qty</small></article>
+    <article><span>QC Status</span><strong>{truth?.status||"-"}</strong><small>source truth reconciliation</small></article>
+   </div>
 
    <div className="lh-summary">
     {[["Exact",exactCount],["Difference",diffCount],["Source Missing",missingCount],["Import Warning",rec?.imports?.with_warnings],["Failed/Partial",importProblems]].map(([l,v])=><article key={String(l)}><span>{l}</span><strong>{Number(v||0).toLocaleString("id-ID")}</strong></article>)}

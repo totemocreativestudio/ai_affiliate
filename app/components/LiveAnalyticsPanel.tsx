@@ -19,17 +19,17 @@ function Donut({items}:{items:any[]}){
  return <div className="la-donut-wrap"><div className="la-donut" style={{background:"conic-gradient("+bg+")"} as any}><div><b>{rp(total)}</b><span>Total GMV</span></div></div><div className="la-donut-legend">{parts.map((p,i)=><div key={i}><i style={{background:"var(--c"+i+")"}}/><span>{p.name}</span><b>{Math.round((Number(p.gmv||0)/total)*1000)/10}%</b></div>)}</div></div>
 }
 
-export default function LiveAnalyticsPanel({workspaceId}:{workspaceId:string}){
- const supabase=useMemo(()=>createClient(),[]),r=range();
- const [start,setStart]=useState(r.start),[end,setEnd]=useState(r.end),[data,setData]=useState<any>({}),[sourceData,setSourceData]=useState<any>({}),[metric,setMetric]=useState("gmv"),[source,setSource]=useState("unified"),[loading,setLoading]=useState(true);
- async function load(){setLoading(true);const [x,s]=await Promise.all([supabase.rpc("luma_live_analytics_v1",{p_workspace_id:workspaceId,p_start:start,p_end:end}),supabase.rpc("luma_live_source_analytics_v1",{p_workspace_id:workspaceId,p_start:start,p_end:end})]);setData(x.data||{});setSourceData(s.data||{});setLoading(false)}
+export default function LiveAnalyticsPanel({workspaceId,start,end}:{workspaceId:string;start:string;end:string}){
+ const supabase=useMemo(()=>createClient(),[]);
+ const [data,setData]=useState<any>({}),[sourceData,setSourceData]=useState<any>({}),[metric,setMetric]=useState("gmv"),[source,setSource]=useState("unified"),[loading,setLoading]=useState(true);
+ async function load(){setLoading(true);const [x,s]=await Promise.all([supabase.rpc("luma_live_analytics_v2",{p_workspace_id:workspaceId,p_start:start,p_end:end}),supabase.rpc("luma_live_source_analytics_v1",{p_workspace_id:workspaceId,p_start:start,p_end:end})]);setData(x.data||{});setSourceData(s.data||{});setLoading(false)}
  useEffect(()=>{void load()},[workspaceId,start,end]);
  const byDay=data.by_day||[],byHour=data.by_hour||[],byHost=data.by_host||[],byGimmick=data.by_gimmick||[],byPlatform=data.by_platform||[],bySession=data.by_session||[];
  const points=byDay.map((x:any)=>Number(x[metric]||0)),max=Math.max(...points,1);
  const path=points.length>1?points.map((v:number,i:number)=>(i?"L":"M")+" "+i/(points.length-1)*100+" "+(90-v/max*72)).join(" "):"";
  const heatMax=Math.max(...byHour.map((x:any)=>Number(x.gmv||0)),1);
  return <div className="live-analytics-panel">
-  <div className="la-toolbar"><div><input type="date" value={start} onChange={e=>setStart(e.target.value)}/><span>→</span><input type="date" value={end} onChange={e=>setEnd(e.target.value)}/></div><div className="la-source-tabs">{[["unified","Unified"],["tiktok","TikTok"],["shopee","Shopee"]].map(([k,l])=><button key={k} className={source===k?"active":""} onClick={()=>setSource(k)}>{l}</button>)}</div></div>
+  <div className="la-toolbar"><div className="live-shared-period"><span>Periode Live</span><b>{start} → {end}</b></div><div className="la-source-tabs">{[["unified","Unified"],["tiktok","TikTok"],["shopee","Shopee"]].map(([k,l])=><button key={k} className={source===k?"active":""} onClick={()=>setSource(k)}>{l}</button>)}</div></div>
   {loading?<div className="live-loading">Mengolah visual Live Analytics...</div>:source==="tiktok"?<TikTokSourceAnalytics data={sourceData?.tiktok||{}}/>:source==="shopee"?<ShopeeSourceAnalytics data={sourceData?.shopee||{}}/>:<>
    <div className="la-grid-main">
     <section className="la-card la-line"><header><div><span>TREND</span><h2>{metric==="gmv"?"GMV":metric==="orders"?"Orders":"Average Viewer"} per hari</h2></div><small>{byDay.length} hari</small></header><div>{points.length>1?<svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d={path} fill="none" vectorEffect="non-scaling-stroke"/><line x1="0" y1="94" x2="100" y2="94"/></svg>:<div className="live-empty">Belum cukup data harian.</div>}</div></section>
