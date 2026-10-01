@@ -3,6 +3,7 @@
 import {useEffect,useMemo,useState} from "react";
 import OwnerAlertCenter from "./OwnerAlertCenter";
 import OwnerIncidentCenter from "./OwnerIncidentCenter";
+import OwnerProductionQA from "./OwnerProductionQA";
 import {createClient} from "../../lib/supabase-browser";
 type Row=Record<string,any>;
 const fmt=(v:any)=>new Intl.NumberFormat("id-ID").format(Number(v||0));
@@ -35,6 +36,7 @@ export default function OwnerPlatformHealth({mode}:{mode:"api"|"system"}){
   <section className="owner-panel"><div className="owner-panel-head"><div><h3>Payment & Provider Health</h3><p>Duplicate delivery tidak menjalankan fulfillment dua kali; stale webhook dan checkout tampil di sini.</p></div></div><div className="owner-kpi-grid small"><Metric label="Duplicate Webhook · 24h" value={fmt(payments.duplicate_deliveries_24h)}/><Metric label="Stale Webhook" value={fmt(payments.stale_webhooks)}/><Metric label="Latest Webhook" value={payments.latest_webhook_at?new Date(payments.latest_webhook_at).toLocaleString("id-ID"):"-"}/><Metric label="Latest Import" value={imports.latest_at?new Date(imports.latest_at).toLocaleString("id-ID"):"-"}/></div><div className="provider-health-grid">{(payments.providers||[]).map((p:Row)=><article key={p.provider} className={"provider-health-card "+String(p.health_status||"unknown")}><div><b>{p.provider}</b><span>{p.enabled?"enabled":"disabled"}</span></div><small>{p.health_status||"unknown"}{p.last_error?" · "+String(p.last_error).slice(0,90):""}</small></article>)}</div></section>
   <OwnerAlertCenter/>
   <OwnerIncidentCenter/>
+  <OwnerProductionQA/>
   {msg&&<div className="owner-inline-note">{msg}</div>}
   <section className="owner-panel"><div className="owner-panel-head"><div><h3>Bug, Error & UI Queue</h3><p>Resolve setelah perbaikan diverifikasi di production.</p></div></div><div className="owner-table-wrap"><table><thead><tr><th>Severity</th><th>Issue</th><th>Page</th><th>Status</th><th>Date</th><th></th></tr></thead><tbody>{issues.map(x=><tr key={x.id}><td>{x.severity}</td><td><b>{x.title}</b><small>{x.details}</small></td><td>{x.page_path||"-"}</td><td>{x.status}</td><td>{x.created_at?new Date(x.created_at).toLocaleString("id-ID"):"-"}</td><td><button disabled={x.status==="resolved"} onClick={()=>resolve(x.id)}>Resolve</button></td></tr>)}</tbody></table></div></section>
  </div>;
