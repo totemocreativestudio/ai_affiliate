@@ -11,14 +11,14 @@ security definer
 set search_path=public,pg_temp
 as $$
 declare
-  l record;
+  rec record;
   existing_id bigint;
   created_count int:=0;
   updated_count int:=0;
   resolved_count int:=0;
   severity_value text;
 begin
-  for l in
+  for rec in
     select *
     from public.listings
     where next_follow_up_at is not null
@@ -29,7 +29,7 @@ begin
         or next_follow_up_at is not null
       )
   loop
-    severity_value:=case coalesce(l.follow_up_priority,'normal')
+    severity_value:=case coalesce(rec.follow_up_priority,'normal')
       when 'urgent' then 'critical'
       when 'high' then 'high'
       when 'low' then 'low'
@@ -38,9 +38,9 @@ begin
 
     select id into existing_id
     from public.luma_action_items
-    where workspace_id=l.workspace_id
+    where workspace_id=rec.workspace_id
       and source_type='listing_followup'
-      and source_id=l.id::text
+      and source_id=rec.id::text
       and status='open'
     order by id desc
     limit 1;
@@ -50,27 +50,27 @@ begin
         workspace_id,source_type,source_id,title,description,severity,status,due_date,action_route,metadata,created_by
       )
       values(
-        l.workspace_id,
+        rec.workspace_id,
         'listing_followup',
-        l.id::text,
-        'Follow up '||coalesce(nullif(l.creator_name,''),'creator'),
+        rec.id::text,
+        'Follow up '||coalesce(nullif(rec.creator_name,''),'creator'),
         concat_ws(' · ',
-          nullif(l.follow_up_channel,''),
-          nullif(l.next_action,''),
-          nullif(coalesce(l.product_name,l.sku),'')
+          nullif(rec.follow_up_channel,''),
+          nullif(rec.next_action,''),
+          nullif(coalesce(rec.product_name,rec.sku),'')
         ),
         severity_value,
         'open',
-        (l.next_follow_up_at at time zone 'Asia/Jakarta')::date,
+        (rec.next_follow_up_at at time zone 'Asia/Jakarta')::date,
         'listings',
         jsonb_build_object(
-          'listing_id',l.id,
-          'creator_id',l.creator_id,
-          'creator_name',l.creator_name,
-          'follow_up_channel',l.follow_up_channel,
-          'next_follow_up_at',l.next_follow_up_at,
-          'follow_up_priority',l.follow_up_priority,
-          'stage',l.stage
+          'listing_id',rec.id,
+          'creator_id',rec.creator_id,
+          'creator_name',rec.creator_name,
+          'follow_up_channel',rec.follow_up_channel,
+          'next_follow_up_at',rec.next_follow_up_at,
+          'follow_up_priority',rec.follow_up_priority,
+          'stage',rec.stage
         ),
         null
       );
@@ -78,22 +78,22 @@ begin
     else
       update public.luma_action_items
       set
-        title='Follow up '||coalesce(nullif(l.creator_name,''),'creator'),
+        title='Follow up '||coalesce(nullif(rec.creator_name,''),'creator'),
         description=concat_ws(' · ',
-          nullif(l.follow_up_channel,''),
-          nullif(l.next_action,''),
-          nullif(coalesce(l.product_name,l.sku),'')
+          nullif(rec.follow_up_channel,''),
+          nullif(rec.next_action,''),
+          nullif(coalesce(rec.product_name,rec.sku),'')
         ),
         severity=severity_value,
-        due_date=(l.next_follow_up_at at time zone 'Asia/Jakarta')::date,
+        due_date=(rec.next_follow_up_at at time zone 'Asia/Jakarta')::date,
         metadata=jsonb_build_object(
-          'listing_id',l.id,
-          'creator_id',l.creator_id,
-          'creator_name',l.creator_name,
-          'follow_up_channel',l.follow_up_channel,
-          'next_follow_up_at',l.next_follow_up_at,
-          'follow_up_priority',l.follow_up_priority,
-          'stage',l.stage
+          'listing_id',rec.id,
+          'creator_id',rec.creator_id,
+          'creator_name',rec.creator_name,
+          'follow_up_channel',rec.follow_up_channel,
+          'next_follow_up_at',rec.next_follow_up_at,
+          'follow_up_priority',rec.follow_up_priority,
+          'stage',rec.stage
         ),
         updated_at=now()
       where id=existing_id;
@@ -108,11 +108,11 @@ begin
     and not exists(
       select 1
       from public.listings l
-      where l.workspace_id=ai.workspace_id
-        and l.id::text=ai.source_id
-        and l.next_follow_up_at is not null
-        and l.next_follow_up_at<=now()+interval '7 days'
-        and (l.follow_up_completed_at is null or l.follow_up_completed_at<l.next_follow_up_at)
+      where rec.workspace_id=ai.workspace_id
+        and s.id::text=ai.source_id
+        and s.next_follow_up_at is not null
+        and s.next_follow_up_at<=now()+interval '7 days'
+        and (s.follow_up_completed_at is null or s.follow_up_completed_at<s.next_follow_up_at)
     );
 
   get diagnostics resolved_count=row_count;
