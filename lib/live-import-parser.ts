@@ -86,7 +86,7 @@ export function parsePercent(v:any){
 }
 
 export function parseDurationSeconds(v:any){
- if(typeof v==="number")return Number.isFinite(v)?v:null;
+ if(typeof v==="number"){if(!Number.isFinite(v))return null;return v>0&&v<1?v*86400:v}
  const s=clean(v).toLowerCase();if(!s||/^(-|—|–)$/i.test(s))return null;
  if(/^\d{1,3}:\d{1,2}:\d{1,2}$/.test(s)){const [h,m,sec]=s.split(":").map(Number);return h*3600+m*60+sec}
  if(/^\d{1,3}:\d{1,2}$/.test(s)){const [m,sec]=s.split(":").map(Number);return m*60+sec}
