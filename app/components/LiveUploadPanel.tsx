@@ -18,14 +18,15 @@ const typeLabel=(d?:LiveDetection|null)=>d?.dataset_type==="shopee_session_list"
 export default function LiveUploadPanel({workspaceId,onOpenHosts}:{workspaceId:string;onOpenHosts?:()=>void}){
  const supabase=useMemo(()=>createClient(),[]);
  const [file,setFile]=useState<File|null>(null),[matrix,setMatrix]=useState<any[][]>([]),[rows,setRows]=useState<Row[]>([]),[mapping,setMapping]=useState<Record<string,string>>({});
- const [busy,setBusy]=useState(false),[removingId,setRemovingId]=useState(""),[msg,setMsg]=useState(""),[history,setHistory]=useState<any[]>([]),[hosts,setHosts]=useState<any[]>([]);
+ const [busy,setBusy]=useState(false),[removingId,setRemovingId]=useState(""),[msg,setMsg]=useState(""),[history,setHistory]=useState<any[]>([]),[hosts,setHosts]=useState<any[]>([]),[stores,setStores]=useState<any[]>([]);
  const [detection,setDetection]=useState<LiveDetection|null>(null),[parsed,setParsed]=useState<ParsedLivePayload|null>(null),[fileHash,setFileHash]=useState(""),[delimiter,setDelimiter]=useState(""),[sourceSheet,setSourceSheet]=useState("");
  const [context,setContext]=useState({store_name:"",store_id:"",store_username:"",host_id:""});
  const headers=Object.keys(rows[0]||{});
 
  async function loadHistory(){const x=await supabase.from("live_imports").select("*,live_hosts(name,username)").eq("workspace_id",workspaceId).order("created_at",{ascending:false}).limit(25);setHistory(x.data||[])}
  async function loadHosts(){const x=await supabase.from("live_hosts").select("id,name,username,platform,host_type").eq("workspace_id",workspaceId).eq("status","active").order("name");setHosts(x.data||[])}
- useEffect(()=>{void loadHistory();void loadHosts();try{const saved=sessionStorage.getItem("lumaway-live-upload-context:"+workspaceId);if(saved)setContext({...context,...JSON.parse(saved)})}catch{}},[workspaceId]);
+ async function loadStores(){const x=await supabase.from("live_store_profiles").select("id,platform,store_name,store_id,store_username").eq("workspace_id",workspaceId).eq("status","active").order("store_name");setStores(x.data||[])}
+ useEffect(()=>{void loadHistory();void loadHosts();void loadStores();try{const saved=sessionStorage.getItem("lumaway-live-upload-context:"+workspaceId);if(saved)setContext(prev=>({...prev,...JSON.parse(saved)}))}catch{}},[workspaceId]);
  useEffect(()=>{try{sessionStorage.setItem("lumaway-live-upload-context:"+workspaceId,JSON.stringify(context))}catch{}},[workspaceId,context]);
 
  async function choose(f:File){
@@ -94,6 +95,7 @@ export default function LiveUploadPanel({workspaceId,onOpenHosts}:{workspaceId:s
   <section className="live-upload-context">
    <header><div><span>UPLOAD CONTEXT</span><h3>Identitas Toko & Host</h3><p>Wajib diisi agar setiap file bisa ditelusuri ke toko dan host yang benar.</p></div><b>REQUIRED</b></header>
    <div className="live-context-grid">
+    <label className="wide">Toko Tersimpan<select value="" onChange={e=>{const s=stores.find(x=>x.id===e.target.value);if(s)setContext({...context,store_name:s.store_name||"",store_id:s.store_id||"",store_username:s.store_username||""})}}><option value="">Pilih toko tersimpan atau isi manual di bawah</option>{stores.map(s=><option key={s.id} value={s.id}>{s.store_name} · {s.store_username} · {s.platform||"Semua Platform"}</option>)}</select></label>
     <label>Nama Toko<input value={context.store_name} onChange={e=>setContext({...context,store_name:e.target.value})} placeholder="Contoh: Gascomp Official Store"/></label>
     <label>ID Toko<input value={context.store_id} onChange={e=>setContext({...context,store_id:e.target.value})} placeholder="Contoh: 780912857"/></label>
     <label>Username Toko<input value={context.store_username} onChange={e=>setContext({...context,store_username:e.target.value})} placeholder="@username_toko"/></label>
