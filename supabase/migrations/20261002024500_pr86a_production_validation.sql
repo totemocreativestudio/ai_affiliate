@@ -9,7 +9,7 @@ as $$
 declare
   blockers jsonb:='[]'::jsonb;
   reviews jsonb:='[]'::jsonb;
-  latest_qa record;
+  latest_qa_id bigint;
   px_critical_fail int:=0;
   px_critical_pending int:=0;
   px_total int:=0;
@@ -36,12 +36,12 @@ begin
     raise exception 'Admin only' using errcode='42501';
   end if;
 
-  select * into latest_qa
+  select id into latest_qa_id
   from public.luma_qa_runs
   order by started_at desc
   limit 1;
 
-  if latest_qa.id is not null then
+  if latest_qa_id is not null then
     select
       count(*) filter(where d.check_key like 'px_%'),
       count(*) filter(where d.check_key like 'px_%' and r.status='pass'),
@@ -50,7 +50,7 @@ begin
     into px_total,px_pass,px_critical_fail,px_critical_pending
     from public.luma_qa_results r
     join public.luma_qa_definitions d on d.id=r.definition_id
-    where r.run_id=latest_qa.id;
+    where r.run_id=latest_qa_id;
   end if;
 
   select
@@ -178,7 +178,7 @@ begin
     'blockers',blockers,
     'review_items',reviews,
     'product_experience',jsonb_build_object(
-      'latest_run_id',latest_qa.id,
+      'latest_run_id',latest_qa_id,
       'total',px_total,
       'pass',px_pass,
       'critical_fail',px_critical_fail,
