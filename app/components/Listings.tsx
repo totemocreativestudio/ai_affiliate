@@ -3,6 +3,7 @@
 import {useEffect,useMemo,useState} from "react";
 import {createClient} from "../../lib/supabase-browser";
 import {CreatorAutocomplete,ProductAutocomplete,CreatorSearchResult,ProductSearchResult,resolveOrCreateCreator} from "./SmartAutocomplete";
+import ListingFollowupInsights from "./ListingFollowupInsights";
 
 type Creator={
   id:number;creator_code:string|null;name:string|null;username:string|null;platform:string|null;
@@ -341,6 +342,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
 
     {error&&<div className="listing-v2-alert error">{error}</div>}
     {message&&<div className="listing-v2-alert success">{message}</div>}
+    <ListingFollowupInsights workspaceId={workspaceId} startDate={dateStart||undefined} endDate={dateEnd||undefined}/>
 
     {showForm&&<section className="listing-v2-editor">
       <div className="listing-v2-editor-head"><div><span>{editingId?"EDIT LISTING":"NEW LISTING"}</span><h3>{editingId?"Edit Listing":"Tambah Listing"}</h3><p>Creator baru otomatis terhubung ke Master Creator. HPP mengikuti Product Master.</p></div><button onClick={()=>{setShowForm(false);setEditingId(null)}}>×</button></div>
