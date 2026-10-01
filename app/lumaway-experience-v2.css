@@ -384,3 +384,12 @@ input:focus,select:focus,textarea:focus{border-color:#8a80ff!important;box-shado
 .pw-module-picker{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}.pw-module-picker button{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;border:1px solid #e2e5ed;border-radius:10px;background:#fff;padding:9px;text-align:left}.pw-module-picker button.active{background:#f4f2ff;border-color:#dcd7ff}.pw-module-picker svg{width:16px;height:16px}.pw-module-picker span{font-size:9px;font-weight:800}.pw-module-picker b{font-size:10px;color:#6254ef}
 @media(max-width:900px){.pw-grid{grid-template-columns:1fr 1fr}.pw-grid .pw-block:first-child{grid-column:1/-1}}
 @media(max-width:620px){.personal-workspace-card>header{flex-direction:column}.pw-grid{display:flex;overflow:auto;scroll-snap-type:x mandatory}.pw-block{min-width:82vw;scroll-snap-align:start}.pw-head-actions{width:100%}.pw-head-actions button{flex:1}.pw-module-picker{grid-template-columns:1fr}}
+
+/* PR85I Performance & perceived speed */
+.lw-route-progress{position:fixed;left:0;right:0;top:0;height:2px;z-index:2200;pointer-events:none;overflow:hidden;opacity:0;transition:opacity .12s ease}
+.lw-route-progress.active{opacity:1}.lw-route-progress i{display:block;width:36%;height:100%;background:currentColor;color:#6254ef;transform:translateX(-120%)}.lw-route-progress.active i{animation:lwRouteProgress .55s ease-in-out infinite}
+@keyframes lwRouteProgress{0%{transform:translateX(-120%)}100%{transform:translateX(360%)}}
+.legacy-page-anchor,.lw-chart-card,.lpi-table-wrap,.database-editor-scroll,.notification-list{contain:layout paint style}
+.dashboard-kpi-grid,.lw-action-center,.personal-workspace-card{content-visibility:auto;contain-intrinsic-size:1px 420px}
+img[data-lw-media-ready="1"]{content-visibility:auto}
+@media(prefers-reduced-motion:reduce){.lw-route-progress,.lw-route-progress i{transition:none!important;animation:none!important}.lw-route-progress.active i{transform:none;width:100%}}
