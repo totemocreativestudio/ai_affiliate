@@ -25,7 +25,7 @@ export default function Affiliate360Search({workspaceId}:{workspaceId:string}){
   setResults(rows);
   setSearchMsg(rows.length?"":"Creator tidak ditemukan. Coba username, nama, Creator Code, atau Affiliate ID.");
  }catch{if(active){setResults([]);setSearchMsg("Pencarian creator sedang bermasalah. Coba lagi.")}}finally{if(active)setSearching(false)}},180);return()=>{active=false;clearTimeout(t)}},[q,workspaceId,supabase]);
- async function choose(c:any){setSelected(c);setResults([]);setLoading(true);setMsg("");const x=await supabase.rpc("get_creator_360",{p_workspace_id:workspaceId,p_creator_id:c.id,p_start_date:start,p_end_date:end});if(x.error){setMsg(x.error.message);setDetail(null)}else setDetail(x.data||{});setLoading(false)}
+ async function choose(c:any){setSelected(c);setResults([]);setLoading(true);setMsg("");const x=await supabase.rpc("get_creator_360_v2",{p_workspace_id:workspaceId,p_creator_id:c.id,p_start_date:start,p_end_date:end});if(x.error){setMsg(x.error.message);setDetail(null)}else setDetail(x.data||{});setLoading(false)}
  useEffect(()=>{if(selected?.id)void choose(selected)},[start,end]);
  const k=detail?.kpi||{},creator=detail?.creator||selected||{},manual=detail?.manual_profile||{},agreement=detail?.agreement||{},products=detail?.top_products||[],samples=detail?.samples||[],stores=detail?.stores||[];
  return <section id="affiliate-360" className="legacy-page-anchor affiliate360-page">
