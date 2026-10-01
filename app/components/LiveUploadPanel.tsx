@@ -15,15 +15,19 @@ function matrixObjects(matrix:any[][],headerRow=0){const h=(matrix[headerRow]||[
 function shortValue(v:any){if(v===null||v===undefined||v==="")return "-";if(typeof v==="object")return JSON.stringify(v).slice(0,80);return String(v)}
 const typeLabel=(d?:LiveDetection|null)=>d?.dataset_type==="shopee_session_list"?"Shopee · Live Session List":d?.dataset_type==="shopee_product_list"?"Shopee · Live Product List":d?.dataset_type==="shopee_overview"?"Shopee · Live Overview":d?.dataset_type==="tiktok_core_stats"?"TikTok · Live Performance Core Stats":"Generic Live · Manual Mapping";
 
-export default function LiveUploadPanel({workspaceId}:{workspaceId:string}){
+export default function LiveUploadPanel({workspaceId,onOpenHosts}:{workspaceId:string;onOpenHosts?:()=>void}){
  const supabase=useMemo(()=>createClient(),[]);
  const [file,setFile]=useState<File|null>(null),[matrix,setMatrix]=useState<any[][]>([]),[rows,setRows]=useState<Row[]>([]),[mapping,setMapping]=useState<Record<string,string>>({});
- const [busy,setBusy]=useState(false),[removingId,setRemovingId]=useState(""),[msg,setMsg]=useState(""),[history,setHistory]=useState<any[]>([]);
+ const [busy,setBusy]=useState(false),[removingId,setRemovingId]=useState(""),[msg,setMsg]=useState(""),[history,setHistory]=useState<any[]>([]),[hosts,setHosts]=useState<any[]>([]),[stores,setStores]=useState<any[]>([]);
  const [detection,setDetection]=useState<LiveDetection|null>(null),[parsed,setParsed]=useState<ParsedLivePayload|null>(null),[fileHash,setFileHash]=useState(""),[delimiter,setDelimiter]=useState(""),[sourceSheet,setSourceSheet]=useState("");
+ const [context,setContext]=useState({store_name:"",store_id:"",store_username:"",host_id:""});
  const headers=Object.keys(rows[0]||{});
 
- async function loadHistory(){const x=await supabase.from("live_imports").select("*").eq("workspace_id",workspaceId).order("created_at",{ascending:false}).limit(25);setHistory(x.data||[])}
- useEffect(()=>{void loadHistory()},[workspaceId]);
+ async function loadHistory(){const x=await supabase.from("live_imports").select("*,live_hosts(name,username)").eq("workspace_id",workspaceId).order("created_at",{ascending:false}).limit(25);setHistory(x.data||[])}
+ async function loadHosts(){const x=await supabase.from("live_hosts").select("id,name,username,platform,host_type").eq("workspace_id",workspaceId).eq("status","active").order("name");setHosts(x.data||[])}
+ async function loadStores(){const x=await supabase.from("live_store_profiles").select("id,platform,store_name,store_id,store_username").eq("workspace_id",workspaceId).eq("status","active").order("store_name");setStores(x.data||[])}
+ useEffect(()=>{void loadHistory();void loadHosts();void loadStores();try{const saved=sessionStorage.getItem("lumaway-live-upload-context:"+workspaceId);if(saved)setContext(prev=>({...prev,...JSON.parse(saved)}))}catch{}},[workspaceId]);
+ useEffect(()=>{try{sessionStorage.setItem("lumaway-live-upload-context:"+workspaceId,JSON.stringify(context))}catch{}},[workspaceId,context]);
 
  async function choose(f:File){
   setFile(f);setMsg("Membaca dan mendeteksi format file...");setRows([]);setParsed(null);setDetection(null);setDelimiter("");setSourceSheet("");
@@ -38,6 +42,8 @@ export default function LiveUploadPanel({workspaceId}:{workspaceId:string}){
    setMatrix(m);
    const d=detectLiveDataset(m,sheet);setDetection(d);
    const p=normalizeLiveDataset(m,d);setParsed(p);
+   const detectedStoreId=clean(p.normalized_rows?.[0]?.source_user_id||p.overview?.source_user_id);
+   if(detectedStoreId)setContext(prev=>({...prev,store_id:prev.store_id||detectedStoreId}));
    if(d.dataset_type==="generic"){
     const genericRows=matrixObjects(m,d.header_row);setRows(genericRows);
     const lower=Object.fromEntries(Object.keys(genericRows[0]||{}).map(h=>[h.toLowerCase().replace(/[^a-z0-9]/g,""),h]));const auto:Record<string,string>={};
@@ -51,10 +57,11 @@ export default function LiveUploadPanel({workspaceId}:{workspaceId:string}){
 
  async function submit(){
   if(!file||!detection||!parsed)return;
+  if(!context.store_name.trim()||!context.store_id.trim()||!context.store_username.trim()||!context.host_id){setMsg("Lengkapi Nama Toko, ID Toko, Username Toko, dan pilih Host sebelum import.");return}
   if(detection.dataset_type==="generic"&&!rows.length)return;
   setBusy(true);setMsg("Mengimport Live Streaming...");
   try{
-   const payload:any={workspace_id:workspaceId,filename:file.name,file_hash:fileHash,platform:detection.platform,dataset_type:detection.dataset_type,parser_version:detection.parser_version,source_sheet:sourceSheet||null,
+   const payload:any={workspace_id:workspaceId,filename:file.name,file_hash:fileHash,platform:detection.platform,dataset_type:detection.dataset_type,parser_version:detection.parser_version,source_sheet:sourceSheet||null,store_name:context.store_name.trim(),store_id:context.store_id.trim(),store_username:context.store_username.trim(),host_id:context.host_id,
     parser_meta:{confidence:detection.confidence,reason:detection.reason,delimiter:delimiter||null,source_sheet:sourceSheet||null},
     warnings:parsed.warnings,period_start:parsed.period_start||null,period_end:parsed.period_end||null,
     normalized_rows:parsed.normalized_rows,overview:parsed.overview||null,traffic_sources:parsed.traffic_sources||[],mapping_overrides:mapping};
@@ -85,6 +92,18 @@ export default function LiveUploadPanel({workspaceId}:{workspaceId:string}){
  return <div className="live-upload-panel">
   <div className="live-upload-hero"><div><span>UNIFIED LIVE DATA PIPELINE</span><h2>Upload Shopee / TikTok Live</h2><p>XLSX/CSV dideteksi otomatis berdasarkan struktur file. Format angka koma/titik, persen, tanggal, durasi dan delimiter dinormalisasi sebelum masuk database.</p></div><label className="live-drop"><input type="file" accept=".xlsx,.xls,.csv" onChange={e=>e.target.files?.[0]&&void choose(e.target.files[0])}/><strong>{file?file.name:"Pilih file XLSX/CSV"}</strong><small>Shopee Live List · Product List · Overview · TikTok Core Stats</small></label></div>
 
+  <section className="live-upload-context">
+   <header><div><span>UPLOAD CONTEXT</span><h3>Identitas Toko & Host</h3><p>Wajib diisi agar setiap file bisa ditelusuri ke toko dan host yang benar.</p></div><b>REQUIRED</b></header>
+   <div className="live-context-grid">
+    <label className="wide">Toko Tersimpan<select value="" onChange={e=>{const s=stores.find(x=>x.id===e.target.value);if(s)setContext({...context,store_name:s.store_name||"",store_id:s.store_id||"",store_username:s.store_username||""})}}><option value="">Pilih toko tersimpan atau isi manual di bawah</option>{stores.map(s=><option key={s.id} value={s.id}>{s.store_name} · {s.store_username} · {s.platform||"Semua Platform"}</option>)}</select></label>
+    <label>Nama Toko<input value={context.store_name} onChange={e=>setContext({...context,store_name:e.target.value})} placeholder="Contoh: Gascomp Official Store"/></label>
+    <label>ID Toko<input value={context.store_id} onChange={e=>setContext({...context,store_id:e.target.value})} placeholder="Contoh: 780912857"/></label>
+    <label>Username Toko<input value={context.store_username} onChange={e=>setContext({...context,store_username:e.target.value})} placeholder="@username_toko"/></label>
+    <label>Host<select value={context.host_id} onChange={e=>setContext({...context,host_id:e.target.value})}><option value="">Pilih Host</option>{hosts.map(h=><option key={h.id} value={h.id}>{h.name}{h.username?" · "+h.username:""} · {h.platform}</option>)}</select></label>
+   </div>
+   <div className="live-context-help"><span>{hosts.length?hosts.length+" host aktif tersedia":"Belum ada host aktif."}</span><button type="button" onClick={()=>onOpenHosts?.()}>+ Tambah Host di Host 360</button></div>
+  </section>
+
   {msg&&<div className="live-upload-msg">{msg}</div>}
 
   {file&&detection&&parsed&&<section className="live-detect-card">
@@ -98,9 +117,9 @@ export default function LiveUploadPanel({workspaceId}:{workspaceId:string}){
   {file&&parsed&&<section className="live-preview"><header><span>NORMALIZED PREVIEW</span><h3>Preview hasil parser</h3></header>
    {preview.length?<div className="scroll"><table><thead><tr>{previewKeys.map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{preview.slice(0,5).map((r,i)=><tr key={i}>{previewKeys.map(h=><td key={h}>{shortValue(r[h])}</td>)}</tr>)}</tbody></table></div>:<div className="live-empty">Belum ada preview normalized.</div>}
    {parsed.traffic_sources&&parsed.traffic_sources.length>0&&<p className="live-preview-note">Traffic source Shopee terdeteksi: <b>{parsed.traffic_sources.length}</b> sumber.</p>}
-   <button disabled={busy||detection?.dataset_type==="generic"&&!rows.length} onClick={()=>void submit()}>{busy?"Mengimport...":"Import ke Live Streaming"}</button>
+   <button disabled={busy||!context.store_name.trim()||!context.store_id.trim()||!context.store_username.trim()||!context.host_id||detection?.dataset_type==="generic"&&!rows.length} onClick={()=>void submit()}>{busy?"Mengimport...":"Import ke Live Streaming"}</button>
   </section>}
 
-  <section className="live-import-history"><header><div><span>IMPORT HISTORY</span><h3>Upload Live terbaru</h3></div><small>Hapus akan membersihkan data sumber dan history import</small></header>{history.length?history.map(x=><article key={x.id}><div><strong>{x.filename}</strong><small>{x.import_id} · {x.platform||"-"} · {x.dataset_type||"legacy"} · {new Date(x.created_at).toLocaleString("id-ID")}</small></div><div className="live-history-actions"><div><b>{x.persisted_rows} row</b><span className={"status-"+x.status}>{x.status}</span></div><button className="danger" disabled={removingId===x.import_id} onClick={()=>void removeImport(x)}>{removingId===x.import_id?"Menghapus...":"Hapus"}</button></div></article>):<SmartEmptyState compact eyebrow="LIVE STREAMING" title="Belum ada upload Live Streaming" description="Upload report Shopee atau TikTok pertama agar Analytics, Data Health, dan Product Intelligence mulai terisi." primaryLabel="Pilih file Live" onPrimary={()=>document.querySelector<HTMLInputElement>('.live-drop input[type="file"]')?.click()} checklist={["Shopee Live List / Product List / Overview","TikTok Live Performance Core Stats"]} hint="Format angka, tanggal, durasi, dan delimiter akan dinormalisasi otomatis."/>}</section>
+  <section className="live-import-history"><header><div><span>IMPORT HISTORY</span><h3>Upload Live terbaru</h3></div><small>Hapus akan membersihkan data sumber dan history import</small></header>{history.length?history.map(x=><article key={x.id}><div><strong>{x.filename}</strong><small>{x.import_id} · {x.platform||"-"} · {x.dataset_type||"legacy"} · {new Date(x.created_at).toLocaleString("id-ID")}</small><small className="live-history-context">{x.store_name||"Toko belum tercatat"} · {x.store_username||"-"} · ID {x.store_id||"-"} · Host {x.live_hosts?.name||"belum tercatat"}</small></div><div className="live-history-actions"><div><b>{x.persisted_rows} row</b><span className={"status-"+x.status}>{x.status}</span></div><button className="danger" disabled={removingId===x.import_id} onClick={()=>void removeImport(x)}>{removingId===x.import_id?"Menghapus...":"Hapus"}</button></div></article>):<SmartEmptyState compact eyebrow="LIVE STREAMING" title="Belum ada upload Live Streaming" description="Upload report Shopee atau TikTok pertama agar Analytics, Data Health, dan Product Intelligence mulai terisi." primaryLabel="Pilih file Live" onPrimary={()=>document.querySelector<HTMLInputElement>('.live-drop input[type="file"]')?.click()} checklist={["Shopee Live List / Product List / Overview","TikTok Live Performance Core Stats"]} hint="Format angka, tanggal, durasi, dan delimiter akan dinormalisasi otomatis."/>}</section>
  </div>
 }

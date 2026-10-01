@@ -13,16 +13,17 @@ export default function LiveDataHealthPanel({workspaceId,start,end}:{workspaceId
  const supabase=useMemo(()=>createClient(),[]);
  const now=new Date(),fallbackEnd=now.toISOString().slice(0,10),fallbackStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
  const rangeStart=start||fallbackStart,rangeEnd=end||fallbackEnd;
- const [data,setData]=useState<any>(null),[rec,setRec]=useState<any>(null),[truth,setTruth]=useState<any>(null),[loading,setLoading]=useState(true),[msg,setMsg]=useState("");
+ const [data,setData]=useState<any>(null),[rec,setRec]=useState<any>(null),[truth,setTruth]=useState<any>(null),[uploadContextHealth,setUploadContextHealth]=useState<any>(null),[loading,setLoading]=useState(true),[msg,setMsg]=useState("");
 
  async function load(){
   setLoading(true);setMsg("");
-  const [x,r]=await Promise.all([
+  const [x,r,u]=await Promise.all([
    supabase.rpc("luma_live_data_health_v1",{p_workspace_id:workspaceId}),
-   supabase.rpc("luma_live_source_truth_qc_v1",{p_workspace_id:workspaceId,p_start:rangeStart,p_end:rangeEnd})
+   supabase.rpc("luma_live_source_truth_qc_v1",{p_workspace_id:workspaceId,p_start:rangeStart,p_end:rangeEnd}),
+   supabase.rpc("luma_live_upload_context_health_v1",{p_workspace_id:workspaceId,p_start:rangeStart,p_end:rangeEnd})
   ]);
-  if(x.error||r.error){setMsg(x.error?.message||r.error?.message||"Data Health gagal dimuat.");setData(x.data||null);setTruth(r.data||null);setRec(r.data?.reconciliation||null)}
-  else{setData(x.data||{});setTruth(r.data||{});setRec(r.data?.reconciliation||{})}
+  if(x.error||r.error||u.error){setMsg(x.error?.message||r.error?.message||u.error?.message||"Data Health gagal dimuat.");setData(x.data||null);setTruth(r.data||null);setRec(r.data?.reconciliation||null);setUploadContextHealth(u.data||null)}
+  else{setData(x.data||{});setTruth(r.data||{});setRec(r.data?.reconciliation||{});setUploadContextHealth(u.data||{})}
   setLoading(false);
  }
 
@@ -82,6 +83,16 @@ export default function LiveDataHealthPanel({workspaceId,start,end}:{workspaceId
 
    <Checks title="Shopee Live" subtitle="Bandingkan Live Session List, Overview, dan Product List tanpa mencampur semantic yang memang berbeda." checks={rec?.shopee?.checks||[]} source={rec?.shopee?.source_presence}/>
    <Checks title="TikTok Live" subtitle="Integrity check untuk daily Core Stats: tanggal unik dan identitas Direct + Indirect." checks={rec?.tiktok?.checks||[]} source={rec?.tiktok?.source_presence}/>
+
+   <section className="lh-upload-context-audit">
+    <header><div><span>UPLOAD CONTEXT QA</span><h3>Store & Host Attribution</h3><p>Memastikan setiap file Live dapat ditelusuri ke toko dan host yang dipilih saat upload.</p></div><b>{uploadContextHealth?.status||"-"}</b></header>
+    <div className="lh-context-grid">
+     <article><span>Completed Imports</span><strong>{nf(uploadContextHealth?.completed_imports)}</strong></article>
+     <article className={Number(uploadContextHealth?.missing_store_context||0)>0?"warning":"ok"}><span>Missing Store</span><strong>{nf(uploadContextHealth?.missing_store_context)}</strong></article>
+     <article className={Number(uploadContextHealth?.missing_host_context||0)>0?"warning":"ok"}><span>Missing Host</span><strong>{nf(uploadContextHealth?.missing_host_context)}</strong></article>
+     <article className={Number(uploadContextHealth?.session_host_mismatch||0)>0?"warning":"ok"}><span>Host Mismatch</span><strong>{nf(uploadContextHealth?.session_host_mismatch)}</strong></article>
+    </div>
+   </section>
 
    <section className="lh-import-audit">
     <header><div><span>IMPORT AUDIT</span><h3>Parser warnings & failed imports</h3></div></header>
