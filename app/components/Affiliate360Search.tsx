@@ -1,0 +1,35 @@
+"use client";
+import {useEffect,useMemo,useState} from "react";
+import {createClient} from "../../lib/supabase-browser";
+
+const rp=(v:any)=>"Rp "+Math.round(Number(v||0)).toLocaleString("id-ID");
+const no=(v:any)=>Math.round(Number(v||0)).toLocaleString("id-ID");
+const range=()=>{const d=new Date(),y=d.getFullYear(),m=d.getMonth();return{start:new Date(y,m,1).toISOString().slice(0,10),end:new Date(y,m+1,0).toISOString().slice(0,10)}};
+
+export default function Affiliate360Search({workspaceId}:{workspaceId:string}){
+ const supabase=useMemo(()=>createClient(),[]),r=range();
+ const [start,setStart]=useState(r.start),[end,setEnd]=useState(r.end),[q,setQ]=useState(""),[results,setResults]=useState<any[]>([]),[selected,setSelected]=useState<any>(null),[detail,setDetail]=useState<any>(null),[loading,setLoading]=useState(false),[msg,setMsg]=useState("");
+ useEffect(()=>{const t=setTimeout(async()=>{const term=q.trim();if(term.length<2){setResults([]);return}const x=await supabase.from("creators").select("id,name,username,platform,affiliate_id,ratecard,status").eq("workspace_id",workspaceId).is("merged_into_creator_id",null).or("name.ilike.%"+term+"%,username.ilike.%"+term+"%,affiliate_id.ilike.%"+term+"%").order("name").limit(12);setResults(x.data||[])},220);return()=>clearTimeout(t)},[q,workspaceId]);
+ async function choose(c:any){setSelected(c);setResults([]);setLoading(true);setMsg("");const x=await supabase.rpc("get_creator_360",{p_workspace_id:workspaceId,p_creator_id:c.id,p_start_date:start,p_end_date:end});if(x.error){setMsg(x.error.message);setDetail(null)}else setDetail(x.data||{});setLoading(false)}
+ useEffect(()=>{if(selected?.id)void choose(selected)},[start,end]);
+ const k=detail?.kpi||{},creator=detail?.creator||selected||{},manual=detail?.manual_profile||{},agreement=detail?.agreement||{},products=detail?.top_products||[],samples=detail?.samples||[],stores=detail?.stores||[];
+ return <section id="affiliate-360" className="legacy-page-anchor affiliate360-page">
+  <div className="a360-head"><div><div className="eyebrow">AFFILIATE INTELLIGENCE</div><h1>Affiliate 360</h1><p>Cari username atau nama creator dan lihat performa ringkas dalam satu halaman.</p></div><div className="a360-period"><input type="date" value={start} onChange={e=>setStart(e.target.value)}/><span>→</span><input type="date" value={end} onChange={e=>setEnd(e.target.value)}/></div></div>
+  <div className="a360-search-wrap"><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Cari username, nama creator, atau Affiliate ID..."/>{results.length>0&&<div className="a360-results">{results.map(c=><button key={c.id} onClick={()=>void choose(c)}><span className="a360-avatar">{String(c.name||c.username||"?").slice(0,1).toUpperCase()}</span><span><strong>{c.name||c.username}</strong><small>{c.username||"-"} · {c.platform||"-"} · {c.affiliate_id||"No ID"}</small></span><b>{c.status||"Active"}</b></button>)}</div>}</div>
+  {msg&&<div className="live-upload-msg">{msg}</div>}
+  {!selected?<div className="a360-empty"><div className="a360-empty-visual"><i/><i/><i/></div><h2>Cari creator untuk membuka Affiliate 360</h2><p>Gunakan username, nama, atau Affiliate ID. Data performance, sample, agreement, store dan produk akan dirangkum otomatis.</p></div>:loading?<div className="live-loading">Menyiapkan Affiliate 360...</div>:<>
+   <div className="a360-hero"><div className="a360-avatar big">{String(creator.name||creator.username||"?").slice(0,1).toUpperCase()}</div><div className="a360-id"><span>CREATOR PROFILE</span><h2>{creator.name||creator.username}</h2><p>{creator.username||"-"} · {creator.platform||"-"} · {creator.affiliate_id||"No Affiliate ID"}</p></div><div className="a360-badges"><span>{manual.program_status||"Not Joined"}</span><span>{agreement.status||"Not Active"}</span>{manual.top_creator&&<span>Top Creator</span>}</div></div>
+   <div className="a360-kpis">{[
+    ["GMV",rp(k.gmv)],["Orders",no(k.orders)],["Qty",no(k.qty)],["Commission",rp(k.commission)],["Refund",rp(k.refund)],["Live GMV",rp(k.live_gmv)],["Video GMV",rp(k.video_gmv)],["Sample Sent",no(k.samples_sent)]
+   ].map(([l,v])=><article key={l}><span>{l}</span><strong>{v}</strong></article>)}</div>
+   <div className="a360-grid">
+    <section className="a360-card"><header><div><span>TOP PRODUCTS</span><h3>Produk yang paling menghasilkan</h3></div><small>{products.length} produk</small></header>{products.length?products.map((p:any,i:number)=><article key={i}><b>#{i+1}</b><div><strong>{p.product_name}</strong><small>{p.sku||"-"} · {no(p.qty)} qty · {no(p.orders)} orders</small></div><em>{rp(p.gmv)}</em></article>):<div className="a360-no-data">Belum ada data produk.</div>}</section>
+    <section className="a360-card"><header><div><span>PROFILE SIGNAL</span><h3>Kondisi creator</h3></div></header><div className="a360-signal"><div><span>Top Category</span><strong>{detail?.top_category||"-"}</strong></div><div><span>Ratecard</span><strong>{rp(creator.ratecard||0)}</strong></div><div><span>Rating</span><strong>{manual.rating||0}/5</strong></div><div><span>Ads Support</span><strong>{rp(manual.ads_support||0)}</strong></div><div><span>Target Sales</span><strong>{rp(manual.target_sales||0)}</strong></div><div><span>Points</span><strong>{no(k.points)}</strong></div></div></section>
+   </div>
+   <div className="a360-grid">
+    <section className="a360-card"><header><div><span>SAMPLE HISTORY</span><h3>Sample terbaru</h3></div></header>{samples.length?samples.slice(0,8).map((s:any)=><article key={s.id}><div><strong>{s.product_name||s.sku||"Sample"}</strong><small>{s.sent_date||"-"} · {s.sample_status||"-"} · Qty {no(s.qty)}</small></div><em>{rp(s.product_value)}</em></article>):<div className="a360-no-data">Belum ada sample.</div>}</section>
+    <section className="a360-card"><header><div><span>STORE AFFILIATION</span><h3>Kontribusi per toko</h3></div></header>{stores.length?stores.map((s:any,i:number)=><article key={i}><div><strong>{s.store_name||"-"}</strong><small>{s.platform||"-"} · {s.status||"-"} · {no(s.orders)} orders</small></div><em>{rp(s.gmv)}</em></article>):<div className="a360-no-data">Belum ada store affiliation.</div>}</section>
+   </div>
+  </>}
+ </section>
+}
