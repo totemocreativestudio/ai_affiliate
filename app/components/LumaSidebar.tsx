@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { navigateToSection, routeForSection, sectionFromPath } from "../../lib/luma-navigation";
 import LumaIcon, { type IconName } from "./LumaIcon";
 import PWAInstallButton from "./PWAInstallButton";
+const OwnerSidebarMenu=dynamic(()=>import("./OwnerSidebarMenu"),{ssr:false});
 
 type Props = {
   profile: { email: string | null; full_name: string | null; role: string };
@@ -31,39 +33,6 @@ const commerceNav: Array<[string, IconName, string]> = [
   ["listings", "listing", "Listings"],
   ["shipping", "shipping", "Shipping"],
   ["spending", "billing", "Spending"],
-];
-
-const ownerOverviewNav: Array<[string, IconName, string]> = [
-  ["overview", "dashboard", "Command Center"],
-  ["targets", "performance", "Target & Forecast"],
-  ["monitoring", "data", "Monitoring 360"],
-];
-const ownerBusinessNav: Array<[string, IconName, string]> = [
-  ["support", "support", "Support Desk"],
-  ["finance", "billing", "Payments & Subscription"],
-  ["referral", "referral", "Referral & Payout"],
-];
-const ownerIntelligenceNav: Array<[string, IconName, string]> = [
-  ["ai", "performance", "AI & API Usage"],
-  ["providers", "integration", "Provider Accounts"],
-  ["hpp", "product", "Lumaway Pricing Guardrail"],
-];
-const ownerContentNav: Array<[string, IconName, string]> = [
-  ["broadcast", "broadcast", "Broadcast & Promo"],
-  ["content", "content", "Blog & Tutorial"],
-  ["knowledge", "master", "Knowledge Vault"],
-  ["social", "community", "Social Moderation"],
-];
-const ownerNav: Array<[string, IconName, string]> = [
-  ...ownerOverviewNav,...ownerBusinessNav,...ownerIntelligenceNav,...ownerContentNav,
-  ["system", "system", "System & Issues"],
-];
-
-const integrationNav: Array<[string, IconName, string]> = [
-  ["owner-integration-google", "integration", "Google Cloud"],
-  ["owner-integration-openai", "integration", "OpenAI"],
-  ["owner-integration-resend", "content", "Resend Email"],
-  ["owner-integration-whatsapp", "community", "WhatsApp CRM & OTP"],
 ];
 
 function NavIcon({ name }: { name: IconName }) {
@@ -101,7 +70,7 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
       if(isOwner){
         const parts=window.location.pathname.split("/").filter(Boolean);
         const candidate=parts[0]==="administration"?String(parts[1]||"overview"):"overview";
-        setOwnerTab(ownerNav.some(([key])=>key===candidate)||candidate==="integrations"||candidate==="financial"?candidate:"overview");
+        setOwnerTab(candidate||"overview");
       }
       if (window.innerWidth <= 1024) setMobileOpen(false);
     };
@@ -190,33 +159,7 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
         {isOwner ? (
           <>
             <div className="sidebar-label">CONTROL CENTER</div>
-            <nav className="side-nav owner-nav" onClick={closeOnMobile}>
-              <Group icon="dashboard" label="Overview" open>
-                {ownerOverviewNav.map(([tab,icon,label])=><button type="button" key={tab} className={ownerTab===tab?"active":""} onClick={()=>openOwner(tab)}><LumaIcon name={icon}/><span>{label}</span></button>)}
-              </Group>
-              <Group icon="billing" label="Business Operations" open>
-                {ownerBusinessNav.map(([tab,icon,label])=><button type="button" key={tab} className={ownerTab===tab?"active":""} onClick={()=>openOwner(tab,tab==="referral"?"owner-referral-payout":undefined)}><LumaIcon name={icon}/><span>{label}</span></button>)}
-              </Group>
-              <Group icon="performance" label="Intelligence & Cost">
-                {ownerIntelligenceNav.map(([tab,icon,label])=><button type="button" key={tab} className={ownerTab===tab?"active":""} onClick={()=>openOwner(tab)}><LumaIcon name={icon}/><span>{label}</span></button>)}
-              </Group>
-              <Group icon="content" label="Content & Community">
-                {ownerContentNav.map(([tab,icon,label])=><button type="button" key={tab} className={ownerTab===tab?"active":""} onClick={()=>openOwner(tab)}><LumaIcon name={icon}/><span>{label}</span></button>)}
-              </Group>
-              <details className="side-group owner-financial-group">
-                <summary><span><NavIcon name="finance" /><span className="nav-label">Laporan Keuangan</span></span><LumaIcon name="chevron" className="chevron" /></summary>
-                <div className="side-subnav owner-subnav">
-                  {[["sales","Total Penjualan"],["api_cost","Total Usage API"],["cashflow","Cashflow"],["margin","Margin"],["profit_loss","Laba & Rugi"]].map(([key,label])=><button type="button" key={key} onClick={()=>{openOwner("financial");window.setTimeout(()=>window.dispatchEvent(new CustomEvent("luma-financial-report-type",{detail:{type:key}})),90)}}><LumaIcon name="finance" /><span>{label}</span></button>)}
-                </div>
-              </details>
-              <details className="side-group">
-                <summary><span><NavIcon name="integration" /><span className="nav-label">Integrations</span></span><LumaIcon name="chevron" className="chevron" /></summary>
-                <div className="side-subnav owner-subnav">
-                  {integrationNav.map(([section, icon, label]) => <button type="button" key={section} onClick={() => openOwner("integrations", section)}><LumaIcon name={icon} /><span>{label}</span></button>)}
-                </div>
-              </details>
-              <button type="button" className={ownerTab==="system"?"active":""} onClick={()=>openOwner("system")}><NavIcon name="system"/><span className="nav-label">System & Issues</span></button>
-            </nav>
+            <OwnerSidebarMenu ownerTab={ownerTab} onOpenOwner={openOwner} onCloseMobile={closeOnMobile}/>
           </>
         ) : (
           <>
