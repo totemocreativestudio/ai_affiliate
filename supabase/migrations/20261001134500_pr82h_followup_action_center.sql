@@ -107,8 +107,8 @@ begin
     and ai.status='open'
     and not exists(
       select 1
-      from public.listings l
-      where rec.workspace_id=ai.workspace_id
+      from public.listings s
+      where s.workspace_id=ai.workspace_id
         and s.id::text=ai.source_id
         and s.next_follow_up_at is not null
         and s.next_follow_up_at<=now()+interval '7 days'
