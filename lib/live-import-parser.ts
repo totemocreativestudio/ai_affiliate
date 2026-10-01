@@ -174,10 +174,10 @@ export function normalizeLiveDataset(matrix:any[][],detection:LiveDetection):Par
     source_rank_no:parseLocaleNumber(byHeader(row,["No."]),"count"),session_title:title,started_at,
     session_date:parseDateOnly(started_at),duration_seconds,duration_minutes:duration_seconds===null?null:duration_seconds/60,
     active_viewers:parseLocaleNumber(byHeader(row,["Penonton Aktif"]),"count"),
-    comments:parseLocaleNumber(valueAt("Komentar"),"count"),
-    add_to_cart:parseLocaleNumber(valueAt("Tambah ke Keranjang"),"count"),
-    avg_watch_duration_seconds:parseDurationSeconds(valueAt("Rata-rata durasi ditonton")),
-    viewers:parseLocaleNumber(valueAt("Penonton"),"count"),
+    comments:parseLocaleNumber(byHeader(row,["Komentar"]),"count"),
+    add_to_cart:parseLocaleNumber(byHeader(row,["Tambah ke Keranjang"]),"count"),
+    avg_watch_duration_seconds:parseDurationSeconds(byHeader(row,["Rata-rata durasi ditonton"])),
+    viewers:parseLocaleNumber(byHeader(row,["Penonton"]),"count"),
     orders_created:parseLocaleNumber(byHeader(row,["Pesanan(Pesanan Dibuat)","Pesanan (Pesanan Dibuat)"]),"count"),
     orders_ready_to_ship:parseLocaleNumber(byHeader(row,["Pesanan(Pesanan Siap Dikirim)","Pesanan (Pesanan Siap Dikirim)"]),"count"),
     qty_created:parseLocaleNumber(byHeader(row,["Produk Terjual(Pesanan Dibuat)","Produk Terjual (Pesanan Dibuat)"]),"count"),
@@ -193,12 +193,12 @@ export function normalizeLiveDataset(matrix:any[][],detection:LiveDetection):Par
    const p=parsePeriod(byHeader(row,["Periode Data"]));period_start=period_start||p.start;period_end=period_end||p.end;
    const product_name_raw=clean(byHeader(row,["Produk"]));if(!product_name_raw)continue;
    normalized_rows.push({
-    period_start:p.start,period_end:p.end,source_user_id:clean(valueAt("User Id")),
+    period_start:p.start,period_end:p.end,source_user_id:clean(byHeader(row,["User Id"])),
     ranking:parseLocaleNumber(byHeader(row,["Ranking"]),"count"),product_name_raw,
-    product_clicks:parseLocaleNumber(valueAt("Klik Produk"),"count"),add_to_cart:parseLocaleNumber(byHeader(row,["Tambah ke Keranjang"]),"count"),
-    product_orders_created:parseLocaleNumber(valueAt("Pesanan(Pesanan Dibuat)"),"count"),product_orders_ready_to_ship:parseLocaleNumber(valueAt("Pesanan(Pesanan Siap Dikirim)"),"count"),
-    qty_created:parseLocaleNumber(valueAt("Produk Terjual(Pesanan Dibuat)"),"count"),qty_ready_to_ship:parseLocaleNumber(valueAt("Produk Terjual(Pesanan Siap Dikirim)"),"count"),
-    gmv_created:parseLocaleNumber(valueAt("Penjualan(Pesanan Dibuat)"),"money"),gmv_ready_to_ship:parseLocaleNumber(valueAt("Penjualan(Pesanan Siap Dikirim)"),"money"),
+    product_clicks:parseLocaleNumber(byHeader(row,["Klik Produk"]),"count"),add_to_cart:parseLocaleNumber(byHeader(row,["Tambah ke Keranjang"]),"count"),
+    product_orders_created:parseLocaleNumber(byHeader(row,["Pesanan(Pesanan Dibuat)"]),"count"),product_orders_ready_to_ship:parseLocaleNumber(byHeader(row,["Pesanan(Pesanan Siap Dikirim)"]),"count"),
+    qty_created:parseLocaleNumber(byHeader(row,["Produk Terjual(Pesanan Dibuat)"]),"count"),qty_ready_to_ship:parseLocaleNumber(byHeader(row,["Produk Terjual(Pesanan Siap Dikirim)"]),"count"),
+    gmv_created:parseLocaleNumber(byHeader(row,["Penjualan(Pesanan Dibuat)"]),"money"),gmv_ready_to_ship:parseLocaleNumber(byHeader(row,["Penjualan(Pesanan Siap Dikirim)"]),"money"),
     raw_payload:rawMap(row)
    });
   }
