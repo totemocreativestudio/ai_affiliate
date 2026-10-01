@@ -33,7 +33,7 @@ function headerTokens(row:any[]){return row.map(normalizeHeader).filter(Boolean)
 function hasAll(tokens:string[],needles:string[]){return needles.every(n=>tokens.some(t=>t===normalizeHeader(n)||t.includes(normalizeHeader(n))))}
 
 export function detectLiveDataset(matrix:any[][],sourceSheet=""):LiveDetection{
- const scan=matrix.slice(0,8);
+ const scan=matrix.slice(0,24);
  for(let i=0;i<scan.length;i++){
   const t=headerTokens(scan[i]||[]);
   if(hasAll(t,["Nama Livestream","Start Time","Penjualan Pesanan Dibuat"]))return{platform:"Shopee",dataset_type:"shopee_session_list",confidence:0.99,header_row:i,parser_version:"unified_live_parser_v1",source_sheet:sourceSheet,reason:"Shopee session signature"};
@@ -158,7 +158,7 @@ export function normalizeLiveDataset(matrix:any[][],detection:LiveDetection):Par
     live_ctr_pct:parsePercent(byHeader(row,["Rasio klik tayang (LIVE)"])),
     live_ctor_order_pct:parsePercent(byHeader(row,["CTOR (pesanan SKU) (LIVE)"])),
     live_impressions:parseLocaleNumber(byHeader(row,["Tayangan LIVE"]),"count"),
-    avg_watch_duration_seconds:parseLocaleNumber(byHeader(row,["Durasi menonton rata-rata (Siaran LIVE)"]),"decimal"),
+    avg_watch_duration_seconds:parseDurationSeconds(byHeader(row,["Durasi menonton rata-rata (Siaran LIVE)","Rata-rata durasi menonton LIVE","Average watch duration"])),
     raw_payload:rawMap(row)
    });
   }
@@ -191,14 +191,14 @@ export function normalizeLiveDataset(matrix:any[][],detection:LiveDetection):Par
  if(detection.dataset_type==="shopee_product_list"){
   for(const row of objects(matrix,detection.header_row)){
    const p=parsePeriod(byHeader(row,["Periode Data"]));period_start=period_start||p.start;period_end=period_end||p.end;
-   const product_name_raw=clean(byHeader(row,["Produk"]));if(!product_name_raw)continue;
+   const product_name_raw=clean(byHeader(row,["Produk","Nama Produk","Product","Product Name"]));if(!product_name_raw)continue;
    normalized_rows.push({
     period_start:p.start,period_end:p.end,source_user_id:clean(byHeader(row,["User Id"])),
-    ranking:parseLocaleNumber(byHeader(row,["Ranking"]),"count"),product_name_raw,
-    product_clicks:parseLocaleNumber(byHeader(row,["Klik Produk"]),"count"),add_to_cart:parseLocaleNumber(byHeader(row,["Tambah ke Keranjang"]),"count"),
-    product_orders_created:parseLocaleNumber(byHeader(row,["Pesanan(Pesanan Dibuat)"]),"count"),product_orders_ready_to_ship:parseLocaleNumber(byHeader(row,["Pesanan(Pesanan Siap Dikirim)"]),"count"),
-    qty_created:parseLocaleNumber(byHeader(row,["Produk Terjual(Pesanan Dibuat)"]),"count"),qty_ready_to_ship:parseLocaleNumber(byHeader(row,["Produk Terjual(Pesanan Siap Dikirim)"]),"count"),
-    gmv_created:parseLocaleNumber(byHeader(row,["Penjualan(Pesanan Dibuat)"]),"money"),gmv_ready_to_ship:parseLocaleNumber(byHeader(row,["Penjualan(Pesanan Siap Dikirim)"]),"money"),
+    ranking:parseLocaleNumber(byHeader(row,["Ranking","Peringkat"]),"count"),product_name_raw,source_sku:clean(byHeader(row,["Kode Item","Item ID","Product ID","SKU Produk","SKU","Seller SKU"])),
+    product_clicks:parseLocaleNumber(byHeader(row,["Klik Produk","Product Clicks","Klik"]),"count"),add_to_cart:parseLocaleNumber(byHeader(row,["Tambah ke Keranjang","Add to Cart"]),"count"),
+    product_orders_created:parseLocaleNumber(byHeader(row,["Pesanan(Pesanan Dibuat)","Pesanan (Pesanan Dibuat)","Orders (Created)"]),"count"),product_orders_ready_to_ship:parseLocaleNumber(byHeader(row,["Pesanan(Pesanan Siap Dikirim)","Pesanan (Pesanan Siap Dikirim)","Orders (Ready to Ship)"]),"count"),
+    qty_created:parseLocaleNumber(byHeader(row,["Produk Terjual(Pesanan Dibuat)","Produk Terjual (Pesanan Dibuat)","Products Sold (Created)"]),"count"),qty_ready_to_ship:parseLocaleNumber(byHeader(row,["Produk Terjual(Pesanan Siap Dikirim)","Produk Terjual (Pesanan Siap Dikirim)","Products Sold (Ready to Ship)"]),"count"),
+    gmv_created:parseLocaleNumber(byHeader(row,["Penjualan(Pesanan Dibuat)","Penjualan (Pesanan Dibuat)","Sales (Created)","GMV (Created)"]),"money"),gmv_ready_to_ship:parseLocaleNumber(byHeader(row,["Penjualan(Pesanan Siap Dikirim)","Penjualan (Pesanan Siap Dikirim)","Sales (Ready to Ship)","GMV (Ready to Ship)"]),"money"),
     raw_payload:rawMap(row)
    });
   }
