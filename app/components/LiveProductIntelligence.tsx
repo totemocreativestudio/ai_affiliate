@@ -64,21 +64,35 @@ export default function LiveProductIntelligence({workspaceId,start,end}:{workspa
  }
 
  const s=data.summary||{},rows=data.products||[];
+ const mappingRate=Number(s.product_count||0)>0?Number(s.mapped_products||0)/Number(s.product_count||0)*100:0;
+ const contributionKnown=s.contribution_margin!==null&&s.contribution_margin!==undefined;
  return <section className="live-product-intel">
-  <header className="lpi-head"><div><div className="eyebrow">LIVE PRODUCT INTELLIGENCE</div><h2>Product Performance</h2><p>SKU dan nama produk boleh sama dengan Product Master, tetapi seluruh metrik di halaman ini hanya berasal dari Live Streaming.</p></div><span className="lpi-domain-badge">LIVE DATA ONLY</span></header>
+  <header className="lpi-head">
+   <div><div className="eyebrow">LIVE PRODUCT INTELLIGENCE</div><h2>Product Performance</h2><p>Analisis produk Live dengan source yang tetap terpisah dari Affiliate. Product Master hanya menjadi referensi identitas dan HPP.</p></div>
+   <div className="lpi-head-side"><span className="lpi-domain-badge">LIVE DATA ONLY</span><div className="lpi-period-chip"><span>Periode</span><b>{start} → {end}</b></div></div>
+  </header>
 
-  <div className="lpi-separation"><b>Domain terpisah.</b> Mapping Product Master hanya digunakan untuk SKU, nama, gambar, kategori dan HPP. GMV, Qty, Click, Add to Cart dan attribution di bawah ini tidak masuk ke dashboard Affiliate.</div>
+  <div className="lpi-separation"><b>Domain terpisah.</b><span>Mapping Product Master hanya digunakan untuk SKU, nama, gambar, kategori dan HPP. GMV, Qty, Click, Add to Cart dan attribution tetap berasal dari Live Streaming.</span></div>
+  <div className="lpi-overview-strip">
+   <article><span>Mapping Coverage</span><strong>{mappingRate.toFixed(1)}%</strong><div><i style={{width:String(Math.min(100,mappingRate))+"%"}}/></div><small>{no(s.mapped_products)} mapped · {no(s.unmapped_products)} belum mapped</small></article>
+   <article><span>Source Scope</span><strong>{platform||"Semua Platform"}</strong><small>{no(s.product_count)} produk pada periode aktif</small></article>
+   <article><span>HPP Status</span><strong>{s.hpp_cost===null||s.hpp_cost===undefined?"Belum Lengkap":"Terbaca"}</strong><small>{s.hpp_cost===null||s.hpp_cost===undefined?"Map produk ke Product Master agar margin terbaca":"HPP "+rp(s.hpp_cost)}</small></article>
+  </div>
 
-  <div className="lpi-toolbar"><div className="live-shared-period"><span>Periode Live</span><b>{start} → {end}</b></div><select value={platform} onChange={e=>setPlatform(e.target.value)}><option value="">Semua Platform</option><option value="Shopee">Shopee</option><option value="TikTok">TikTok</option></select><input value={search} onChange={e=>setSearch(e.target.value)} onKeyDown={e=>e.key==="Enter"&&void load()} placeholder="Cari SKU / nama produk"/><button onClick={()=>void load()}>Cari</button><button className="secondary" disabled={busy} onClick={()=>void autoMap()}>{busy?"Memproses...":"Auto Map Product"}</button></div>
+  <div className="lpi-toolbar"><select value={platform} onChange={e=>setPlatform(e.target.value)}><option value="">Semua Platform</option><option value="Shopee">Shopee</option><option value="TikTok">TikTok</option></select><input value={search} onChange={e=>setSearch(e.target.value)} onKeyDown={e=>e.key==="Enter"&&void load()} placeholder="Cari SKU / nama produk"/><button onClick={()=>void load()}>Cari</button><button className="secondary" disabled={busy} onClick={()=>void autoMap()}>{busy?"Memproses...":"Auto Map Product"}</button></div>
   {msg&&<div className="live-upload-msg">{msg}</div>}
 
   <div className="lpi-kpis">{[
-   ["Produk Live",no(s.product_count)],["Mapped",no(s.mapped_products)],["Belum Mapped",no(s.unmapped_products)],
-   ["Live GMV",rp(s.gmv_created)],["Ready GMV",rp(s.gmv_ready)],["Live Qty",no(s.qty_created)],
-   ["Product Clicks",no(s.product_clicks)],["Add to Cart",no(s.add_to_cart)],["Live HPP",rp(s.hpp_cost)],["Contribution Margin",rp(s.contribution_margin)]
-  ].map(([l,v])=><article key={l}><span>{l}</span><strong>{v}</strong></article>)}</div>
+   ["Live GMV",rp(s.gmv_created),"Nilai transaksi pesanan dibuat","primary"],
+   ["Ready GMV",rp(s.gmv_ready),"Nilai siap dikirim",""],
+   ["Live Qty",no(s.qty_created),"Produk terjual",""],
+   ["Product Clicks",no(s.product_clicks),"Klik produk teratribusi",""],
+   ["Add to Cart",no(s.add_to_cart),"Tambah ke keranjang",""],
+   ["Live HPP",rp(s.hpp_cost),s.hpp_cost==null?"Belum seluruh produk punya HPP":"HPP dari Product Master",""],
+   ["Contribution Margin",contributionKnown?rp(s.contribution_margin):"-",contributionKnown?"GMV dikurangi HPP yang tersedia":"Menunggu HPP","accent"]
+  ].map(([l,v,sub,tone])=><article key={l} className={tone||""}><span>{l}</span><strong>{v}</strong><small>{sub}</small></article>)}</div>
 
-  {rows.length?<div className="lpi-table-wrap"><table><thead><tr><th>Produk</th><th>Platform</th><th>Mapping</th><th>Live GMV</th><th>Ready GMV</th><th>Qty</th><th>Clicks</th><th>Add to Cart</th><th>Product Order Attribution</th><th>HPP</th><th>Contribution</th><th>Action</th></tr></thead><tbody>
+  {rows.length?<div className="lpi-table-section"><header><div><span>PRODUCT BREAKDOWN</span><h3>Performa produk Live</h3><p>Gunakan mapping untuk menghubungkan identity/HPP tanpa mencampur metrik Affiliate.</p></div><b>{rows.length} produk tampil</b></header><div className="lpi-table-wrap"><table><thead><tr><th>Produk</th><th>Platform</th><th>Mapping</th><th>Live GMV</th><th>Ready GMV</th><th>Qty</th><th>Clicks</th><th>Add to Cart</th><th>Product Order Attribution</th><th>HPP</th><th>Contribution</th><th>Action</th></tr></thead><tbody>
    {rows.map((x:Row,i:number)=><tr key={String(x.platform)+"-"+String(x.product_master_id||x.product_name)+"-"+i}>
     <td><div className="lpi-product">{x.image_url&&<img src={x.image_url} alt=""/>}<span><strong>{x.product_name||"-"}</strong><small>{x.sku||"SKU belum terhubung"}</small></span></div></td>
     <td>{x.platform}</td>
@@ -88,7 +102,7 @@ export default function LiveProductIntelligence({workspaceId,start,end}:{workspa
     <td>{rp(x.hpp_cost)}</td><td>{rp(x.contribution_margin)}</td>
     <td><button onClick={()=>{setMapping(x);setSelectedMaster(x.product_master_id?String(x.product_master_id):"")}}>Map Product</button></td>
    </tr>)}
-  </tbody></table></div>:<SmartEmptyState eyebrow="LIVE PRODUCT" title="Belum ada performa produk Live" description="Upload data Shopee/TikTok Live terlebih dahulu. Setelah data masuk, GMV, Qty, Click, HPP dan contribution margin akan tampil di sini." primaryLabel="Buka Upload Center" onPrimary={()=>navigateToSection("live-streaming")} secondaryLabel="Refresh" onSecondary={()=>void load()} icon="product" checklist={["Upload data Live","Cek auto-detect & preview","Import lalu kembali ke Product Intelligence"]}/>}
+  </tbody></table></div></div>:<SmartEmptyState eyebrow="LIVE PRODUCT" title="Belum ada performa produk Live" description="Upload data Shopee/TikTok Live terlebih dahulu. Setelah data masuk, GMV, Qty, Click, HPP dan contribution margin akan tampil di sini." primaryLabel="Buka Upload Center" onPrimary={()=>navigateToSection("live-streaming")} secondaryLabel="Refresh" onSecondary={()=>void load()} icon="product" checklist={["Upload data Live","Cek auto-detect & preview","Import lalu kembali ke Product Intelligence"]}/>}
 
   {mapping&&<div className="lpi-modal"><div><header><div><span>LIVE PRODUCT MAPPING</span><h3>{mapping.product_name}</h3></div><button onClick={()=>setMapping(null)}>×</button></header><p>Pilih Product Master yang mewakili produk fisik yang sama. Hanya identity/HPP yang direferensikan; data Affiliate tidak ikut digunakan.</p><label>Product Master<select value={selectedMaster} onChange={e=>setSelectedMaster(e.target.value)}><option value="">Pilih produk</option>{products.map(x=><option key={x.id} value={x.id}>{x.sku} · {x.product_name}</option>)}</select></label><footer><button onClick={()=>setMapping(null)}>Batal</button><button className="primary" disabled={busy||!selectedMaster} onClick={()=>void manualMap()}>Simpan Mapping</button></footer></div></div>}
  </section>
