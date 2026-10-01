@@ -2,6 +2,7 @@
 import {useEffect,useMemo,useState} from "react";
 import {createClient} from "../../lib/supabase-browser";
 import {detectLiveDataset,normalizeLiveDataset,parseDelimitedMatrix,type LiveDetection,type ParsedLivePayload} from "../../lib/live-import-parser";
+import SmartEmptyState from "./SmartEmptyState";
 
 declare global{interface Window{XLSX?:any}}
 type Row=Record<string,any>;
@@ -90,6 +91,6 @@ export default function LiveUploadPanel({workspaceId}:{workspaceId:string}){
    <button disabled={busy||detection?.dataset_type==="generic"&&!rows.length} onClick={()=>void submit()}>{busy?"Mengimport...":"Import ke Live Streaming"}</button>
   </section>}
 
-  <section className="live-import-history"><header><span>IMPORT HISTORY</span><h3>Upload Live terbaru</h3></header>{history.length?history.map(x=><article key={x.id}><div><strong>{x.filename}</strong><small>{x.import_id} · {x.platform||"-"} · {x.dataset_type||"legacy"} · {new Date(x.created_at).toLocaleString("id-ID")}</small></div><div><b>{x.persisted_rows} row</b><span className={"status-"+x.status}>{x.status}</span></div></article>):<div className="live-empty">Belum ada upload Live Streaming.</div>}</section>
+  <section className="live-import-history"><header><span>IMPORT HISTORY</span><h3>Upload Live terbaru</h3></header>{history.length?history.map(x=><article key={x.id}><div><strong>{x.filename}</strong><small>{x.import_id} · {x.platform||"-"} · {x.dataset_type||"legacy"} · {new Date(x.created_at).toLocaleString("id-ID")}</small></div><div><b>{x.persisted_rows} row</b><span className={"status-"+x.status}>{x.status}</span></div></article>):<SmartEmptyState compact eyebrow="LIVE STREAMING" title="Belum ada upload Live Streaming" description="Upload report Shopee atau TikTok pertama agar Analytics, Data Health, dan Product Intelligence mulai terisi." primaryLabel="Pilih file Live" onPrimary={()=>document.querySelector<HTMLInputElement>('.live-drop input[type="file"]')?.click()} checklist={["Shopee Live List / Product List / Overview","TikTok Live Performance Core Stats"]} hint="Format angka, tanggal, durasi, dan delimiter akan dinormalisasi otomatis."/>}</section>
  </div>
 }
