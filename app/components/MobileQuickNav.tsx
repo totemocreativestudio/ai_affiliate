@@ -6,10 +6,9 @@ import LumaIcon from "./LumaIcon";
 
 const items = [
   ["dashboard", "dashboard", "Home"],
-  ["upload", "data", "Data"],
-  ["ai-analytics", "ai", "AI"],
-  ["kanban", "kanban", "Kanban"],
-  ["billing", "billing", "Billing"],
+  ["listings", "listing", "Follow Up"],
+  ["live-streaming", "performance", "Live"],
+  ["upload", "data", "Upload"],
 ] as const;
 
 export default function MobileQuickNav() {
