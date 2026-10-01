@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../../lib/supabase-browser";
 import Creator360Modal from "./Creator360Modal";
 import DashboardActionCenter from "./DashboardActionCenter";
+import PersonalWorkspace from "./PersonalWorkspace";
 import {AreaTrendChart,DonutBreakdown,MiniDeltaBars,RankingBars} from "./LumawayDataViz";
 
 type Props={workspaceId:string};
@@ -148,6 +149,13 @@ export default function LegacyDashboard({workspaceId}:Props){
   setAdsSaving(false);
  }
  function resetDashboard(){setStart("");setEnd("");setPlatform("");setStore("");setPeriodPreset("");setPeriodApplied(false);setError("");setAdsInput("0");setAdsMessage("");clearDashboardData();try{window.sessionStorage.removeItem(`lumaway_dashboard_filter_${workspaceId}`)}catch{}}
+ function applySavedDashboardView(filter:{start?:string;end?:string;platform?:string;store?:string;preset?:string}){
+  const nextStart=String(filter.start||""),nextEnd=String(filter.end||""),nextPlatform=String(filter.platform||""),nextStore=String(filter.store||"");
+  setStart(nextStart);setEnd(nextEnd);setPlatform(nextPlatform);setStore(nextStore);setPeriodPreset((filter.preset||"custom") as PeriodPreset);
+  void loadStoreOptions(nextPlatform);
+  if(nextStart&&nextEnd)void load(1,{start:nextStart,end:nextEnd,platform:nextPlatform,store:nextStore});
+  else{setPeriodApplied(false);clearDashboardData()}
+ }
  useEffect(()=>{
   clearDashboardData();setError("");
   let saved:any=null;
@@ -250,6 +258,7 @@ export default function LegacyDashboard({workspaceId}:Props){
   {error&&<div className="flash error">{error}</div>}
   {dataWarnings.length>0&&<div className="dashboard-data-warning"><strong>Sebagian data sedang dipulihkan.</strong><span>{dataWarnings.join(" ")}</span></div>}
   {busy&&<div className="lw-dashboard-skeleton" aria-label="Menyiapkan data dashboard"><span className="lw-skeleton"/><span className="lw-skeleton"/><span className="lw-skeleton"/><span className="lw-skeleton"/></div>}
+  <PersonalWorkspace workspaceId={workspaceId} dashboardFilter={{start,end,platform,store,preset:periodPreset||"custom"}} onApplyDashboardView={applySavedDashboardView}/>
   <DashboardActionCenter workspaceId={workspaceId} />
   {!periodApplied?<div className="dashboard-period-empty"><strong>Pilih periode untuk menampilkan dashboard.</strong><span>Data tidak ditampilkan saat Start dan End masih kosong (dd/mm/tttt).</span></div>:<>
   {hasPreviousData&&prev&&<div className="lw-workspace-summary">
