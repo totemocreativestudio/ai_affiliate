@@ -30,6 +30,7 @@ const commerceNav: Array<[string, IconName, string]> = [
   ["product-master", "product", "Product Master"],
   ["listings", "listing", "Listings"],
   ["shipping", "shipping", "Shipping"],
+  ["spending", "billing", "Spending"],
 ];
 
 const ownerOverviewNav: Array<[string, IconName, string]> = [
