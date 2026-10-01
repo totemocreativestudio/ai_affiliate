@@ -23,7 +23,7 @@ async function upsertKnownDataset(admin:any,workspaceId:string,importId:string,p
 
  if(datasetType==="tiktok_core_stats"){
   const payload=rows.map((r:any)=>({
-   workspace_id:workspaceId,platform:"TikTok",dataset_type:"core_stats",metric_date:r.metric_date,
+   workspace_id:workspaceId,platform:"TikTok",dataset_type:"core_stats",metric_date:r.metric_date,store_name:clean(b.store_name)||null,store_id:clean(b.store_id)||null,store_username:clean(b.store_username)||null,
    period_start:r.period_start||b.period_start||null,period_end:r.period_end||b.period_end||null,
    gmv_attributed:r.gmv_attributed,gmv_direct:r.gmv_direct,gmv_indirect:r.gmv_indirect,display_gpm:r.display_gpm,
    live_stream_count:r.live_stream_count,live_streams_with_gmv:r.live_streams_with_gmv,
@@ -40,7 +40,7 @@ async function upsertKnownDataset(admin:any,workspaceId:string,importId:string,p
 
  if(datasetType==="shopee_product_list"){
   const payload=rows.map((r:any)=>({
-   workspace_id:workspaceId,platform:"Shopee",source_user_id:clean(r.source_user_id)||null,period_start:r.period_start||null,period_end:r.period_end||null,
+   workspace_id:workspaceId,platform:"Shopee",source_user_id:clean(r.source_user_id)||null,period_start:r.period_start||null,period_end:r.period_end||null,store_name:clean(b.store_name)||null,store_id:clean(b.store_id)||null,store_username:clean(b.store_username)||null,
    ranking:r.ranking,product_name_raw:clean(r.product_name_raw),product_clicks:r.product_clicks,add_to_cart:r.add_to_cart,
    product_orders_created:r.product_orders_created,product_orders_ready_to_ship:r.product_orders_ready_to_ship,
    qty_created:r.qty_created,qty_ready_to_ship:r.qty_ready_to_ship,gmv_created:r.gmv_created,gmv_ready_to_ship:r.gmv_ready_to_ship,
@@ -55,7 +55,7 @@ async function upsertKnownDataset(admin:any,workspaceId:string,importId:string,p
  if(datasetType==="shopee_overview"){
   const o=b.overview||{};
   if(!o.period_start||!o.period_end)throw new Error("Periode Shopee Overview tidak terbaca.");
-  const overviewPayload={...o,workspace_id:workspaceId,platform:"Shopee",source_user_id:clean(o.source_user_id)||null,source_import_id:importId,raw_payload:jsonSafe(o.raw_payload),updated_at:new Date().toISOString()};
+  const overviewPayload={...o,workspace_id:workspaceId,platform:"Shopee",source_user_id:clean(o.source_user_id)||null,store_name:clean(b.store_name)||null,store_id:clean(b.store_id)||null,store_username:clean(b.store_username)||null,source_import_id:importId,raw_payload:jsonSafe(o.raw_payload),updated_at:new Date().toISOString()};
   const ox=await admin.from("live_period_overview").upsert(overviewPayload,{onConflict:"workspace_id,platform,source_user_id,period_start,period_end"});if(ox.error)throw ox.error;persisted++;
   const traffic:Array<any>=Array.isArray(b.traffic_sources)?b.traffic_sources:[];
   if(traffic.length){
@@ -70,7 +70,7 @@ async function upsertKnownDataset(admin:any,workspaceId:string,importId:string,p
    const started=clean(r.started_at);const sessionDate=clean(r.session_date)||dateOnly(started,new Date().toISOString().slice(0,10));
    const natural=`${keyPart(r.source_user_id)}:${keyPart(started)}:${keyPart(r.session_title)}`;
    const sessionPayload={
-    workspace_id:workspaceId,host_id:null,title:clean(r.session_title)||"Shopee Live",platform:"Shopee",
+    workspace_id:workspaceId,host_id:clean(b.host_id)||null,title:clean(r.session_title)||"Shopee Live",platform:"Shopee",store_name:clean(b.store_name)||null,store_id:clean(b.store_id)||null,store_username:clean(b.store_username)||null,
     session_date:sessionDate,start_at:started||null,end_at:null,status:"completed",
     source_user_id:clean(r.source_user_id)||null,source_rank_no:r.source_rank_no||null,
     source_natural_key:natural,source_import_id:importId,source_raw:jsonSafe(r.raw_payload),updated_at:new Date().toISOString()
@@ -79,7 +79,7 @@ async function upsertKnownDataset(admin:any,workspaceId:string,importId:string,p
    if(sx.error)throw sx.error;
    const sourceRowKey=`shopee:session:${natural}`;
    const perf={
-    workspace_id:workspaceId,session_id:sx.data.id,metric_at:started||null,metric_date:sessionDate,hour_bucket:hourJakarta(started),
+    workspace_id:workspaceId,session_id:sx.data.id,metric_at:started||null,metric_date:sessionDate,hour_bucket:hourJakarta(started),store_name:clean(b.store_name)||null,store_id:clean(b.store_id)||null,store_username:clean(b.store_username)||null,
     gmv:Number(r.gmv_created||0),orders:Number(r.orders_created||0),qty:Number(r.qty_created||0),
     active_viewers:Number(r.active_viewers||0),peak_viewers:0,avg_viewers:0,clicks:0,impressions:0,ctr:0,cvr:0,
     duration_minutes:Number(r.duration_minutes||0),duration_seconds:r.duration_seconds,
@@ -103,12 +103,16 @@ export async function POST(req:NextRequest){
   const b=await req.json();
   workspaceId=clean(b.workspace_id);const filename=clean(b.filename)||"live-upload.xlsx",fileHash=clean(b.file_hash),platform=clean(b.platform)||"Unknown";
   const datasetType=clean(b.dataset_type)||"generic";
+  const storeName=clean(b.store_name),storeId=clean(b.store_id),storeUsername=clean(b.store_username),hostId=clean(b.host_id);
+  if(!storeName||!storeId||!storeUsername||!hostId)return NextResponse.json({ok:false,error:"Nama toko, ID toko, username toko, dan host wajib dipilih sebelum import."},{status:400});
   importId=clean(b.import_id)||"LIVE-"+randomUUID().replace(/-/g,"").slice(0,10).toUpperCase();
   const normalizedRows:Row[]=Array.isArray(b.normalized_rows)?b.normalized_rows:[];
   const rawRows:Row[]=Array.isArray(b.rows)?b.rows:[];
   if(!workspaceId||(!normalizedRows.length&&!rawRows.length&&!b.overview))return NextResponse.json({ok:false,error:"Workspace dan data wajib diisi."},{status:400});
 
   const ctx=await getServerContext(workspaceId);if(!ctx.canManage)return NextResponse.json({ok:false,error:"Role Anda tidak dapat melakukan import."},{status:403});const {admin}=ctx;
+  const hostCheck=await admin.from("live_hosts").select("id,status").eq("workspace_id",workspaceId).eq("id",hostId).maybeSingle();
+  if(hostCheck.error||!hostCheck.data?.id||hostCheck.data.status!=="active")return NextResponse.json({ok:false,error:"Host tidak valid atau tidak aktif. Tambahkan/pilih host dari Host 360."},{status:400});
   if(fileHash){
    const dup=await admin.from("live_imports").select("id,import_id").eq("workspace_id",workspaceId).eq("file_hash",fileHash).eq("status","completed").limit(1);
    if(dup.data?.length)return NextResponse.json({ok:false,error:"File identik sudah pernah diimport ke Live Streaming.",duplicate_import_id:dup.data[0].import_id},{status:409});
@@ -117,11 +121,11 @@ export async function POST(req:NextRequest){
   const rowCount=normalizedRows.length+(b.overview?1:0)+(Array.isArray(b.traffic_sources)?b.traffic_sources.length:0);
   const importPayload={workspace_id:workspaceId,import_id:importId,filename,file_hash:fileHash||null,platform,row_count:rowCount||rawRows.length,status:"processing",
    mapping:b.mapping_overrides||{},dataset_type:datasetType,parser_version:clean(b.parser_version)||null,source_sheet:clean(b.source_sheet)||null,
-   parser_meta:jsonSafe(b.parser_meta),warnings:jsonSafe(b.warnings),created_by:ctx.user.id};
+   parser_meta:jsonSafe(b.parser_meta),warnings:jsonSafe(b.warnings),store_name:storeName,store_id:storeId,store_username:storeUsername,host_id:hostId,created_by:ctx.user.id};
   const startImport=await admin.from("live_imports").insert(importPayload);if(startImport.error)throw startImport.error;
 
   if(datasetType!=="generic"){
-   const known=await upsertKnownDataset(admin,workspaceId,importId,platform,datasetType,b);
+   const known=await upsertKnownDataset(admin,workspaceId,importId,platform,datasetType,{...b,store_name:storeName,store_id:storeId,store_username:storeUsername,host_id:hostId});
    if(!known)throw new Error("Dataset Live tidak dikenali.");
    await admin.from("live_imports").update({status:"completed",persisted_rows:known.persisted,period_start:known.minDate||null,period_end:known.maxDate||null,completed_at:new Date().toISOString()}).eq("workspace_id",workspaceId).eq("import_id",importId);
    return NextResponse.json({ok:true,import_id:importId,dataset_type:datasetType,platform,persisted_rows:known.persisted,period_start:known.minDate,period_end:known.maxDate,warnings:b.warnings||[]});
@@ -151,8 +155,8 @@ export async function POST(req:NextRequest){
     if(!hostId){const ex=await admin.from("live_hosts").select("id").eq("workspace_id",workspaceId).or("username.ilike."+hostUsername+",name.ilike."+hostName).limit(1).maybeSingle();if(ex.data?.id)hostId=ex.data.id;else{const cr=await admin.from("live_hosts").insert({workspace_id:workspaceId,name:hostName,username:hostUsername,platform,host_type:"inhouse",status:"active"}).select("id").single();if(cr.error)throw cr.error;hostId=cr.data.id}hostCache.set(hostKey,hostId!)}
     const fallback=new Date().toISOString().slice(0,10);const metricDate=dateOnly(raw(row,map.metric_date),fallback);if(!minDate||metricDate<minDate)minDate=metricDate;if(!maxDate||metricDate>maxDate)maxDate=metricDate;
     const title=clean(raw(row,map.session_title))||("Live "+hostName+" "+metricDate);const sessionKey=hostId+"|"+title.toLowerCase()+"|"+metricDate;let sessionId=sessionCache.get(sessionKey);
-    if(!sessionId){const ex=await admin.from("live_sessions").select("id").eq("workspace_id",workspaceId).eq("host_id",hostId).eq("session_date",metricDate).ilike("title",title).limit(1).maybeSingle();if(ex.data?.id)sessionId=ex.data.id;else{const cr=await admin.from("live_sessions").insert({workspace_id:workspaceId,host_id:hostId,title,platform,campaign_name:clean(raw(row,map.campaign_name))||null,gimmick:clean(raw(row,map.gimmick))||null,session_date:metricDate,status:"completed"}).select("id").single();if(cr.error)throw cr.error;sessionId=cr.data.id}sessionCache.set(sessionKey,sessionId!)}
-    const performance={workspace_id:workspaceId,session_id:sessionId,metric_date:metricDate,hour_bucket:hourValue(raw(row,map.hour)),gmv:num(raw(row,map.gmv)),orders:num(raw(row,map.orders)),qty:num(raw(row,map.qty)),active_viewers:num(raw(row,map.active_viewers)),peak_viewers:num(raw(row,map.peak_viewers)),avg_viewers:num(raw(row,map.avg_viewers)),clicks:num(raw(row,map.clicks)),impressions:num(raw(row,map.impressions)),ctr:num(raw(row,map.ctr)),cvr:num(raw(row,map.cvr)),duration_minutes:num(raw(row,map.duration_minutes)),source_import_id:importId};
+    if(!sessionId){const ex=await admin.from("live_sessions").select("id").eq("workspace_id",workspaceId).eq("host_id",hostId).eq("session_date",metricDate).ilike("title",title).limit(1).maybeSingle();if(ex.data?.id)sessionId=ex.data.id;else{const cr=await admin.from("live_sessions").insert({workspace_id:workspaceId,host_id:clean(b.host_id)||hostId,title,platform,store_name:storeName,store_id:storeId,store_username:storeUsername,campaign_name:clean(raw(row,map.campaign_name))||null,gimmick:clean(raw(row,map.gimmick))||null,session_date:metricDate,status:"completed"}).select("id").single();if(cr.error)throw cr.error;sessionId=cr.data.id}sessionCache.set(sessionKey,sessionId!)}
+    const performance={workspace_id:workspaceId,session_id:sessionId,metric_date:metricDate,store_name:storeName,store_id:storeId,store_username:storeUsername,hour_bucket:hourValue(raw(row,map.hour)),gmv:num(raw(row,map.gmv)),orders:num(raw(row,map.orders)),qty:num(raw(row,map.qty)),active_viewers:num(raw(row,map.active_viewers)),peak_viewers:num(raw(row,map.peak_viewers)),avg_viewers:num(raw(row,map.avg_viewers)),clicks:num(raw(row,map.clicks)),impressions:num(raw(row,map.impressions)),ctr:num(raw(row,map.ctr)),cvr:num(raw(row,map.cvr)),duration_minutes:num(raw(row,map.duration_minutes)),source_import_id:importId};
     const ins=await admin.from("live_session_performance").insert(performance);if(ins.error)throw ins.error;persisted++;
   }
   await admin.from("live_imports").update({status:"completed",persisted_rows:persisted,period_start:minDate||null,period_end:maxDate||null,completed_at:new Date().toISOString()}).eq("workspace_id",workspaceId).eq("import_id",importId);
