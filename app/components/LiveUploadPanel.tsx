@@ -22,12 +22,14 @@ export default function LiveUploadPanel({workspaceId,onOpenHosts}:{workspaceId:s
  const [detection,setDetection]=useState<LiveDetection|null>(null),[parsed,setParsed]=useState<ParsedLivePayload|null>(null),[fileHash,setFileHash]=useState(""),[delimiter,setDelimiter]=useState(""),[sourceSheet,setSourceSheet]=useState("");
  const [context,setContext]=useState({store_name:"",store_id:"",store_username:"",host_id:""});
  const headers=Object.keys(rows[0]||{});
+ const compatibleHosts=hosts.filter((h:any)=>{const hp=clean(h.platform).toLowerCase(),dp=clean(detection?.platform).toLowerCase();return !dp||dp==="unknown"||!hp||hp==="all"||hp.includes(dp)||dp.includes(hp)});
 
  async function loadHistory(){const x=await supabase.from("live_imports").select("*,live_hosts(name,username)").eq("workspace_id",workspaceId).order("created_at",{ascending:false}).limit(25);setHistory(x.data||[])}
  async function loadHosts(){const x=await supabase.from("live_hosts").select("id,name,username,platform,host_type").eq("workspace_id",workspaceId).eq("status","active").order("name");setHosts(x.data||[])}
  async function loadStores(){const x=await supabase.from("live_store_profiles").select("id,platform,store_name,store_id,store_username").eq("workspace_id",workspaceId).eq("status","active").order("store_name");setStores(x.data||[])}
  useEffect(()=>{void loadHistory();void loadHosts();void loadStores();try{const saved=sessionStorage.getItem("lumaway-live-upload-context:"+workspaceId);if(saved)setContext(prev=>({...prev,...JSON.parse(saved)}))}catch{}},[workspaceId]);
  useEffect(()=>{try{sessionStorage.setItem("lumaway-live-upload-context:"+workspaceId,JSON.stringify(context))}catch{}},[workspaceId,context]);
+ useEffect(()=>{if(context.host_id&&detection&&!compatibleHosts.some((h:any)=>h.id===context.host_id))setContext(prev=>({...prev,host_id:""}))},[detection?.platform,hosts,context.host_id]);
 
  async function choose(f:File){
   setFile(f);setMsg("Membaca dan mendeteksi format file...");setRows([]);setParsed(null);setDetection(null);setDelimiter("");setSourceSheet("");
@@ -36,8 +38,10 @@ export default function LiveUploadPanel({workspaceId,onOpenHosts}:{workspaceId:s
    if(f.name.toLowerCase().endsWith(".csv")){
     const decoded=new TextDecoder("utf-8").decode(buffer);const p=parseDelimitedMatrix(decoded);m=p.rows;setDelimiter(p.delimiter==="\t"?"TAB":p.delimiter);
    }else{
-    const XLSX=await loadXlsx();const wb=XLSX.read(buffer,{type:"array",cellDates:true});sheet=wb.SheetNames[0]||"";setSourceSheet(sheet);
-    m=XLSX.utils.sheet_to_json(wb.Sheets[sheet],{header:1,defval:"",raw:true,dateNF:"yyyy-mm-dd"});
+    const XLSX=await loadXlsx();const wb=XLSX.read(buffer,{type:"array",cellDates:true});
+    const candidates=(wb.SheetNames||[]).map((name:string)=>{const data=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,defval:"",raw:true,dateNF:"yyyy-mm-dd"}) as any[][];const detected=detectLiveDataset(data,name);return{name,data,detected}});
+    const best=candidates.sort((a:any,b:any)=>(b.detected.dataset_type!=="generic"?1:0)-(a.detected.dataset_type!=="generic"?1:0)||b.detected.confidence-a.detected.confidence||b.data.length-a.data.length)[0];
+    sheet=best?.name||wb.SheetNames[0]||"";setSourceSheet(sheet);m=best?.data||[];
    }
    setMatrix(m);
    const d=detectLiveDataset(m,sheet);setDetection(d);
@@ -99,9 +103,9 @@ export default function LiveUploadPanel({workspaceId,onOpenHosts}:{workspaceId:s
     <label>Nama Toko<input value={context.store_name} onChange={e=>setContext({...context,store_name:e.target.value})} placeholder="Contoh: Gascomp Official Store"/></label>
     <label>ID Toko<input value={context.store_id} onChange={e=>setContext({...context,store_id:e.target.value})} placeholder="Contoh: 780912857"/></label>
     <label>Username Toko<input value={context.store_username} onChange={e=>setContext({...context,store_username:e.target.value})} placeholder="@username_toko"/></label>
-    <label>Host<select value={context.host_id} onChange={e=>setContext({...context,host_id:e.target.value})}><option value="">Pilih Host</option>{hosts.map(h=><option key={h.id} value={h.id}>{h.name}{h.username?" · "+h.username:""} · {h.platform}</option>)}</select></label>
+    <label>Host<select value={context.host_id} onChange={e=>setContext({...context,host_id:e.target.value})}><option value="">Pilih Host</option>{compatibleHosts.map(h=><option key={h.id} value={h.id}>{h.name}{h.username?" · "+h.username:""} · {h.platform||"Semua Platform"}</option>)}</select></label>
    </div>
-   <div className="live-context-help"><span>{hosts.length?hosts.length+" host aktif tersedia":"Belum ada host aktif."}</span><button type="button" onClick={()=>onOpenHosts?.()}>+ Tambah Host di Host 360</button></div>
+   <div className="live-context-help"><span>{compatibleHosts.length?compatibleHosts.length+" host aktif sesuai platform tersedia":hosts.length?"Belum ada host yang cocok dengan platform file ini.":"Belum ada host aktif."}</span><button type="button" onClick={()=>onOpenHosts?.()}>+ Tambah Host di Host 360</button></div>
   </section>
 
   {msg&&<div className="live-upload-msg">{msg}</div>}
