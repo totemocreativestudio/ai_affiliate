@@ -5,6 +5,10 @@ import {createClient} from "../../lib/supabase-browser";
 
 type Task={
   id:number;
+  task_domain?:string|null;
+  live_session_id?:string|null;
+  live_campaign_id?:string|null;
+  live_host_id?:string|null;
   title:string;
   description:string|null;
   status:string|null;
@@ -15,7 +19,7 @@ type Task={
 };
 
 type Props={workspaceId:string;userId?:string};
-type TaskDraft={title:string;description:string;priority:string;due_date:string};
+type TaskDraft={title:string;description:string;priority:string;due_date:string;task_domain:"affiliate"|"live_streaming";live_session_id:string;live_campaign_id:string;live_host_id:string};
 
 const COLUMNS=[
   ["backlog","Backlog"],
@@ -24,7 +28,7 @@ const COLUMNS=[
   ["done","Done"],
 ] as const;
 
-const EMPTY_DRAFT:TaskDraft={title:"",description:"",priority:"normal",due_date:""};
+const EMPTY_DRAFT:TaskDraft={title:"",description:"",priority:"normal",due_date:"",task_domain:"affiliate",live_session_id:"",live_campaign_id:"",live_host_id:""};
 
 function normalizePriority(value:string|null){
   const key=String(value||"normal").toLowerCase();
@@ -63,11 +67,15 @@ export default function KanbanBoard({workspaceId,userId}:Props){
   const [search,setSearch]=useState("");
   const [priorityFilter,setPriorityFilter]=useState("");
   const [dragOver,setDragOver]=useState<string|null>(null);
+  const [domain,setDomain]=useState<"affiliate"|"live_streaming">("affiliate");
+  const [liveSessions,setLiveSessions]=useState<any[]>([]);
+  const [liveCampaigns,setLiveCampaigns]=useState<any[]>([]);
+  const [liveHosts,setLiveHosts]=useState<any[]>([]);
 
   async function load(){
     const {data,error}=await supabase
       .from("creator_tasks")
-      .select("id,title,description,status,priority,due_date,sort_order,created_at")
+      .select("id,title,description,status,priority,due_date,sort_order,created_at,task_domain,live_session_id,live_campaign_id,live_host_id")
       .eq("workspace_id",workspaceId)
       .order("sort_order",{ascending:true})
       .order("id",{ascending:true});
@@ -76,6 +84,7 @@ export default function KanbanBoard({workspaceId,userId}:Props){
   }
 
   useEffect(()=>{void load()},[workspaceId]);
+  useEffect(()=>{Promise.all([supabase.from("live_sessions").select("id,title,session_date").eq("workspace_id",workspaceId).order("session_date",{ascending:false}).limit(100),supabase.from("live_campaigns").select("id,name").eq("workspace_id",workspaceId).order("created_at",{ascending:false}).limit(100),supabase.from("live_hosts").select("id,name,username").eq("workspace_id",workspaceId).order("name").limit(200)]).then(([s,c,h])=>{setLiveSessions(s.data||[]);setLiveCampaigns(c.data||[]);setLiveHosts(h.data||[])})},[workspaceId]);
   useEffect(()=>{
     const onQuick=(event:Event)=>{const detail=(event as CustomEvent).detail;if(detail?.type==="task")openCreate()};
     const onSelect=(event:Event)=>{const detail=(event as CustomEvent).detail;if(detail?.type!=="task")return;setSearch(String(detail.title||""))};
@@ -112,6 +121,10 @@ export default function KanbanBoard({workspaceId,userId}:Props){
       priority:normalizePriority(draft.priority),
       due_date:draft.due_date||null,
       source:"web",
+      task_domain:draft.task_domain,
+      live_session_id:draft.task_domain==="live_streaming"&&draft.live_session_id?draft.live_session_id:null,
+      live_campaign_id:draft.task_domain==="live_streaming"&&draft.live_campaign_id?draft.live_campaign_id:null,
+      live_host_id:draft.task_domain==="live_streaming"&&draft.live_host_id?draft.live_host_id:null,
       sort_order:Date.now(),
       assigned_to:null,
     };
@@ -151,6 +164,10 @@ export default function KanbanBoard({workspaceId,userId}:Props){
       description:editing.description?.trim()||null,
       priority:normalizePriority(editing.priority),
       due_date:editing.due_date||null,
+      task_domain:(editing.task_domain||"affiliate"),
+      live_session_id:editing.task_domain==="live_streaming"?(editing.live_session_id||null):null,
+      live_campaign_id:editing.task_domain==="live_streaming"?(editing.live_campaign_id||null):null,
+      live_host_id:editing.task_domain==="live_streaming"?(editing.live_host_id||null):null,
       updated_at:new Date().toISOString(),
     }).eq("workspace_id",workspaceId).eq("id",editing.id);
     setBusy(false);
@@ -169,18 +186,20 @@ export default function KanbanBoard({workspaceId,userId}:Props){
   const visibleTasks=useMemo(()=>{
     const q=search.trim().toLowerCase();
     return tasks.filter(task=>{
+      if((task.task_domain||"affiliate")!==domain)return false;
       if(priorityFilter&&normalizePriority(task.priority)!==priorityFilter)return false;
       if(!q)return true;
       return [task.title,task.description].filter(Boolean).some(value=>String(value).toLowerCase().includes(q));
     });
-  },[tasks,search,priorityFilter]);
+  },[tasks,search,priorityFilter,domain]);
 
   const counts=useMemo(()=>Object.fromEntries(COLUMNS.map(([key])=>[
     key,
     visibleTasks.filter(task=>(task.status||"backlog")===key).length,
   ])),[visibleTasks]);
 
-  const completed=tasks.filter(task=>(task.status||"backlog")==="done").length;
+  const domainTasks=tasks.filter(task=>(task.task_domain||"affiliate")===domain);
+  const completed=domainTasks.filter(task=>(task.status||"backlog")==="done").length;
 
   function CreateModal(){
     return <div className="kanban-v5-modal-backdrop" onMouseDown={()=>!busy&&setCreateOpen(false)}>
@@ -193,9 +212,11 @@ export default function KanbanBoard({workspaceId,userId}:Props){
           <label><span>Title</span><input autoFocus value={draft.title} onChange={e=>setDraft({...draft,title:e.target.value})} placeholder="Contoh: Follow up creator terbaik"/></label>
           <label><span>Description</span><textarea rows={5} value={draft.description} onChange={e=>setDraft({...draft,description:e.target.value})} placeholder="Tambahkan konteks atau detail task..."/></label>
           <div className="kanban-v5-form-grid">
+            <label><span>Board</span><select value={draft.task_domain} onChange={e=>setDraft({...draft,task_domain:e.target.value as any,live_session_id:"",live_campaign_id:"",live_host_id:""})}><option value="affiliate">Affiliate</option><option value="live_streaming">Live Streaming</option></select></label>
             <label><span>Priority</span><select value={draft.priority} onChange={e=>setDraft({...draft,priority:e.target.value})}><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></label>
             <label><span>Due Date</span><input type="date" value={draft.due_date} onChange={e=>setDraft({...draft,due_date:e.target.value})}/></label>
           </div>
+          {draft.task_domain==="live_streaming"&&<div className="kanban-v5-form-grid"><label><span>Live Session</span><select value={draft.live_session_id} onChange={e=>setDraft({...draft,live_session_id:e.target.value})}><option value="">Tanpa session</option>{liveSessions.map(x=><option key={x.id} value={x.id}>{x.title} · {x.session_date}</option>)}</select></label><label><span>Live Campaign</span><select value={draft.live_campaign_id} onChange={e=>setDraft({...draft,live_campaign_id:e.target.value})}><option value="">Tanpa campaign</option>{liveCampaigns.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label><label><span>Host</span><select value={draft.live_host_id} onChange={e=>setDraft({...draft,live_host_id:e.target.value})}><option value="">Tanpa host</option>{liveHosts.map(x=><option key={x.id} value={x.id}>{x.name}{x.username?" · "+x.username:""}</option>)}</select></label></div>}
         </div>
         <footer><button className="secondary" type="button" disabled={busy} onClick={()=>setCreateOpen(false)}>Batal</button><button className="primary" type="button" disabled={busy} onClick={()=>void createTask()}>{busy?"Menyimpan...":"Tambah Task"}</button></footer>
       </section>
@@ -214,9 +235,11 @@ export default function KanbanBoard({workspaceId,userId}:Props){
           <label><span>Title</span><input autoFocus value={editing.title} onChange={e=>setEditing({...editing,title:e.target.value})}/></label>
           <label><span>Description</span><textarea rows={5} value={editing.description||""} onChange={e=>setEditing({...editing,description:e.target.value})}/></label>
           <div className="kanban-v5-form-grid">
+            <label><span>Board</span><select value={editing.task_domain||"affiliate"} onChange={e=>setEditing({...editing,task_domain:e.target.value,live_session_id:e.target.value==="live_streaming"?editing.live_session_id:null,live_campaign_id:e.target.value==="live_streaming"?editing.live_campaign_id:null,live_host_id:e.target.value==="live_streaming"?editing.live_host_id:null})}><option value="affiliate">Affiliate</option><option value="live_streaming">Live Streaming</option></select></label>
             <label><span>Priority</span><select value={normalizePriority(editing.priority)} onChange={e=>setEditing({...editing,priority:e.target.value})}><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></label>
             <label><span>Due Date</span><input type="date" value={editing.due_date||""} onChange={e=>setEditing({...editing,due_date:e.target.value})}/></label>
           </div>
+          {(editing.task_domain||"affiliate")==="live_streaming"&&<div className="kanban-v5-form-grid"><label><span>Live Session</span><select value={editing.live_session_id||""} onChange={e=>setEditing({...editing,live_session_id:e.target.value||null})}><option value="">Tanpa session</option>{liveSessions.map(x=><option key={x.id} value={x.id}>{x.title} · {x.session_date}</option>)}</select></label><label><span>Live Campaign</span><select value={editing.live_campaign_id||""} onChange={e=>setEditing({...editing,live_campaign_id:e.target.value||null})}><option value="">Tanpa campaign</option>{liveCampaigns.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label><label><span>Host</span><select value={editing.live_host_id||""} onChange={e=>setEditing({...editing,live_host_id:e.target.value||null})}><option value="">Tanpa host</option>{liveHosts.map(x=><option key={x.id} value={x.id}>{x.name}{x.username?" · "+x.username:""}</option>)}</select></label></div>}
         </div>
         <footer><button className="secondary" type="button" disabled={busy} onClick={()=>setEditing(null)}>Batal</button><button className="primary" type="button" disabled={busy} onClick={()=>void saveEdit()}>{busy?"Menyimpan...":"Simpan Perubahan"}</button></footer>
       </section>
@@ -228,15 +251,17 @@ export default function KanbanBoard({workspaceId,userId}:Props){
       <div>
         <span className="kanban-v5-kicker">WORK MANAGEMENT</span>
         <h1>Task Board</h1>
-        <p>Kelola pekerjaan dalam board visual. Geser task antar kolom untuk memperbarui status.</p>
+        <p>Satu engine Kanban dengan dua konteks data: Affiliate dan Live Streaming.</p>
       </div>
       <button className="primary kanban-v5-add" type="button" onClick={openCreate}>+ Tambah Task</button>
     </div>
 
+    <div className="kanban-domain-tabs"><button className={domain==="affiliate"?"active":""} onClick={()=>setDomain("affiliate")}>Affiliate</button><button className={domain==="live_streaming"?"active":""} onClick={()=>setDomain("live_streaming")}>Live Streaming</button></div>
+
     <div className="kanban-v5-summary">
-      <span><b>{tasks.length}</b> Total Task</span>
+      <span><b>{domainTasks.length}</b> Total Task</span>
       <span><b>{completed}</b> Selesai</span>
-      <span><b>{Math.max(0,tasks.length-completed)}</b> Berjalan</span>
+      <span><b>{Math.max(0,domainTasks.length-completed)}</b> Berjalan</span>
     </div>
 
     <div className="kanban-v5-toolbar">
@@ -279,6 +304,7 @@ export default function KanbanBoard({workspaceId,userId}:Props){
                 </div>
                 <h3>{task.title}</h3>
                 {task.description&&<p>{task.description}</p>}
+                {(task.task_domain||"affiliate")==="live_streaming"&&<div className="kanban-live-links">{task.live_session_id&&<span>Session</span>}{task.live_campaign_id&&<span>Campaign</span>}{task.live_host_id&&<span>Host</span>}</div>}
                 <footer>
                   <span className={"kanban-v5-due due-"+due.tone}><CalendarIcon/>{due.label}</span>
                 </footer>
