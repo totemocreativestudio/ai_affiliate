@@ -40,6 +40,10 @@
     {
       "path": "/api/cron/incident-escalation",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/listing-followups",
+      "schedule": "*/30 * * * *"
     }
   ]
 }
