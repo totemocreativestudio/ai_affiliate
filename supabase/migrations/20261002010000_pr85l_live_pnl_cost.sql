@@ -5,7 +5,7 @@ create table if not exists public.live_cost_entries(
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
   cost_date date not null,
   platform text,
-  session_id bigint references public.live_sessions(id) on delete set null,
+  session_id uuid references public.live_sessions(id) on delete set null,
   category text not null check(category in ('host_cost','studio_cost','live_ads','production_cost','voucher_promo','other')),
   amount numeric not null default 0 check(amount>=0),
   note text,
