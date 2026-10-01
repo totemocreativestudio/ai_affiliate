@@ -1,5 +1,32 @@
 -- PR86E Live Upload Context, Store/Host Attribution & Product Intelligence UX
 
+-- Store identity master
+create table if not exists public.live_store_profiles(
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null,
+  platform text,
+  store_name text not null,
+  store_id text not null,
+  store_username text not null,
+  status text not null default 'active',
+  created_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(workspace_id,platform,store_id)
+);
+create index if not exists live_store_profiles_workspace_idx on public.live_store_profiles(workspace_id,status,store_name);
+alter table public.live_store_profiles enable row level security;
+drop policy if exists live_store_profiles_select on public.live_store_profiles;
+create policy live_store_profiles_select on public.live_store_profiles
+for select to authenticated using(public.luma_has_workspace(workspace_id) or public.luma_is_admin());
+drop policy if exists live_store_profiles_insert on public.live_store_profiles;
+create policy live_store_profiles_insert on public.live_store_profiles
+for insert to authenticated with check(public.luma_has_workspace(workspace_id) or public.luma_is_admin());
+drop policy if exists live_store_profiles_update on public.live_store_profiles;
+create policy live_store_profiles_update on public.live_store_profiles
+for update to authenticated using(public.luma_has_workspace(workspace_id) or public.luma_is_admin()) with check(public.luma_has_workspace(workspace_id) or public.luma_is_admin());
+
+
 alter table public.live_imports
   add column if not exists store_name text,
   add column if not exists store_id text,
