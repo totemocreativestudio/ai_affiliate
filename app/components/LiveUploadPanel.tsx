@@ -21,7 +21,8 @@ export default function LiveUploadPanel({workspaceId,onOpenHosts}:{workspaceId:s
  const [busy,setBusy]=useState(false),[removingId,setRemovingId]=useState(""),[msg,setMsg]=useState(""),[history,setHistory]=useState<any[]>([]),[hosts,setHosts]=useState<any[]>([]),[stores,setStores]=useState<any[]>([]);
  const [detection,setDetection]=useState<LiveDetection|null>(null),[parsed,setParsed]=useState<ParsedLivePayload|null>(null),[fileHash,setFileHash]=useState(""),[delimiter,setDelimiter]=useState(""),[sourceSheet,setSourceSheet]=useState("");
  const [context,setContext]=useState({store_name:"",store_id:"",store_username:"",host_id:""});
- const headers=Object.keys(rows[0]||{});\n const compatibleHosts=hosts.filter((h:any)=>{const hp=clean(h.platform).toLowerCase(),dp=clean(detection?.platform).toLowerCase();return !dp||dp==="unknown"||!hp||hp==="all"||hp.includes(dp)||dp.includes(hp)});
+ const headers=Object.keys(rows[0]||{});
+ const compatibleHosts=hosts.filter((h:any)=>{const hp=clean(h.platform).toLowerCase(),dp=clean(detection?.platform).toLowerCase();return !dp||dp==="unknown"||!hp||hp==="all"||hp.includes(dp)||dp.includes(hp)});
 
  async function loadHistory(){const x=await supabase.from("live_imports").select("*,live_hosts(name,username)").eq("workspace_id",workspaceId).order("created_at",{ascending:false}).limit(25);setHistory(x.data||[])}
  async function loadHosts(){const x=await supabase.from("live_hosts").select("id,name,username,platform,host_type").eq("workspace_id",workspaceId).eq("status","active").order("name");setHosts(x.data||[])}
@@ -36,8 +37,10 @@ export default function LiveUploadPanel({workspaceId,onOpenHosts}:{workspaceId:s
    if(f.name.toLowerCase().endsWith(".csv")){
     const decoded=new TextDecoder("utf-8").decode(buffer);const p=parseDelimitedMatrix(decoded);m=p.rows;setDelimiter(p.delimiter==="\t"?"TAB":p.delimiter);
    }else{
-    const XLSX=await loadXlsx();const wb=XLSX.read(buffer,{type:"array",cellDates:true});sheet=wb.SheetNames[0]||"";setSourceSheet(sheet);
-    m=XLSX.utils.sheet_to_json(wb.Sheets[sheet],{header:1,defval:"",raw:true,dateNF:"yyyy-mm-dd"});
+    const XLSX=await loadXlsx();const wb=XLSX.read(buffer,{type:"array",cellDates:true});
+    const candidates=(wb.SheetNames||[]).map((name:string)=>{const data=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,defval:"",raw:true,dateNF:"yyyy-mm-dd"}) as any[][];const detected=detectLiveDataset(data,name);return{name,data,detected}});
+    const best=candidates.sort((a:any,b:any)=>(b.detected.dataset_type!=="generic"?1:0)-(a.detected.dataset_type!=="generic"?1:0)||b.detected.confidence-a.detected.confidence||b.data.length-a.data.length)[0];
+    sheet=best?.name||wb.SheetNames[0]||"";setSourceSheet(sheet);m=best?.data||[];
    }
    setMatrix(m);
    const d=detectLiveDataset(m,sheet);setDetection(d);
