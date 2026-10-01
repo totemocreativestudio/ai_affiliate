@@ -69,6 +69,7 @@ import TableSortEnhancer from "./components/TableSortEnhancer";
 import LumawayExperienceLayer from "./components/LumawayExperienceLayer";
 import BackgroundTaskCenter from "./components/BackgroundTaskCenter";
 import LumawayAuthExperience from "./components/LumawayAuthExperience";
+import ContextualTutorial from "./components/ContextualTutorial";
 
 type Profile = { id: string; email: string | null; full_name: string | null; nickname: string | null; role: string; active: boolean; phone: string | null; phone_verified_at: string | null; email_verified_at: string | null; education: string | null; birth_date: string | null; bio: string | null; position_title: string | null; profile_completed: boolean; password_configured_at: string | null };
 type Workspace = { id: string; name: string; slug: string; status: string };
@@ -519,7 +520,7 @@ export default function LumawayWorkspaceApp() {
         {error && <LumaErrorMotion compact code={/403|access denied|tidak.*akses/i.test(error)?403:/404|tidak ditemukan/i.test(error)?404:/503|unavailable|maintenance|tidak dapat dimuat/i.test(error)?503:500} message={error} onRetry={()=>void loadSession()}/>} 
       </main>
     </div>
-    {!isAdmin && <><MobileQuickNav /><DashboardReminder workspaceId={workspace.id} userId={profile.id} workspaceStatus={workspace.status} /><LumaHelpdeskAgent workspaceId={workspace.id} userId={profile.id} fullName={profile.full_name} email={profile.email} /></>}
+    {!isAdmin && <><ContextualTutorial/><MobileQuickNav /><DashboardReminder workspaceId={workspace.id} userId={profile.id} workspaceStatus={workspace.status} /><LumaHelpdeskAgent workspaceId={workspace.id} userId={profile.id} fullName={profile.full_name} email={profile.email} /></>}
     {!isAdmin && lockPromptOpen && <div className="access-lock-backdrop" onClick={()=>setLockPromptOpen(false)}><section className="access-lock-modal" role="dialog" aria-modal="true" aria-label="Masa aktif Lumaway berakhir" onClick={e=>e.stopPropagation()}><button className="access-lock-close" type="button" onClick={()=>setLockPromptOpen(false)}>×</button><span className="access-lock-icon" aria-hidden="true">🔒</span><h2>Masa aktif Anda telah berakhir</h2><p>Data workspace Anda tetap aman dan tidak dihapus. Perpanjang langganan untuk membuka kembali fitur Lumaway.</p>{subscriptionEndsAt&&<small>Berakhir: {new Date(subscriptionEndsAt).toLocaleString("id-ID")}</small>}<button className="primary" type="button" onClick={()=>{setLockPromptOpen(false);navigateToSection("billing")}}>Perpanjang di Billing</button></section></div>}
   </div>;
 }
