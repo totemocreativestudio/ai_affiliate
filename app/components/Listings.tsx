@@ -6,6 +6,7 @@ import {CreatorAutocomplete,ProductAutocomplete,CreatorSearchResult,ProductSearc
 import ListingFollowupInsights from "./ListingFollowupInsights";
 import ListingFollowupQueue from "./ListingFollowupQueue";
 import ListingFollowupCalendar from "./ListingFollowupCalendar";
+import ListingQuickMessage from "./ListingQuickMessage";
 
 type Creator={
   id:number;creator_code:string|null;name:string|null;username:string|null;platform:string|null;
@@ -441,6 +442,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
             {selectedSocialLinks.length?<div className="listing-v2-social-links">{selectedSocialLinks.map(([key,url])=><a key={key} href={String(url)} target="_blank" rel="noreferrer"><span>{key==="x"?"X":key.charAt(0).toUpperCase()+key.slice(1)}</span><b>↗</b></a>)}</div>:<p className="listing-v2-social-empty">{selectedCreator?"Belum ada link sosial. Tambahkan Instagram, TikTok, Facebook, Lemon8, YouTube, atau platform lainnya.":"Hubungkan listing ke Master Creator untuk menyimpan profil sosial."}</p>}
             {selectedCreator?.social_profile_updated_at&&<small>Profil diperbarui {new Date(selectedCreator.social_profile_updated_at).toLocaleString("id-ID")}</small>}
           </section>
+          <ListingQuickMessage workspaceId={workspaceId} listing={selected} creatorUsername={selectedCreator?.username||null} picName={followupOwners.find(x=>x.id===selected.follow_up_owner_user_id)?.full_name||null}/>
           <div className="listing-v2-detail-actions"><button className="primary" onClick={()=>openActivity(selected,"Follow Up")}>+ Tambah Follow Up</button><button className="secondary" onClick={()=>openEdit(selected)}>Edit Listing</button>{selected.post_link&&<a href={selected.post_link} target="_blank" rel="noreferrer">Buka Konten</a>}</div>
           <div className="listing-v2-timeline-head"><div><h4>Activity Timeline</h4><p>Riwayat listing, follow up, sample, konten, dan hasil creator.</p></div></div>
           {detailLoading?<div className="listing-v2-empty small">Memuat timeline...</div>:activities.length===0?<div className="listing-v2-empty small">Belum ada aktivitas.</div>:
