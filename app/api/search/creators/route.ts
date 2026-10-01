@@ -11,7 +11,7 @@ export async function GET(req:NextRequest){
     const limit=Math.min(30,Math.max(5,Number(searchParams.get("limit")||15)));
     if(!workspaceId)return NextResponse.json({ok:false,error:"workspace_id required"},{status:400});
     const {admin}=await getServerContext(workspaceId);
-    const {data,error}=await admin.rpc("luma_get_master_creators_unique_v2",{
+    const {data,error}=await admin.rpc("luma_get_master_creators_unique_v3",{
       p_workspace_id:workspaceId,
       p_search:q||null,
       p_page:1,
