@@ -4,6 +4,7 @@ import {useEffect,useMemo,useState} from "react";
 import {createClient} from "../../lib/supabase-browser";
 import {CreatorAutocomplete,ProductAutocomplete,CreatorSearchResult,ProductSearchResult,resolveOrCreateCreator} from "./SmartAutocomplete";
 import ListingFollowupInsights from "./ListingFollowupInsights";
+import ListingFollowupQueue from "./ListingFollowupQueue";
 
 type Creator={
   id:number;creator_code:string|null;name:string|null;username:string|null;platform:string|null;
@@ -349,6 +350,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
 
     {error&&<div className="listing-v2-alert error">{error}</div>}
     {message&&<div className="listing-v2-alert success">{message}</div>}
+    <ListingFollowupQueue workspaceId={workspaceId}/>
     <ListingFollowupInsights workspaceId={workspaceId} startDate={dateStart||undefined} endDate={dateEnd||undefined}/>
 
     {showForm&&<section className="listing-v2-editor">
