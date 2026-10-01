@@ -113,6 +113,10 @@ export async function POST(req:NextRequest){
   const ctx=await getServerContext(workspaceId);if(!ctx.canManage)return NextResponse.json({ok:false,error:"Role Anda tidak dapat melakukan import."},{status:403});const {admin}=ctx;
   const hostCheck=await admin.from("live_hosts").select("id,status,name,username").eq("workspace_id",workspaceId).eq("id",hostId).maybeSingle();
   if(hostCheck.error||!hostCheck.data?.id||hostCheck.data.status!=="active")return NextResponse.json({ok:false,error:"Host tidak valid atau tidak aktif. Tambahkan/pilih host dari Host 360."},{status:400});
+  const storeProfile=await admin.from("live_store_profiles").upsert({
+    workspace_id:workspaceId,platform,store_name:storeName,store_id:storeId,store_username:storeUsername,status:"active",created_by:ctx.user.id,updated_at:new Date().toISOString()
+  },{onConflict:"workspace_id,platform,store_id"});
+  if(storeProfile.error)throw storeProfile.error;
   if(fileHash){
    const dup=await admin.from("live_imports").select("id,import_id").eq("workspace_id",workspaceId).eq("file_hash",fileHash).eq("status","completed").limit(1);
    if(dup.data?.length)return NextResponse.json({ok:false,error:"File identik sudah pernah diimport ke Live Streaming.",duplicate_import_id:dup.data[0].import_id},{status:409});
