@@ -18,7 +18,7 @@ const typeLabel=(d?:LiveDetection|null)=>d?.dataset_type==="shopee_session_list"
 export default function LiveUploadPanel({workspaceId}:{workspaceId:string}){
  const supabase=useMemo(()=>createClient(),[]);
  const [file,setFile]=useState<File|null>(null),[matrix,setMatrix]=useState<any[][]>([]),[rows,setRows]=useState<Row[]>([]),[mapping,setMapping]=useState<Record<string,string>>({});
- const [busy,setBusy]=useState(false),[msg,setMsg]=useState(""),[history,setHistory]=useState<any[]>([]);
+ const [busy,setBusy]=useState(false),[removingId,setRemovingId]=useState(""),[msg,setMsg]=useState(""),[history,setHistory]=useState<any[]>([]);
  const [detection,setDetection]=useState<LiveDetection|null>(null),[parsed,setParsed]=useState<ParsedLivePayload|null>(null),[fileHash,setFileHash]=useState(""),[delimiter,setDelimiter]=useState(""),[sourceSheet,setSourceSheet]=useState("");
  const headers=Object.keys(rows[0]||{});
 
@@ -68,6 +68,16 @@ export default function LiveUploadPanel({workspaceId}:{workspaceId:string}){
   }catch(e:any){setMsg(e.message||"Import gagal")}finally{setBusy(false)}
  }
 
+ async function removeImport(item:any){
+   const id=String(item.import_id||"");if(!id||removingId)return;
+   if(!window.confirm("Hapus file ini dan seluruh data Live yang berasal dari file tersebut? Tindakan ini tidak dapat dibatalkan."))return;
+   setRemovingId(id);setMsg("Menghapus import dan data terkait...");
+   const x=await supabase.rpc("luma_delete_live_import_v1",{p_workspace_id:workspaceId,p_import_id:id});
+   if(x.error)setMsg(x.error.message);
+   else{setMsg("Import dan data terkait sudah dihapus.");await loadHistory();window.dispatchEvent(new CustomEvent("lumaway-live-updated"))}
+   setRemovingId("");
+ }
+
  const preview=parsed?.preview||[];
  const previewKeys=Object.keys(preview[0]||{}).filter(k=>k!=="raw_payload").slice(0,10);
  const normalizedCount=(parsed?.normalized_rows?.length||0)+(parsed?.overview?1:0)+(parsed?.traffic_sources?.length||0);
@@ -91,6 +101,6 @@ export default function LiveUploadPanel({workspaceId}:{workspaceId:string}){
    <button disabled={busy||detection?.dataset_type==="generic"&&!rows.length} onClick={()=>void submit()}>{busy?"Mengimport...":"Import ke Live Streaming"}</button>
   </section>}
 
-  <section className="live-import-history"><header><span>IMPORT HISTORY</span><h3>Upload Live terbaru</h3></header>{history.length?history.map(x=><article key={x.id}><div><strong>{x.filename}</strong><small>{x.import_id} · {x.platform||"-"} · {x.dataset_type||"legacy"} · {new Date(x.created_at).toLocaleString("id-ID")}</small></div><div><b>{x.persisted_rows} row</b><span className={"status-"+x.status}>{x.status}</span></div></article>):<SmartEmptyState compact eyebrow="LIVE STREAMING" title="Belum ada upload Live Streaming" description="Upload report Shopee atau TikTok pertama agar Analytics, Data Health, dan Product Intelligence mulai terisi." primaryLabel="Pilih file Live" onPrimary={()=>document.querySelector<HTMLInputElement>('.live-drop input[type="file"]')?.click()} checklist={["Shopee Live List / Product List / Overview","TikTok Live Performance Core Stats"]} hint="Format angka, tanggal, durasi, dan delimiter akan dinormalisasi otomatis."/>}</section>
+  <section className="live-import-history"><header><div><span>IMPORT HISTORY</span><h3>Upload Live terbaru</h3></div><small>Hapus akan membersihkan data sumber dan history import</small></header>{history.length?history.map(x=><article key={x.id}><div><strong>{x.filename}</strong><small>{x.import_id} · {x.platform||"-"} · {x.dataset_type||"legacy"} · {new Date(x.created_at).toLocaleString("id-ID")}</small></div><div className="live-history-actions"><div><b>{x.persisted_rows} row</b><span className={"status-"+x.status}>{x.status}</span></div><button className="danger" disabled={removingId===x.import_id} onClick={()=>void removeImport(x)}>{removingId===x.import_id?"Menghapus...":"Hapus"}</button></div></article>):<SmartEmptyState compact eyebrow="LIVE STREAMING" title="Belum ada upload Live Streaming" description="Upload report Shopee atau TikTok pertama agar Analytics, Data Health, dan Product Intelligence mulai terisi." primaryLabel="Pilih file Live" onPrimary={()=>document.querySelector<HTMLInputElement>('.live-drop input[type="file"]')?.click()} checklist={["Shopee Live List / Product List / Overview","TikTok Live Performance Core Stats"]} hint="Format angka, tanggal, durasi, dan delimiter akan dinormalisasi otomatis."/>}</section>
  </div>
 }
