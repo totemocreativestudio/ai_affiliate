@@ -152,7 +152,7 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
 
   useEffect(() => {
     void load();
-    const timer = window.setInterval(() => void load(), 15000);
+    const timer = window.setInterval(() => void load(), 30000);
     const onVisible = () => { if (document.visibilityState === "visible") void load(); };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
