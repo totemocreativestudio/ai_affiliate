@@ -6,7 +6,8 @@ import {CreatorAutocomplete,ProductAutocomplete,CreatorSearchResult,ProductSearc
 import ListingFollowupInsights from "./ListingFollowupInsights";
 import ListingFollowupQueue from "./ListingFollowupQueue";
 import ListingFollowupCalendar from "./ListingFollowupCalendar";
-import ListingQuickMessage from "./ListingQuickMessage";\nimport ListingContactReadiness from "./ListingContactReadiness";
+import ListingQuickMessage from "./ListingQuickMessage";
+import ListingContactReadiness from "./ListingContactReadiness";
 
 type Creator={
   id:number;creator_code:string|null;name:string|null;username:string|null;platform:string|null;
