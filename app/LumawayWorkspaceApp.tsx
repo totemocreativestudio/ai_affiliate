@@ -70,6 +70,7 @@ import LumawayExperienceLayer from "./components/LumawayExperienceLayer";
 import BackgroundTaskCenter from "./components/BackgroundTaskCenter";
 import LumawayAuthExperience from "./components/LumawayAuthExperience";
 import ContextualTutorial from "./components/ContextualTutorial";
+import PerformanceExperienceLayer from "./components/PerformanceExperienceLayer";
 
 type Profile = { id: string; email: string | null; full_name: string | null; nickname: string | null; role: string; active: boolean; phone: string | null; phone_verified_at: string | null; email_verified_at: string | null; education: string | null; birth_date: string | null; bio: string | null; position_title: string | null; profile_completed: boolean; password_configured_at: string | null };
 type Workspace = { id: string; name: string; slug: string; status: string };
@@ -481,6 +482,7 @@ export default function LumawayWorkspaceApp() {
   const isAdmin = profile.role === "admin";
   return <div className="luma-app">
     <LumawayExperienceLayer />
+    <PerformanceExperienceLayer />
     <TableSortEnhancer />
     <SystemStatusGate workspaceId={workspace.id} isAdmin={isAdmin} />
     <LumaSidebar profile={profile} workspace={workspace} onLogout={logout} accessLocked={accessLocked} />
