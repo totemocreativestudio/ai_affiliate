@@ -12,11 +12,12 @@ type Creator={
   profile_url?:string|null;avatar_url?:string|null;social_links?:Record<string,string>|null;social_profile_updated_at?:string|null;
 };
 type Product={id:number;sku:string;product_name:string|null;category:string|null;cost_price:number|null};
+type FollowupOwner={id:string;full_name:string|null;email:string|null;username:string|null;membership_role?:string|null};
 type Listing={
   id:number;data_date:string|null;creator_id:number|null;creator_name:string|null;platform:string|null;
   product_master_id:number|null;product_name:string|null;sku:string|null;product_hpp:number|null;stage:string|null;
   payment_type:string|null;ratecard:number;posting_date:string|null;post_link:string|null;next_action:string|null;
-  agreement_id:string|null;follow_up_channel:string|null;next_follow_up_at:string|null;follow_up_priority:string|null;follow_up_completed_at:string|null;notes:string|null;
+  agreement_id:string|null;follow_up_channel:string|null;next_follow_up_at:string|null;follow_up_priority:string|null;follow_up_completed_at:string|null;follow_up_owner_user_id:string|null;notes:string|null;
 };
 type Activity={
   id:number;listing_id:number;creator_id:number|null;activity_date:string;activity_type:string;
@@ -24,7 +25,7 @@ type Activity={
 };
 type FormState={
   data_date:string;creator_id:string;creator_name:string;platform:string;product_master_id:string;product_hpp:string;
-  stage:string;payment_type:string;ratecard:string;posting_date:string;post_link:string;next_action:string;agreement_id:string;follow_up_channel:string;next_follow_up_at:string;follow_up_priority:string;notes:string;
+  stage:string;payment_type:string;ratecard:string;posting_date:string;post_link:string;next_action:string;agreement_id:string;follow_up_channel:string;next_follow_up_at:string;follow_up_priority:string;follow_up_owner_user_id:string;notes:string;
 };
 
 const FOLLOW_UP_CHANNELS=["WhatsApp","DM Instagram","DM TikTok","Email","Telepon","Shopee Chat","TikTok Shop Chat","Agency / PIC","Offline","Lainnya"];
@@ -35,7 +36,7 @@ const ACTIVITY_STAGE:Record<string,string>={
   "Sample Received":"Content In Progress","Take Video":"Content In Progress","Video Upload":"Uploaded","Live":"Live",
   "Deal":"Won / Active","Rejected":"Lost / Inactive","No Response":"Follow Up",
 };
-const EMPTY_FORM:FormState={data_date:"",creator_id:"",creator_name:"",platform:"",product_master_id:"",product_hpp:"0",stage:"New Lead",payment_type:"",ratecard:"",posting_date:"",post_link:"",next_action:"",agreement_id:"",follow_up_channel:"",next_follow_up_at:"",follow_up_priority:"normal",notes:""};
+const EMPTY_FORM:FormState={data_date:"",creator_id:"",creator_name:"",platform:"",product_master_id:"",product_hpp:"0",stage:"New Lead",payment_type:"",ratecard:"",posting_date:"",post_link:"",next_action:"",agreement_id:"",follow_up_channel:"",next_follow_up_at:"",follow_up_priority:"normal",follow_up_owner_user_id:"",notes:""};
 const toLocalInput=(value:string|null)=>{if(!value)return"";const d=new Date(value);const off=d.getTimezoneOffset();return new Date(d.getTime()-off*60000).toISOString().slice(0,16)};
 const money=(value:any)=>"Rp "+new Intl.NumberFormat("id-ID",{maximumFractionDigits:0}).format(Number(value||0));
 const dateLabel=(value:string|null)=>value?new Date(value+"T00:00:00").toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"}):"-";
@@ -59,6 +60,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
   const [rows,setRows]=useState<Listing[]>([]);
   const [creators,setCreators]=useState<Creator[]>([]);
   const [products,setProducts]=useState<Product[]>([]);
+  const [followupOwners,setFollowupOwners]=useState<FollowupOwner[]>([]);
   const [masterCreators,setMasterCreators]=useState<Creator[]>([]);
   const [masterCreatorSearch,setMasterCreatorSearch]=useState("");
   const [masterCreatorPage,setMasterCreatorPage]=useState(1);
@@ -96,10 +98,11 @@ export default function Listings({workspaceId}:{workspaceId:string}){
 
   async function loadData(){
     setLoading(true);setError("");
-    const [listingResult,creatorResult,productResult]=await Promise.all([
-      supabase.from("listings").select("id,data_date,creator_id,creator_name,platform,product_master_id,product_name,sku,product_hpp,stage,payment_type,ratecard,posting_date,post_link,next_action,agreement_id,follow_up_channel,next_follow_up_at,follow_up_priority,follow_up_completed_at,notes").eq("workspace_id",workspaceId).order("id",{ascending:false}),
+    const [listingResult,creatorResult,productResult,memberResult]=await Promise.all([
+      supabase.from("listings").select("id,data_date,creator_id,creator_name,platform,product_master_id,product_name,sku,product_hpp,stage,payment_type,ratecard,posting_date,post_link,next_action,agreement_id,follow_up_channel,next_follow_up_at,follow_up_priority,follow_up_completed_at,follow_up_owner_user_id,notes").eq("workspace_id",workspaceId).order("id",{ascending:false}),
       supabase.from("creators").select("id,creator_code,name,username,platform,affiliate_id,phone,payment_type,ratecard,status,profile_url,avatar_url,social_links,social_profile_updated_at").eq("workspace_id",workspaceId).order("name").limit(7770),
       supabase.from("product_master").select("id,sku,product_name,category,cost_price").eq("workspace_id",workspaceId).order("sku").limit(1000),
+      supabase.from("workspace_members").select("user_id,membership_role").eq("workspace_id",workspaceId),
     ]);
     if(listingResult.error)setError(listingResult.error.message); else {
       const data=(listingResult.data||[]) as Listing[];
@@ -108,6 +111,14 @@ export default function Listings({workspaceId}:{workspaceId:string}){
     }
     if(!creatorResult.error)setCreators((creatorResult.data||[]) as Creator[]);
     if(!productResult.error)setProducts((productResult.data||[]) as Product[]);
+    if(!memberResult.error){
+      const roleById=new Map((memberResult.data||[]).map((m:any)=>[m.user_id,m.membership_role]));
+      const ids=(memberResult.data||[]).map((m:any)=>m.user_id).filter(Boolean);
+      if(ids.length){
+        const profilesResult=await supabase.from("profiles").select("id,full_name,email,username").in("id",ids).eq("active",true);
+        if(!profilesResult.error)setFollowupOwners((profilesResult.data||[]).map((p:any)=>({...p,membership_role:roleById.get(p.id)||null})).sort((a:any,b:any)=>String(a.full_name||a.username||a.email||"").localeCompare(String(b.full_name||b.username||b.email||""),"id")));
+      }else setFollowupOwners([]);
+    }
     setLoading(false);
   }
 
@@ -184,7 +195,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
       platform:row.platform||"",product_master_id:row.product_master_id?.toString()||"",product_hpp:String(row.product_hpp||0),
       stage:row.stage||"New Lead",payment_type:row.payment_type||"",ratecard:row.ratecard?.toString()||"",
       posting_date:row.posting_date||"",post_link:row.post_link||"",next_action:row.next_action||"",
-      agreement_id:row.agreement_id||"",follow_up_channel:row.follow_up_channel||"",next_follow_up_at:toLocalInput(row.next_follow_up_at),follow_up_priority:row.follow_up_priority||"normal",notes:row.notes||"",
+      agreement_id:row.agreement_id||"",follow_up_channel:row.follow_up_channel||"",next_follow_up_at:toLocalInput(row.next_follow_up_at),follow_up_priority:row.follow_up_priority||"normal",follow_up_owner_user_id:row.follow_up_owner_user_id||"",notes:row.notes||"",
     });
     setCreatorSearch(row.creator_name||"");setProductSearch(row.sku||row.product_name||"");setManualCreatorConfirmed(!row.creator_id&&Boolean(row.creator_name));
     setError("");setShowForm(true);
@@ -207,7 +218,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
       platform:form.platform||creator?.platform||null,product_master_id:form.product_master_id?Number(form.product_master_id):null,
       product_name:product?.product_name||null,sku:product?.sku||null,product_hpp:product?.cost_price!=null?Number(product.cost_price):Number(form.product_hpp||0),
       stage:form.stage||"New Lead",payment_type:form.payment_type||null,ratecard:form.ratecard?Number(form.ratecard):0,
-      posting_date:form.posting_date||null,post_link:form.post_link||null,next_action:form.next_action||null,agreement_id:form.agreement_id||null,follow_up_channel:form.follow_up_channel||null,next_follow_up_at:form.next_follow_up_at?new Date(form.next_follow_up_at).toISOString():null,follow_up_priority:form.follow_up_priority||"normal",follow_up_completed_at:form.next_follow_up_at?null:null,notes:form.notes||null,
+      posting_date:form.posting_date||null,post_link:form.post_link||null,next_action:form.next_action||null,agreement_id:form.agreement_id||null,follow_up_channel:form.follow_up_channel||null,next_follow_up_at:form.next_follow_up_at?new Date(form.next_follow_up_at).toISOString():null,follow_up_priority:form.follow_up_priority||"normal",follow_up_owner_user_id:form.follow_up_owner_user_id||null,follow_up_completed_at:form.next_follow_up_at?null:null,notes:form.notes||null,
     };
 
     if(editingId!==null){
@@ -380,6 +391,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
         <label><span>Follow Up Via</span><select value={form.follow_up_channel} onChange={e=>updateField("follow_up_channel",e.target.value)}><option value="">Pilih channel</option>{FOLLOW_UP_CHANNELS.map(x=><option key={x}>{x}</option>)}</select><small>Channel utama / terakhir yang dipakai untuk komunikasi creator.</small></label>
         <label><span>Next Follow Up</span><input type="datetime-local" value={form.next_follow_up_at} onChange={e=>updateField("next_follow_up_at",e.target.value)}/><small>Jadwal tindak lanjut berikutnya.</small></label>
         <label><span>Priority</span><select value={form.follow_up_priority} onChange={e=>updateField("follow_up_priority",e.target.value)}><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></label>
+        <label><span>PIC Follow Up</span><select value={form.follow_up_owner_user_id} onChange={e=>updateField("follow_up_owner_user_id",e.target.value)}><option value="">Belum ditentukan</option>{followupOwners.map(x=><option key={x.id} value={x.id}>{x.full_name||x.username||x.email}{x.membership_role?" · "+x.membership_role:""}</option>)}</select><small>PIC menerima reminder in-app saat follow-up mendekati jatuh tempo.</small></label>
         <label><span>Agreement ID</span><input value={form.agreement_id} onChange={e=>updateField("agreement_id",e.target.value)} placeholder="Optional"/></label>
         <label className="wide"><span>Notes</span><textarea rows={3} value={form.notes} onChange={e=>updateField("notes",e.target.value)} placeholder="Catatan listing..."/></label>
       </div>
@@ -418,6 +430,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
             <div><span>Follow Up Via</span><b>{selected.follow_up_channel||"-"}</b></div>
             <div><span>Next Follow Up</span><b>{selected.next_follow_up_at?new Date(selected.next_follow_up_at).toLocaleString("id-ID"):"-"}</b></div>
             <div><span>Priority</span><b>{selected.follow_up_priority||"normal"}</b></div>
+            <div><span>PIC Follow Up</span><b>{followupOwners.find(x=>x.id===selected.follow_up_owner_user_id)?.full_name||followupOwners.find(x=>x.id===selected.follow_up_owner_user_id)?.username||"-"}</b></div>
             <div><span>Product</span><b>{selected.product_name||"-"}</b></div>
             <div><span>SKU</span><b>{selected.sku||"-"}</b></div>
           </div>
