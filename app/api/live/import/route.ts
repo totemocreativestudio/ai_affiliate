@@ -111,7 +111,7 @@ export async function POST(req:NextRequest){
   if(!workspaceId||(!normalizedRows.length&&!rawRows.length&&!b.overview))return NextResponse.json({ok:false,error:"Workspace dan data wajib diisi."},{status:400});
 
   const ctx=await getServerContext(workspaceId);if(!ctx.canManage)return NextResponse.json({ok:false,error:"Role Anda tidak dapat melakukan import."},{status:403});const {admin}=ctx;
-  const hostCheck=await admin.from("live_hosts").select("id,status").eq("workspace_id",workspaceId).eq("id",hostId).maybeSingle();
+  const hostCheck=await admin.from("live_hosts").select("id,status,name,username").eq("workspace_id",workspaceId).eq("id",hostId).maybeSingle();
   if(hostCheck.error||!hostCheck.data?.id||hostCheck.data.status!=="active")return NextResponse.json({ok:false,error:"Host tidak valid atau tidak aktif. Tambahkan/pilih host dari Host 360."},{status:400});
   if(fileHash){
    const dup=await admin.from("live_imports").select("id,import_id").eq("workspace_id",workspaceId).eq("file_hash",fileHash).eq("status","completed").limit(1);
@@ -148,14 +148,12 @@ export async function POST(req:NextRequest){
     gimmick:findHeader(first,["Gimmick","Live Gimmick","Promo Mechanic"])
   };
   const map={...auto,...overrides};
-  let persisted=0;const hostCache=new Map<string,string>();const sessionCache=new Map<string,string>();let minDate="",maxDate="";
+  let persisted=0;const sessionCache=new Map<string,string>();let minDate="",maxDate="";
+  const selectedHostId=hostId,selectedHostName=clean(hostCheck.data?.name)||clean(hostCheck.data?.username)||"Host";
   for(const row of rows){
-    const hostUsername=clean(raw(row,map.host_username)||raw(row,map.host_name)||"Unknown Host");const hostName=clean(raw(row,map.host_name)||hostUsername);const hostKey=hostUsername.toLowerCase();
-    let hostId=hostCache.get(hostKey);
-    if(!hostId){const ex=await admin.from("live_hosts").select("id").eq("workspace_id",workspaceId).or("username.ilike."+hostUsername+",name.ilike."+hostName).limit(1).maybeSingle();if(ex.data?.id)hostId=ex.data.id;else{const cr=await admin.from("live_hosts").insert({workspace_id:workspaceId,name:hostName,username:hostUsername,platform,host_type:"inhouse",status:"active"}).select("id").single();if(cr.error)throw cr.error;hostId=cr.data.id}hostCache.set(hostKey,hostId!)}
     const fallback=new Date().toISOString().slice(0,10);const metricDate=dateOnly(raw(row,map.metric_date),fallback);if(!minDate||metricDate<minDate)minDate=metricDate;if(!maxDate||metricDate>maxDate)maxDate=metricDate;
-    const title=clean(raw(row,map.session_title))||("Live "+hostName+" "+metricDate);const sessionKey=hostId+"|"+title.toLowerCase()+"|"+metricDate;let sessionId=sessionCache.get(sessionKey);
-    if(!sessionId){const ex=await admin.from("live_sessions").select("id").eq("workspace_id",workspaceId).eq("host_id",hostId).eq("session_date",metricDate).ilike("title",title).limit(1).maybeSingle();if(ex.data?.id)sessionId=ex.data.id;else{const cr=await admin.from("live_sessions").insert({workspace_id:workspaceId,host_id:clean(b.host_id)||hostId,title,platform,store_name:storeName,store_id:storeId,store_username:storeUsername,campaign_name:clean(raw(row,map.campaign_name))||null,gimmick:clean(raw(row,map.gimmick))||null,session_date:metricDate,status:"completed"}).select("id").single();if(cr.error)throw cr.error;sessionId=cr.data.id}sessionCache.set(sessionKey,sessionId!)}
+    const title=clean(raw(row,map.session_title))||("Live "+selectedHostName+" "+metricDate);const sessionKey=selectedHostId+"|"+title.toLowerCase()+"|"+metricDate;let sessionId=sessionCache.get(sessionKey);
+    if(!sessionId){const ex=await admin.from("live_sessions").select("id").eq("workspace_id",workspaceId).eq("host_id",selectedHostId).eq("session_date",metricDate).ilike("title",title).limit(1).maybeSingle();if(ex.data?.id)sessionId=ex.data.id;else{const cr=await admin.from("live_sessions").insert({workspace_id:workspaceId,host_id:selectedHostId,title,platform,store_name:storeName,store_id:storeId,store_username:storeUsername,campaign_name:clean(raw(row,map.campaign_name))||null,gimmick:clean(raw(row,map.gimmick))||null,session_date:metricDate,status:"completed"}).select("id").single();if(cr.error)throw cr.error;sessionId=cr.data.id}sessionCache.set(sessionKey,sessionId!)}
     const performance={workspace_id:workspaceId,session_id:sessionId,metric_date:metricDate,store_name:storeName,store_id:storeId,store_username:storeUsername,hour_bucket:hourValue(raw(row,map.hour)),gmv:num(raw(row,map.gmv)),orders:num(raw(row,map.orders)),qty:num(raw(row,map.qty)),active_viewers:num(raw(row,map.active_viewers)),peak_viewers:num(raw(row,map.peak_viewers)),avg_viewers:num(raw(row,map.avg_viewers)),clicks:num(raw(row,map.clicks)),impressions:num(raw(row,map.impressions)),ctr:num(raw(row,map.ctr)),cvr:num(raw(row,map.cvr)),duration_minutes:num(raw(row,map.duration_minutes)),source_import_id:importId};
     const ins=await admin.from("live_session_performance").insert(performance);if(ins.error)throw ins.error;persisted++;
   }
