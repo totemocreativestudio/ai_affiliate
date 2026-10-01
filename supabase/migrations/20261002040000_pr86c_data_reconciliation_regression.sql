@@ -516,3 +516,194 @@ $$;
 
 revoke all on function public.luma_data_reconciliation_v1(uuid,date,date,text,text) from public,anon;
 grant execute on function public.luma_data_reconciliation_v1(uuid,date,date,text,text) to authenticated,service_role;
+
+
+create or replace function public.get_creator_360_v2(
+  p_workspace_id uuid,
+  p_creator_id bigint,
+  p_start_date date default null,
+  p_end_date date default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path=public,pg_temp
+as $$
+declare
+  v_creator jsonb;
+  v_identity text;
+  v_manual jsonb;
+  v_kpi jsonb;
+  v_products jsonb;
+  v_samples jsonb;
+  v_stores jsonb;
+  v_agreement jsonb;
+  v_top_category text;
+begin
+  if auth.uid() is null then raise exception 'Authentication required' using errcode='42501'; end if;
+  if not public.luma_has_workspace(p_workspace_id) and not public.luma_is_admin() then raise exception 'Workspace access denied' using errcode='42501'; end if;
+
+  select to_jsonb(c),coalesce(c.identity_key,public.luma_creator_identity_key(c.username,c.name,c.creator_code,c.platform))
+  into v_creator,v_identity
+  from public.creators c
+  where c.id=p_creator_id and c.workspace_id=p_workspace_id;
+  if v_creator is null then raise exception 'Creator not found'; end if;
+
+  select to_jsonb(x)-'id'-'workspace_id'-'creator_id' into v_manual
+  from public.creator_360_profiles x
+  where x.workspace_id=p_workspace_id
+    and x.creator_id in (
+      select c.id from public.creators c
+      where c.workspace_id=p_workspace_id
+        and coalesce(c.identity_key,public.luma_creator_identity_key(c.username,c.name,c.creator_code,c.platform))=v_identity
+    )
+  order by x.updated_at desc nulls last limit 1;
+  v_manual:=coalesce(v_manual,'{"favorite":false,"rating":0,"program_status":"Not Joined","top_creator":false,"ads_support":0,"target_sales":0,"target_live":0,"target_video":0,"video_links":[]}'::jsonb);
+
+  with creator_ids as (
+    select c.id,c.name
+    from public.creators c
+    where c.workspace_id=p_workspace_id
+      and coalesce(c.identity_key,public.luma_creator_identity_key(c.username,c.name,c.creator_code,c.platform))=v_identity
+  ),
+  fs as (
+    select s.* from public.sales s
+    where s.workspace_id=p_workspace_id
+      and s.creator_id in (select id from creator_ids)
+      and (p_start_date is null or s.data_date>=p_start_date)
+      and (p_end_date is null or s.data_date<=p_end_date)
+  ),
+  sale_kpi as (
+    select coalesce(sum(qty),0) qty,coalesce(sum(orders),0) orders,coalesce(sum(gmv),0) gmv,
+      coalesce(sum(commission),0) commission,coalesce(sum(refund),0) refund,
+      coalesce(sum(live_gmv),0) live_gmv,coalesce(sum(video_gmv),0) video_gmv,
+      coalesce(sum(showcase_gmv),0) showcase_gmv,
+      coalesce(sum(case when coalesce(points,0)<>0 then points else coalesce(qty,0)*coalesce(pm.point_per_unit,0) end),0) points
+    from fs left join public.product_master pm on pm.workspace_id=p_workspace_id and pm.sku_normalized=lower(coalesce(fs.sku,''))
+  ),
+  samp as (
+    select coalesce(sum(coalesce(cs.product_value,0)),0) product_value_sent,
+      count(*) filter(where lower(coalesce(cs.sample_status,'')) not in ('cancelled','rejected')) samples_sent
+    from public.creator_samples cs
+    where cs.workspace_id=p_workspace_id
+      and (
+        cs.creator_id in (select id from creator_ids)
+        or (cs.creator_id is null and lower(coalesce(cs.creator_name,'')) in (select lower(coalesce(name,'')) from creator_ids))
+      )
+      and (p_start_date is null or cs.sent_date>=p_start_date)
+      and (p_end_date is null or cs.sent_date<=p_end_date)
+  ),
+  ship as (
+    select coalesce(sum(coalesce(sh.shipping_cost,0)),0) shipping_cost
+    from public.shipping sh
+    where sh.workspace_id=p_workspace_id
+      and (
+        sh.creator_id in (select id from creator_ids)
+        or (sh.creator_id is null and lower(coalesce(sh.creator_name,'')) in (select lower(coalesce(name,'')) from creator_ids))
+      )
+      and (p_start_date is null or sh.data_date>=p_start_date)
+      and (p_end_date is null or sh.data_date<=p_end_date)
+  )
+  select jsonb_build_object(
+    'qty',sale_kpi.qty,'orders',sale_kpi.orders,'gmv',sale_kpi.gmv,'commission',sale_kpi.commission,
+    'refund',sale_kpi.refund,'live_gmv',sale_kpi.live_gmv,'video_gmv',sale_kpi.video_gmv,
+    'showcase_gmv',sale_kpi.showcase_gmv,'points',sale_kpi.points,
+    'product_value_sent',samp.product_value_sent,'samples_sent',samp.samples_sent,'shipping_cost',ship.shipping_cost
+  ) into v_kpi
+  from sale_kpi,samp,ship;
+
+  with creator_ids as (
+    select c.id,c.name from public.creators c
+    where c.workspace_id=p_workspace_id
+      and coalesce(c.identity_key,public.luma_creator_identity_key(c.username,c.name,c.creator_code,c.platform))=v_identity
+  )
+  select coalesce(jsonb_agg(to_jsonb(q) order by q.gmv desc),'[]'::jsonb) into v_products
+  from (
+    select coalesce(nullif(s.product_name,''),nullif(s.sku,''),'Unknown Product') product_name,s.sku,
+      coalesce(sum(s.qty),0) qty,coalesce(sum(s.orders),0) orders,coalesce(sum(s.gmv),0) gmv,coalesce(sum(s.commission),0) commission
+    from public.sales s
+    where s.workspace_id=p_workspace_id
+      and s.creator_id in (select id from creator_ids)
+      and (p_start_date is null or s.data_date>=p_start_date)
+      and (p_end_date is null or s.data_date<=p_end_date)
+      and (s.sku is not null or s.product_name is not null)
+    group by coalesce(nullif(s.product_name,''),nullif(s.sku,''),'Unknown Product'),s.sku
+    order by gmv desc limit 10
+  ) q;
+
+  with creator_ids as (
+    select c.id,c.name from public.creators c
+    where c.workspace_id=p_workspace_id
+      and coalesce(c.identity_key,public.luma_creator_identity_key(c.username,c.name,c.creator_code,c.platform))=v_identity
+  )
+  select coalesce(jsonb_agg(to_jsonb(q) order by q.sent_date desc nulls last),'[]'::jsonb) into v_samples
+  from (
+    select cs.id,cs.sent_date,cs.product_name,cs.sku,cs.qty,cs.product_value,cs.sample_status,cs.tracking
+    from public.creator_samples cs
+    where cs.workspace_id=p_workspace_id
+      and (
+        cs.creator_id in (select id from creator_ids)
+        or (cs.creator_id is null and lower(coalesce(cs.creator_name,'')) in (select lower(coalesce(name,'')) from creator_ids))
+      )
+      and (p_start_date is null or cs.sent_date>=p_start_date)
+      and (p_end_date is null or cs.sent_date<=p_end_date)
+    order by cs.sent_date desc nulls last limit 25
+  ) q;
+
+  with creator_ids as (
+    select c.id from public.creators c
+    where c.workspace_id=p_workspace_id
+      and coalesce(c.identity_key,public.luma_creator_identity_key(c.username,c.name,c.creator_code,c.platform))=v_identity
+  )
+  select category into v_top_category
+  from public.sales s
+  where s.workspace_id=p_workspace_id
+    and s.creator_id in (select id from creator_ids)
+    and category is not null
+    and (p_start_date is null or data_date>=p_start_date)
+    and (p_end_date is null or data_date<=p_end_date)
+  group by category order by sum(gmv) desc nulls last limit 1;
+
+  with creator_names as (
+    select lower(coalesce(c.name,'')) name
+    from public.creators c
+    where c.workspace_id=p_workspace_id
+      and coalesce(c.identity_key,public.luma_creator_identity_key(c.username,c.name,c.creator_code,c.platform))=v_identity
+  )
+  select jsonb_build_object('status',coalesce(a.document_status,'Not Active'),'agreement_id',a.agreement_id,'start_date',a.start_date,'end_date',a.end_date,'support_status',a.support_status)
+  into v_agreement
+  from public.agreements a
+  where a.workspace_id=p_workspace_id
+    and lower(coalesce(a.creator_name,'')) in (select name from creator_names)
+    and (a.end_date is null or a.end_date>=coalesce(p_start_date,current_date))
+  order by a.start_date desc nulls last,a.id desc limit 1;
+  v_agreement:=coalesce(v_agreement,'{"status":"Not Active"}'::jsonb);
+
+  with creator_ids as (
+    select c.id from public.creators c
+    where c.workspace_id=p_workspace_id
+      and coalesce(c.identity_key,public.luma_creator_identity_key(c.username,c.name,c.creator_code,c.platform))=v_identity
+  )
+  select coalesce(jsonb_agg(to_jsonb(q) order by q.gmv desc),'[]'::jsonb) into v_stores
+  from (
+    select a.store_name,a.platform,
+      case when coalesce(sum(s.gmv),0)>0 or coalesce(sum(s.orders),0)>0 then 'Active' else 'Inactive' end status,
+      coalesce(sum(s.gmv),0) gmv,coalesce(sum(s.orders),0) orders,coalesce(sum(s.qty),0) qty
+    from public.creator_store_affiliations a
+    left join public.sales s on s.workspace_id=a.workspace_id and s.creator_id=a.creator_id
+      and s.platform=a.platform and s.store_name=a.store_name
+      and (p_start_date is null or s.data_date>=p_start_date)
+      and (p_end_date is null or s.data_date<=p_end_date)
+    where a.workspace_id=p_workspace_id and a.creator_id in (select id from creator_ids)
+    group by a.store_name,a.platform
+  ) q;
+
+  return jsonb_build_object(
+    'creator',v_creator,'manual_profile',v_manual,'kpi',v_kpi,'top_products',v_products,
+    'samples',v_samples,'stores',v_stores,'agreement',v_agreement,'top_category',v_top_category
+  );
+end
+$$;
+
+revoke all on function public.get_creator_360_v2(uuid,bigint,date,date) from public,anon;
+grant execute on function public.get_creator_360_v2(uuid,bigint,date,date) to authenticated,service_role;
