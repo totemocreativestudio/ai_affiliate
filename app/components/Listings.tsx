@@ -357,7 +357,8 @@ export default function Listings({workspaceId}:{workspaceId:string}){
 
     {error&&<div className="listing-v2-alert error">{error}</div>}
     {message&&<div className="listing-v2-alert success">{message}</div>}
-    <ListingContactReadiness workspaceId={workspaceId}/>\n    <ListingFollowupQueue workspaceId={workspaceId}/>
+    <ListingContactReadiness workspaceId={workspaceId}/>
+    <ListingFollowupQueue workspaceId={workspaceId}/>
     <ListingFollowupCalendar workspaceId={workspaceId}/>
     <ListingFollowupInsights workspaceId={workspaceId} startDate={dateStart||undefined} endDate={dateEnd||undefined}/>
 
