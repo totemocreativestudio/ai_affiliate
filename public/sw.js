@@ -1,4 +1,4 @@
-const CACHE="lumaway-shell-v85j-1";
+const CACHE="lumaway-shell-v4";
 const STATIC=["/","/dashboard","/offline.html","/manifest.webmanifest","/luma-mark.png"];
 
 self.addEventListener("install",event=>{
@@ -21,10 +21,10 @@ self.addEventListener("fetch",event=>{
   const request=event.request;
   if(request.method!=="GET")return;
   const url=new URL(request.url);
-  if(url.origin!==self.location.origin||isSensitive(url))return;
+  if(url.origin!==self.location.origin||isSensitive(url))return;\n  if(url.pathname.startsWith("/_next/"))return;
 
   if(request.mode==="navigate"){
-    event.respondWith(fetch(request).catch(()=>caches.match("/offline.html")));
+    event.respondWith(fetch(request, { cache: "no-store" }).catch(()=>caches.match("/offline.html")));
     return;
   }
 
