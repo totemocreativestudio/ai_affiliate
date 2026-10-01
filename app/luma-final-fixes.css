@@ -530,3 +530,6 @@ html[data-theme="dark"] .lumaway-loading-screen{background:#080e1b!important;col
 
 /* PR82B Affiliate 360 search + Shipping spend */
 .a360-search-state{padding:13px 14px;color:#777c8f;font-size:11px}.shipping-v2-spend-summary{display:grid;grid-template-columns:1.4fr .6fr;gap:9px;margin:12px 0}.shipping-v2-spend-summary>div{padding:13px 15px;border:1px solid #e4e6ee;border-radius:13px;background:#fff}.shipping-v2-spend-summary span,.shipping-v2-spend-summary strong,.shipping-v2-spend-summary small{display:block}.shipping-v2-spend-summary span{font-size:9px;font-weight:900;letter-spacing:.06em;color:#9195a6;text-transform:uppercase}.shipping-v2-spend-summary strong{font-size:21px;margin-top:4px}.shipping-v2-spend-summary small{font-size:9px;color:#9296a7;margin-top:3px}@media(max-width:650px){.shipping-v2-spend-summary{grid-template-columns:1fr}}
+
+/* PR82E listing follow-up channel */
+.listing-channel-badge{display:inline-flex;align-items:center;width:max-content;margin-top:5px;padding:4px 7px;border-radius:7px;background:#eef1ff;color:#5148b9;font-size:8px;font-weight:900;line-height:1;text-transform:none}.listing-channel-badge.timeline{margin:0 0 4px}.listing-v2-activity-form label small,.listing-v2-form-grid label small{font-size:8px;color:#9397a8;margin-top:4px}
