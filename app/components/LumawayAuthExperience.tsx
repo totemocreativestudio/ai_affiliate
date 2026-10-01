@@ -80,6 +80,8 @@ export default function LumawayAuthExperience({onAuthenticated}:{onAuthenticated
   const [phone,setPhone]=useState("");
   const [otp,setOtp]=useState("");
   const [otpRequested,setOtpRequested]=useState(false);
+  const [resetOtp,setResetOtp]=useState("");
+  const [resetRequested,setResetRequested]=useState(false);
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState("");
   const [error,setError]=useState("");
@@ -97,6 +99,8 @@ export default function LumawayAuthExperience({onAuthenticated}:{onAuthenticated
 
   function go(next:AuthView){
     setView(next);setError("");setMessage("");
+    if(next!=="forgot"){setResetOtp("");setResetRequested(false)}
+    if(next!=="whatsapp"){setOtp("");setOtpRequested(false)}
     const url=new URL(window.location.href);
     if(next==="signup"){
       url.pathname="/register";url.searchParams.delete("view");
@@ -169,11 +173,26 @@ export default function LumawayAuthExperience({onAuthenticated}:{onAuthenticated
     if(!email.trim())return setError("Masukkan email yang terdaftar.");
     setBusy(true);setError("");setMessage("");
     try{
-      const response=await fetch("/api/auth/password-reset",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:email.trim()})});
+      const response=await fetch("/api/auth/password-reset",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"request",email:email.trim()})});
       const result=await response.json().catch(()=>({}));
       if(!response.ok||!result?.ok)throw new Error(String(result?.error||"Permintaan reset password belum dapat diproses."));
-      setMessage("Jika email terdaftar, link reset password Lumaway sudah dikirim. Cek Inbox, Spam, Promotions, atau Junk.");
+      setResetRequested(true);setResetOtp("");
+      setMessage("Jika email terdaftar, kode reset 6 digit dan link alternatif sudah dikirim. Kode berlaku 10 menit. Cek Inbox, Spam, Promotions, atau Junk.");
     }catch(e:any){setError(e?.message||"Permintaan reset password belum dapat diproses.");}
+    finally{setBusy(false)}
+  }
+
+  async function verifyResetOtp(){
+    if(!/^\d{6}$/.test(resetOtp))return setError("Masukkan kode reset 6 digit dari email.");
+    setBusy(true);setError("");setMessage("");
+    try{
+      const response=await fetch("/api/auth/password-reset",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"verify",email:email.trim(),otp:resetOtp})});
+      const result=await response.json().catch(()=>({}));
+      if(!response.ok||!result?.ok||!result?.token_hash)throw new Error(String(result?.error||"Kode reset tidak valid atau sudah kedaluwarsa."));
+      const {error}=await supabase.auth.verifyOtp({token_hash:String(result.token_hash),type:"recovery"});
+      if(error)throw error;
+      window.location.assign("/auth/reset-password");
+    }catch(e:any){setError(e?.message||"Kode reset tidak valid atau sudah kedaluwarsa.");}
     finally{setBusy(false)}
   }
 
@@ -185,8 +204,9 @@ export default function LumawayAuthExperience({onAuthenticated}:{onAuthenticated
       const response=await fetch("/api/auth/whatsapp-otp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"request",phone:normalized})});
       const result=await response.json().catch(()=>({}));
       if(!response.ok||!result?.ok)throw new Error(String(result?.error||"Kode OTP belum dapat dikirim."));
-      setPhone(normalized);setOtpRequested(true);
-      setMessage("Jika nomor terhubung ke akun Lumaway, kode OTP 6 digit sudah dikirim melalui WhatsApp.");
+      setPhone(normalized);setOtpRequested(true);setOtp("");
+      if(result?.channel==="email_fallback")setMessage("Provider WhatsApp sedang bermasalah. Agar Anda tetap bisa masuk, kode 6 digit dikirim ke email akun yang terhubung. Kode berlaku 5 menit.");
+      else setMessage("Jika nomor terhubung ke akun Lumaway, kode OTP 6 digit sudah dikirim melalui WhatsApp. Kode berlaku 5 menit.");
     }catch(e:any){setError(e?.message||"Kode OTP belum dapat dikirim.");}
     finally{setBusy(false)}
   }
@@ -212,7 +232,7 @@ export default function LumawayAuthExperience({onAuthenticated}:{onAuthenticated
     :view==="signup"
       ?"Mulai workspace Anda dan satukan data affiliate, creator, produk, serta insight."
       :view==="forgot"
-        ?"Kami akan mengirim link aman untuk membuat password baru."
+        ?"Kami akan mengirim kode 6 digit dan link aman untuk membuat password baru."
         :view==="whatsapp"
           ?"Gunakan nomor WhatsApp yang sudah terhubung ke akun Lumaway."
           :"Klik link pada email dari Lumaway untuk mengaktifkan akun Anda.";
@@ -235,7 +255,8 @@ export default function LumawayAuthExperience({onAuthenticated}:{onAuthenticated
           </>}
 
           {(view==="signin"||view==="signup"||view==="forgot")&&<div className="auth-v7-fields">
-            <label><span>Email</span><input type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="nama@perusahaan.com"/></label>
+            <label><span>Email</span><input type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="nama@perusahaan.com" disabled={view==="forgot"&&resetRequested}/></label>
+            {view==="forgot"&&resetRequested&&<label><span>Kode reset 6 digit</span><input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={resetOtp} onChange={e=>setResetOtp(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder="Masukkan 6 digit dari email" onKeyDown={e=>{if(e.key==="Enter")void verifyResetOtp()}}/><small className="auth-v7-helper">Kode berlaku 10 menit. Link reset di email tetap bisa digunakan sebagai alternatif.</small></label>}
             {(view==="signin"||view==="signup")&&<label><span>Password</span><div className="auth-v7-password"><input type={showPassword?"text":"password"} autoComplete={view==="signin"?"current-password":"new-password"} value={password} onChange={e=>setPassword(e.target.value)} placeholder={view==="signup"?"Minimal 8 karakter":"Masukkan password"} onKeyDown={e=>{if(e.key==="Enter"&&view==="signin")void signin()}}/><button type="button" aria-label={showPassword?"Sembunyikan password":"Tampilkan password"} onClick={()=>setShowPassword(x=>!x)}><EyeIcon open={showPassword}/></button></div></label>}
           </div>}
 
@@ -252,8 +273,9 @@ export default function LumawayAuthExperience({onAuthenticated}:{onAuthenticated
 
           {view==="signin"&&<button type="button" className="auth-v7-primary" disabled={busy} onClick={()=>void signin()}>{busy?"Memproses...":"Masuk"}</button>}
           {view==="signup"&&<button type="button" className="auth-v7-primary" disabled={busy} onClick={()=>void signup()}>{busy?"Menyiapkan akun...":"Daftar"}</button>}
-          {view==="forgot"&&<button type="button" className="auth-v7-primary" disabled={busy} onClick={()=>void forgot()}>{busy?"Mengirim...":"Kirim link reset password"}</button>}
-          {view==="whatsapp"&&<button type="button" className="auth-v7-primary" disabled={busy} onClick={()=>void (otpRequested?verifyWhatsappOtp():requestWhatsappOtp())}>{busy?"Memproses...":otpRequested?"Verifikasi & masuk":"Kirim kode WhatsApp"}</button>}
+          {view==="forgot"&&!resetRequested&&<button type="button" className="auth-v7-primary" disabled={busy} onClick={()=>void forgot()}>{busy?"Mengirim...":"Kirim kode reset password"}</button>}
+          {view==="forgot"&&resetRequested&&<><button type="button" className="auth-v7-primary" disabled={busy} onClick={()=>void verifyResetOtp()}>{busy?"Memverifikasi...":"Verifikasi kode & lanjutkan"}</button><button type="button" className="auth-v7-secondary-link auth-v7-resend" disabled={busy} onClick={()=>void forgot()}>Kirim ulang kode</button></>}
+          {view==="whatsapp"&&<><button type="button" className="auth-v7-primary" disabled={busy} onClick={()=>void (otpRequested?verifyWhatsappOtp():requestWhatsappOtp())}>{busy?"Memproses...":otpRequested?"Verifikasi & masuk":"Kirim kode WhatsApp"}</button>{otpRequested&&<button type="button" className="auth-v7-secondary-link auth-v7-resend" disabled={busy} onClick={()=>void requestWhatsappOtp()}>Kirim ulang kode</button>}</>}
           {view==="verify"&&<button type="button" className="auth-v7-primary" disabled={busy} onClick={()=>void resendVerification()}>{busy?"Mengirim...":"Kirim ulang email verifikasi"}</button>}
 
           <div className="auth-v7-bottom">
