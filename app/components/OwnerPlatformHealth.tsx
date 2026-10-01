@@ -4,6 +4,7 @@ import {useEffect,useMemo,useState} from "react";
 import OwnerAlertCenter from "./OwnerAlertCenter";
 import OwnerIncidentCenter from "./OwnerIncidentCenter";
 import OwnerProductionQA from "./OwnerProductionQA";
+import OwnerReleaseGate from "./OwnerReleaseGate";
 import {createClient} from "../../lib/supabase-browser";
 type Row=Record<string,any>;
 const fmt=(v:any)=>new Intl.NumberFormat("id-ID").format(Number(v||0));
@@ -37,6 +38,7 @@ export default function OwnerPlatformHealth({mode}:{mode:"api"|"system"}){
   <OwnerAlertCenter/>
   <OwnerIncidentCenter/>
   <OwnerProductionQA/>
+  <OwnerReleaseGate/>
   {msg&&<div className="owner-inline-note">{msg}</div>}
   <section className="owner-panel"><div className="owner-panel-head"><div><h3>Bug, Error & UI Queue</h3><p>Resolve setelah perbaikan diverifikasi di production.</p></div></div><div className="owner-table-wrap"><table><thead><tr><th>Severity</th><th>Issue</th><th>Page</th><th>Status</th><th>Date</th><th></th></tr></thead><tbody>{issues.map(x=><tr key={x.id}><td>{x.severity}</td><td><b>{x.title}</b><small>{x.details}</small></td><td>{x.page_path||"-"}</td><td>{x.status}</td><td>{x.created_at?new Date(x.created_at).toLocaleString("id-ID"):"-"}</td><td><button disabled={x.status==="resolved"} onClick={()=>resolve(x.id)}>Resolve</button></td></tr>)}</tbody></table></div></section>
  </div>;
