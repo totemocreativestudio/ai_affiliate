@@ -8,7 +8,7 @@ type Row=Record<string,any>;
 const rp=(v:any)=>v===null||v===undefined?"-":"Rp "+Math.round(Number(v||0)).toLocaleString("id-ID");
 const no=(v:any)=>Math.round(Number(v||0)).toLocaleString("id-ID");
 const norm=(v:any)=>String(v||"").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"");
-const tokens=(v:any)=>new Set(norm(v).split(/(?=[a-z])|[^a-z0-9]+/).filter((x:string)=>x.length>2&&!["gascomp","official","store","produk","terbaik","aman","hemat","garansi","sni"].includes(x)));
+const tokens=(v:any)=>new Set(String(v||"").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g," ").trim().split(/\\s+/).filter((x:string)=>x.length>2&&!["gascomp","official","store","produk","terbaik","aman","hemat","garansi","sni"].includes(x)));
 function similarity(a:any,b:any){
  const A=tokens(a),B=tokens(b);if(!A.size||!B.size)return 0;
  let inter=0;for(const x of A)if(B.has(x))inter++;
