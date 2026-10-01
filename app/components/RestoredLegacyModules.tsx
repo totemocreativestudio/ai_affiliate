@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { createClient } from "../../lib/supabase-browser";
 import LumaAffiliateCenter from "./LumaAffiliateCenter";
 import PromoStudioV2 from "./PromoStudioV2";
@@ -8,7 +9,7 @@ import BillingCenter from "./BillingCenter";
 import KanbanBoard from "./KanbanBoard";
 import InternalExcelGrid from "./InternalExcelGrid";
 import UserProfile from "./UserProfile";
-import AdminDashboard from "./AdminDashboard";
+const AdminDashboard=dynamic(()=>import("./AdminDashboard"),{ssr:false});
 import {CreatorAutocomplete,ProductAutocomplete,CreatorSearchResult,ProductSearchResult,resolveOrCreateCreator} from "./SmartAutocomplete";
 import TutorialCenter from "./TutorialCenter";
 
