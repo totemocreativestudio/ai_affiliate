@@ -27,6 +27,18 @@ const config:NextConfig={
   // Public /web routes are served by this application directly.
   // Keeping them local avoids cross-project rewrite loops in the monorepo.
   poweredByHeader:false,
+  async redirects(){
+    return [
+      {
+        source:"/:path*",
+        has:[{type:"host",value:"lumaway.online"}],
+        destination:"https://www.lumaway.online/:path*",
+        permanent:true,
+      },
+      {source:"/insights",destination:"/web/insights",permanent:true},
+      {source:"/insights/:path*",destination:"/web/insights/:path*",permanent:true},
+    ];
+  },
   async headers(){
     return [
       {

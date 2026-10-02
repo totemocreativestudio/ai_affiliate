@@ -9,9 +9,9 @@ export const dynamic="force-dynamic";
 export async function generateMetadata({params}:{params:Promise<{slug:string}>}):Promise<Metadata>{
   const {slug}=await params;
   const post=await getPublicBlog(slug);
-  if(post)return {title:post.seo_title||post.title,description:post.seo_description||post.excerpt||"",alternates:{canonical:PUBLIC_SITE_ORIGIN+"/insights/"+post.slug},openGraph:{type:"article",title:post.title,description:post.excerpt||"",url:PUBLIC_SITE_ORIGIN+"/insights/"+post.slug,publishedTime:post.published_at||undefined,modifiedTime:post.updated_at,images:post.cover_image_url?[post.cover_image_url]:undefined}};
+  if(post)return {title:post.seo_title||post.title,description:post.seo_description||post.excerpt||"",alternates:{canonical:PUBLIC_SITE_ORIGIN+"/web/insights/"+post.slug},openGraph:{type:"article",title:post.title,description:post.excerpt||"",url:PUBLIC_SITE_ORIGIN+"/web/insights/"+post.slug,publishedTime:post.published_at||undefined,modifiedTime:post.updated_at,images:post.cover_image_url?[post.cover_image_url]:undefined}};
   const fallback=getStaticInsight(slug);if(!fallback)return {};
-  return {title:fallback.title,description:fallback.description,alternates:{canonical:PUBLIC_SITE_ORIGIN+"/insights/"+fallback.slug}};
+  return {title:fallback.title,description:fallback.description,alternates:{canonical:PUBLIC_SITE_ORIGIN+"/web/insights/"+fallback.slug}};
 }
 function safeJson(value:unknown){return JSON.stringify(value).replace(/<\/script/gi,"<\\/script")}
 function stageFor(title:string,category:string,slug:string){
@@ -25,7 +25,7 @@ function headings(html:string){const out:string[]=[];const re=/<h2[^>]*>(.*?)<\/
 export default async function PublicInsightDetail({params}:{params:Promise<{slug:string}>}){
  const {slug}=await params;const post=await getPublicBlog(slug);const fallback=post?null:getStaticInsight(slug);if(!post&&!fallback)notFound();
  const title=post?.title||fallback!.title,description=post?.excerpt||fallback!.description,category=post?.category||fallback!.category,author=post?.author_name||"Lumaway",date=post?.published_at||fallback!.date;
- const embed=youtubeEmbed(post?.video_embed_url||null),articleUrl=PUBLIC_SITE_ORIGIN+"/insights/"+slug,stage=stageFor(title,category,slug);
+ const embed=youtubeEmbed(post?.video_embed_url||null),articleUrl=PUBLIC_SITE_ORIGIN+"/web/insights/"+slug,stage=stageFor(title,category,slug);
  const sanitized=post?sanitizeBlogHtml(post.content_html||""):"";
  const toc=post?headings(sanitized):fallback!.sections.map(x=>x.title);
  const dynamicRelated=await getPublicBlogs(10);const related=[...dynamicRelated.filter(x=>x.slug!==slug).slice(0,3),...STATIC_INSIGHTS.filter(x=>x.slug!==slug).slice(0,3)].slice(0,3);
@@ -35,10 +35,10 @@ export default async function PublicInsightDetail({params}:{params:Promise<{slug
 
  return <main>
   {post&&<PublicContentTracker contentId={post.id}/>}
-  <header className="public-insights-nav"><Link href="/web/home" className="public-insights-brand"><img src="/luma-mark.png" alt=""/><strong>LUMAWAY<span>.</span></strong></Link><nav><Link href="/web/home">Home</Link><Link href="/insights" className="active">Insights</Link><Link href="/app.lumaway/login">Login</Link></nav></header>
+  <header className="public-insights-nav"><Link href="/web/home" className="public-insights-brand"><img src="/luma-mark.png" alt=""/><strong>LUMAWAY<span>.</span></strong></Link><nav><Link href="/web/home">Home</Link><Link href="/web/insights" className="active">Insights</Link><Link href="/app.lumaway/login">Login</Link></nav></header>
   <article className="public-article redesigned">
    <header className="public-article-head">
-    <nav className="public-breadcrumb"><Link href="/web/home">Home</Link><span>/</span><Link href="/insights">Insights</Link><span>/</span><span>{stage}</span></nav>
+    <nav className="public-breadcrumb"><Link href="/web/home">Home</Link><span>/</span><Link href="/web/insights">Insights</Link><span>/</span><span>{stage}</span></nav>
     <div className={"public-article-stage stage-"+stage.toLowerCase()}><b>{stage}</b><span>{stage==="TOFU"?"Kenali masalah":stage==="MOFU"?"Pahami caranya":"Ambil tindakan"}</span></div>
     <span className="public-eyebrow">{category}</span><h1>{title}</h1><p>{description}</p>
     <div className="public-article-meta"><span>Posted by {author}</span><time dateTime={date||undefined}>{date?new Date(date).toLocaleDateString("id-ID",{day:"numeric",month:"long",year:"numeric"}):""}</time>{fallback&&<span>{fallback.readTime} baca</span>}</div>
@@ -57,12 +57,12 @@ export default async function PublicInsightDetail({params}:{params:Promise<{slug
     <aside className="public-article-side enhanced">
       <span>DALAM ARTIKEL INI</span>{toc.length?<ol>{toc.map((x,i)=><li key={i}>{x}</li>)}</ol>:<small>Problem → Framework → Action</small>}
       <div className="public-side-divider"/>
-      <span>ARTIKEL LUMAWAY</span><strong>{category}</strong><small>Posted by {author}</small><Link href="/insights">← Semua Insights</Link><Link className="side-primary" href="/app.lumaway/register">Coba Lumaway →</Link>
+      <span>ARTIKEL LUMAWAY</span><strong>{category}</strong><small>Posted by {author}</small><Link href="/web/insights">← Semua Insights</Link><Link className="side-primary" href="/app.lumaway/register">Coba Lumaway →</Link>
     </aside>
    </div>
   </article>
 
-  {related.length>0&&<section className="public-related"><header><span className="public-eyebrow">LANJUTKAN BELAJAR</span><h2>Insight terkait</h2></header><div>{related.map((x:any)=><Link href={"/insights/"+x.slug} key={x.slug}><small>{x.category}</small><strong>{x.title}</strong><span>Baca →</span></Link>)}</div></section>}
+  {related.length>0&&<section className="public-related"><header><span className="public-eyebrow">LANJUTKAN BELAJAR</span><h2>Insight terkait</h2></header><div>{related.map((x:any)=><Link href={"/web/insights/"+x.slug} key={x.slug}><small>{x.category}</small><strong>{x.title}</strong><span>Baca →</span></Link>)}</div></section>}
   <section className="public-insights-note compact"><div><span className="public-eyebrow">LANGKAH BERIKUTNYA</span><h2>Insight harus berakhir menjadi tindakan.</h2><p>Hubungkan data, target, automation, dan tindak lanjut di workspace Lumaway.</p></div><Link href="/app.lumaway/register">Buat akun Lumaway →</Link></section>
   <footer className="public-insights-footer"><span>© {new Date().getFullYear()} Lumaway · Light Up Your Potential.</span><Link href="/web/home">Lumaway Home</Link></footer>
   <script type="application/ld+json" dangerouslySetInnerHTML={{__html:safeJson(jsonLd)}}/>{faqJsonLd&&<script type="application/ld+json" dangerouslySetInnerHTML={{__html:safeJson(faqJsonLd)}}/>}
