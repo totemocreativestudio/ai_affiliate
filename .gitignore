@@ -17,3 +17,6 @@ claude.md
 context.md
 references/
 tsconfig.tsbuildinfo
+
+# Screenshot hasil audit UI
+.screenshots/
