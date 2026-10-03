@@ -330,10 +330,10 @@
   border-color:rgba(125,137,238,.16)!important;
 }
 .side-nav a,.side-nav button,.side-group summary{
-  font-size:11px!important;
+  font-size:13px!important;
 }
 .side-subnav a,.side-subnav button{
-  font-size:10.5px!important;
+  font-size:13.5px!important;
 }
 
 .dashboard-page>.eyebrow,.legacy-page-anchor>.eyebrow{

@@ -146,4 +146,16 @@ export function youtubeEmbed(url:string|null){
   return "";
 }
 
+// Used by robots.ts, sitemap.ts and the public insights page for canonical URLs.
+// Stays absolute because those files are server-side and must always emit the
+// canonical public host.
 export const PUBLIC_SITE_ORIGIN="https://www.lumaway.online";
+
+// Blog cover images are stored in the database as absolute URLs built against the
+// production host, which 404s during local development. Rewriting the origin to
+// the current host lets the same rows serve local and deployed environments.
+// ponytail: string matching rather than a migration; if covers ever move off
+// lumaway.online this stops matching and the original URL is returned as-is.
+export function localizePublicAsset(url:string){
+  return url.replace(/https?:\/\/(www\.)?lumaway\.online/i,"");
+}
