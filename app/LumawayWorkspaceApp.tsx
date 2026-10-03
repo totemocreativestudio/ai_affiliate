@@ -112,6 +112,18 @@ function BrandLockup({ light = false }: { light?: boolean }) {
   );
 }
 
+// Localhost testing must not be gated by billing or profile completion,
+// otherwise every workspace feature stays locked while developing.
+// ponytail: client-side only, so a determined user could bypass it by faking the
+// host header. That is acceptable for local dev; production is unaffected.
+const LOCAL_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0", "[::1]"];
+
+function isLocalDevHost() {
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname.toLowerCase();
+  return LOCAL_HOSTS.includes(host) || host.endsWith(".localhost");
+}
+
 function cleanAuthErrorQuery() {
   const url = new URL(window.location.href);
   if (!url.searchParams.has("error") && !url.searchParams.has("error_code") && !url.searchParams.has("error_description")) return;
@@ -127,10 +139,11 @@ function profileComplete(profile: Profile) {
 
 function activateCurrentRoute(isAdmin: boolean, accessLocked = false) {
   const fallback = isAdmin ? "administration" : "dashboard";
+  const localDev = isLocalDevHost();
   let section = sectionFromPath(window.location.pathname) || fallback;
   if (isAdmin) section = "administration";
   if (!isAdmin && section === "administration") section = "dashboard";
-  if (!isAdmin && accessLocked && !["dashboard","billing","profile"].includes(section)) section = "dashboard";
+  if (!isAdmin && accessLocked && !localDev && !["dashboard","billing","profile"].includes(section)) section = "dashboard";
 
   const pages = Array.from(document.querySelectorAll<HTMLElement>(".content > .legacy-page-anchor"));
   let found = false;
@@ -319,40 +332,48 @@ export default function LumawayWorkspaceApp() {
       if(!referralError&&referralApplied)window.localStorage.removeItem(REFERRAL_STORAGE_KEY);
     }
 
+    const localDev = isLocalDevHost();
+
     // Access state is resolved server-side from auth.uid(), so one user's billing
     // status can never lock another user's workspace. Admin access is never subscription-locked.
-    const { data: accessRows, error: accessStateError } = await supabase.rpc("luma_my_access_state_v1");
-    const accessState = Array.isArray(accessRows) ? accessRows[0] : accessRows;
-    if (!accessStateError && accessState) {
-      setAccessLocked(typedProfile.role !== "admin" && Boolean(accessState.locked));
-      setSubscriptionEndsAt(accessState.effective_ends_at || null);
+    if (localDev) {
+      // Local testing is never billing-gated.
+      setAccessLocked(false);
+      setSubscriptionEndsAt(null);
     } else {
-      // Safe per-user fallback during a billing/RPC incident. Never derive lock state globally.
-      const { data: subscriptionRows, error: subscriptionError } = await supabase
-        .from("luma_user_subscriptions")
-        .select("status,starts_at,ends_at")
-        .eq("user_id", userId)
-        .order("ends_at", { ascending: false })
-        .limit(10);
-      if (subscriptionError) {
-        setAccessLocked(false);
-        setSubscriptionEndsAt(null);
+      const { data: accessRows, error: accessStateError } = await supabase.rpc("luma_my_access_state_v1");
+      const accessState = Array.isArray(accessRows) ? accessRows[0] : accessRows;
+      if (!accessStateError && accessState) {
+        setAccessLocked(typedProfile.role !== "admin" && Boolean(accessState.locked));
+        setSubscriptionEndsAt(accessState.effective_ends_at || null);
       } else {
-        const now = Date.now();
-        const activeSubscription = (subscriptionRows || []).find((item: any) =>
-          ["active", "trialing"].includes(String(item.status || "").toLowerCase()) &&
-          item.starts_at &&
-          new Date(item.starts_at).getTime() <= now &&
-          item.ends_at &&
-          new Date(item.ends_at).getTime() > now
-        );
-        setAccessLocked(typedProfile.role !== "admin" && Boolean((subscriptionRows || []).length && !activeSubscription));
-        setSubscriptionEndsAt(activeSubscription?.ends_at || (subscriptionRows || [])[0]?.ends_at || null);
+        // Safe per-user fallback during a billing/RPC incident. Never derive lock state globally.
+        const { data: subscriptionRows, error: subscriptionError } = await supabase
+          .from("luma_user_subscriptions")
+          .select("status,starts_at,ends_at")
+          .eq("user_id", userId)
+          .order("ends_at", { ascending: false })
+          .limit(10);
+        if (subscriptionError) {
+          setAccessLocked(false);
+          setSubscriptionEndsAt(null);
+        } else {
+          const now = Date.now();
+          const activeSubscription = (subscriptionRows || []).find((item: any) =>
+            ["active", "trialing"].includes(String(item.status || "").toLowerCase()) &&
+            item.starts_at &&
+            new Date(item.starts_at).getTime() <= now &&
+            item.ends_at &&
+            new Date(item.ends_at).getTime() > now
+          );
+          setAccessLocked(typedProfile.role !== "admin" && Boolean((subscriptionRows || []).length && !activeSubscription));
+          setSubscriptionEndsAt(activeSubscription?.ends_at || (subscriptionRows || [])[0]?.ends_at || null);
+        }
       }
     }
 
     const currentSection = sectionFromPath(window.location.pathname);
-    const needsProfile = typedProfile.role !== "admin" && !profileComplete(typedProfile);
+    const needsProfile = !localDev && typedProfile.role !== "admin" && !profileComplete(typedProfile);
     const target = profileData.role === "admin"
       ? "administration"
       : needsProfile
