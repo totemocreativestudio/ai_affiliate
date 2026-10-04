@@ -1,0 +1,25 @@
+/* LUMA layout standard - satu header, satu ritme. Load terakhir menang. */
+.luma-page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin:0 0 16px}
+.luma-page-head>div{min-width:0}
+.luma-page-head h1{font-size:30px;letter-spacing:-.035em;line-height:1.16;margin:0 0 8px!important;color:#101828}
+.luma-page-head p{margin:0!important;max-width:760px;color:#667085;font-size:13px;line-height:1.6}
+.luma-page-head .eyebrow{margin-bottom:7px}
+.luma-page-actions{display:flex;gap:8px;flex-shrink:0;align-items:center}
+@media(max-width:760px){.luma-page-head{flex-direction:column}.luma-page-actions{width:100%}.luma-page-actions>*{flex:1}}
+.page-head,.dashboard-v2-page-head,.ai-page-head,.social-v3-page-head,.pm-header,.listing-v2-header{display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:16px!important;margin:0 0 16px!important}
+.page-head h1,.dashboard-v2-page-head h1,.ai-page-head h1,.social-v3-page-head h1,.listing-v2-header h2{font-size:30px!important;letter-spacing:-.035em!important;line-height:1.16!important;margin:0 0 8px!important}
+.page-head p,.dashboard-v2-page-head p,.ai-page-head p,.social-v3-page-head p,.listing-v2-header p{margin:0!important;max-width:760px!important;font-size:13px!important;line-height:1.6!important}
+@media(max-width:760px){.page-head,.dashboard-v2-page-head,.ai-page-head,.social-v3-page-head,.pm-header,.listing-v2-header{flex-direction:column!important}}
+.pm-shell{margin:0!important;padding:0!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important}
+.ai-summary-inner{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
+.ai-summary-inner h2{margin:6px 0 8px}
+.ai-summary-lead{font-size:15px;line-height:1.65;margin:0}
+.ai-brief-box{margin-top:12px;padding:14px;border-radius:10px;background:#f5f3ff;border:1px solid #ddd6fe}
+.ai-brief-box p{margin:6px 0 0;line-height:1.6}
+.ai-impact-box{margin-top:10px}
+.ai-impact-box p{margin:5px 0 0;color:#475467;line-height:1.6}
+.ai-cta-row{margin-top:14px}
+.upload-group-label{display:block;font-size:11px;margin-bottom:8px}
+.resend-key-row{display:flex;gap:8px;align-items:center}
+.resend-key-row input{flex:1}
+
