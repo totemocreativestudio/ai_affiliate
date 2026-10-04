@@ -10,6 +10,7 @@ import "./runtime-guard.css";
 import "./luma-route-ui-hotfix.css";
 import "./lumaway-auth-v7.css";
 import "./luma-ops-v4.css";
+import Script from "next/script";
 import ReferralCapture from "./components/ReferralCapture";
 
 export const metadata = {
@@ -55,12 +56,14 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="id" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBoot }} />
-        <script dangerouslySetInnerHTML={{ __html: metaPixelBoot }} />
       </head>
       <body>
         <noscript>
           <img height="1" width="1" style={{ display: "none" }} src="https://www.facebook.com/tr?id=1283842006708051&ev=PageView&noscript=1" alt="" />
         </noscript>
+        <Script id="meta-pixel" strategy="afterInteractive">
+          {metaPixelBoot}
+        </Script>
         <ReferralCapture />
         {children}
       </body>
