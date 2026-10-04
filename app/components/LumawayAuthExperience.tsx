@@ -79,6 +79,7 @@ export default function LumawayAuthExperience({onAuthenticated}:{onAuthenticated
   const [terms,setTerms]=useState(false);
   const [phone,setPhone]=useState("");
   const [otp,setOtp]=useState("");
+  const [method,setMethod]=useState<"email"|"whatsapp">("email");
   const [otpRequested,setOtpRequested]=useState(false);
   const [resetOtp,setResetOtp]=useState("");
   const [resetRequested,setResetRequested]=useState(false);
@@ -101,6 +102,7 @@ export default function LumawayAuthExperience({onAuthenticated}:{onAuthenticated
     setView(next);setError("");setMessage("");
     if(next!=="forgot"){setResetOtp("");setResetRequested(false)}
     if(next!=="whatsapp"){setOtp("");setOtpRequested(false)}
+    if(next==="signin")setMethod("email");
     const url=new URL(window.location.href);
     if(next==="signup"){
       url.pathname="/register";url.searchParams.delete("view");
@@ -228,14 +230,14 @@ export default function LumawayAuthExperience({onAuthenticated}:{onAuthenticated
 
   const title=view==="signin"?"Masuk ke Lumaway":view==="signup"?"Buat akun Lumaway":view==="forgot"?"Lupa password?":view==="whatsapp"?"Masuk dengan WhatsApp":"Verifikasi email Anda";
   const subtitle=view==="signin"
-    ?"Kelola data, insight, dan performa bisnis Anda dalam satu workspace."
+    ?(method==="email"?"Masuk dengan email dan password Anda.":"Masuk dengan nomor WhatsApp dan kode OTP.")
     :view==="signup"
-      ?"Mulai workspace Anda dan satukan data affiliate, creator, produk, serta insight."
+      ?"Satu akun untuk semua workspace, creator, produk, dan laporan."
       :view==="forgot"
-        ?"Kami akan mengirim kode 6 digit dan link aman untuk membuat password baru."
+        ?"Kami kirim kode 6 digit dan link aman untuk membuat password baru."
         :view==="whatsapp"
-          ?"Gunakan nomor WhatsApp yang sudah terhubung ke akun Lumaway."
-          :"Klik link pada email dari Lumaway untuk mengaktifkan akun Anda.";
+          ?"Masukkan kode yang kami kirim ke WhatsApp Anda."
+          :"Buka email dari Lumaway lalu klik Konfirmasi email saya.";
 
   return <main className="auth-v7-page">
     <section className="auth-v7-shell">
@@ -247,21 +249,26 @@ export default function LumawayAuthExperience({onAuthenticated}:{onAuthenticated
           <h1>{title}</h1>
           <p className="auth-v7-subtitle">{subtitle}</p>
 
-          {view==="signin"&&<>
-            <button type="button" className="auth-v7-oauth" disabled={busy||!googleEnabled} onClick={()=>void google()}><GoogleMark/><span>Lanjutkan dengan Google</span></button>
-            {!googleEnabled&&<p className="auth-v7-helper">Google Login sedang disesuaikan. Silakan gunakan login email terlebih dahulu.</p>}
-            <button type="button" className="auth-v7-oauth" disabled={busy} onClick={()=>go("whatsapp")}><span className="auth-v7-line-icon" aria-hidden="true">☎</span><span>Masuk dengan WhatsApp OTP</span></button>
-            <div className="auth-v7-divider"><span>ATAU</span></div>
-          </>}
+          {view==="signin"&&<div className="auth-v7-tabs" role="tablist" aria-label="Cara masuk">
+            <button type="button" role="tab" aria-selected={method==="email"} className={method==="email"?"active":""} onClick={()=>{setMethod("email");setError("");setMessage("")}}>Email</button>
+            <button type="button" role="tab" aria-selected={method==="whatsapp"} className={method==="whatsapp"?"active":""} onClick={()=>{setMethod("whatsapp");setError("");setMessage("")}}>WhatsApp</button>
+          </div>}
+          {view==="signin"&&method==="email"&&googleEnabled&&<button type="button" className="auth-v7-oauth" disabled={busy} onClick={()=>void google()}><GoogleMark/><span>Lanjutkan dengan Google</span></button>}
+          {view==="signin"&&method==="email"&&!googleEnabled&&<p className="auth-v7-helper auth-v7-helper-box">Login Google sedang disesuaikan. Silakan gunakan email dan password.</p>}
 
-          {(view==="signin"||view==="signup"||view==="forgot")&&<div className="auth-v7-fields">
+          {((view==="signin"&&method==="email")||view==="signup"||view==="forgot")&&<div className="auth-v7-fields">
             <label><span>Email</span><input type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="nama@perusahaan.com" disabled={view==="forgot"&&resetRequested}/></label>
             {view==="forgot"&&resetRequested&&<label><span>Kode reset 6 digit</span><input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={resetOtp} onChange={e=>setResetOtp(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder="Masukkan 6 digit dari email" onKeyDown={e=>{if(e.key==="Enter")void verifyResetOtp()}}/><small className="auth-v7-helper">Kode berlaku 10 menit. Link reset di email tetap bisa digunakan sebagai alternatif.</small></label>}
-            {(view==="signin"||view==="signup")&&<label><span>Password</span><div className="auth-v7-password"><input type={showPassword?"text":"password"} autoComplete={view==="signin"?"current-password":"new-password"} value={password} onChange={e=>setPassword(e.target.value)} placeholder={view==="signup"?"Minimal 8 karakter":"Masukkan password"} onKeyDown={e=>{if(e.key==="Enter"){if(view==="signin")void signin();else if(view==="signup")void signup()}}}/><button type="button" aria-label={showPassword?"Sembunyikan password":"Tampilkan password"} onClick={()=>setShowPassword(x=>!x)}><EyeIcon open={showPassword}/></button></div></label>}
+            {(view==="signup"||(view==="signin"&&method==="email"))&&<label><span>Password</span><div className="auth-v7-password"><input type={showPassword?"text":"password"} autoComplete={view==="signin"?"current-password":"new-password"} value={password} onChange={e=>setPassword(e.target.value)} placeholder={view==="signup"?"Minimal 8 karakter":"Masukkan password"} onKeyDown={e=>{if(e.key==="Enter"){if(view==="signin")void signin();else if(view==="signup")void signup()}}}/><button type="button" aria-label={showPassword?"Sembunyikan password":"Tampilkan password"} onClick={()=>setShowPassword(x=>!x)}><EyeIcon open={showPassword}/></button></div></label>}
           </div>}
 
-          {view==="signin"&&<div className="auth-v7-meta"><label><input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)}/><span>Ingat saya</span></label><button type="button" onClick={()=>go("forgot")}>Lupa password?</button></div>}
+          {view==="signin"&&method==="email"&&<div className="auth-v7-meta"><label><input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)}/><span>Ingat saya</span></label><button type="button" onClick={()=>go("forgot")}>Lupa password?</button></div>}
           {view==="signup"&&<label className="auth-v7-consent"><input type="checkbox" checked={terms} onChange={e=>setTerms(e.target.checked)}/><span>Saya menyetujui <a href="/web/terms">Syarat Layanan</a> dan <a href="/web/privacy">Kebijakan Privasi</a> Lumaway.</span></label>}
+
+          {view==="signin"&&method==="whatsapp"&&<div className="auth-v7-fields">
+            <label><span>Nomor WhatsApp</span><input inputMode="tel" autoComplete="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+62812xxxx" disabled={otpRequested}/></label>
+            {otpRequested&&<label><span>Kode OTP</span><input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={otp} onChange={e=>setOtp(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder="6 digit dari WhatsApp" onKeyDown={e=>{if(e.key==="Enter")void verifyWhatsappOtp()}}/><small className="auth-v7-helper">Kode berlaku 5 menit.</small></label>}
+          </div>}
 
           {view==="whatsapp"&&<div className="auth-v7-fields">
             <label><span>Nomor WhatsApp</span><input inputMode="tel" autoComplete="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+62812xxxx"/></label>
@@ -271,7 +278,8 @@ export default function LumawayAuthExperience({onAuthenticated}:{onAuthenticated
           {error&&<div className="auth-v7-alert error"><b>Perlu diperiksa</b><span>{error}</span></div>}
           {message&&<div className="auth-v7-alert success"><b>Informasi</b><span>{message}</span></div>}
 
-          {view==="signin"&&<button type="button" className="auth-v7-primary" disabled={busy} onClick={()=>void signin()}>{busy?"Memproses...":"Masuk"}</button>}
+          {view==="signin"&&method==="email"&&<button type="button" className="auth-v7-primary" disabled={busy} onClick={()=>void signin()}>{busy?"Memproses...":"Masuk"}</button>}
+          {view==="signin"&&method==="whatsapp"&&<><button type="button" className="auth-v7-primary" disabled={busy} onClick={()=>void (otpRequested?verifyWhatsappOtp():requestWhatsappOtp())}>{busy?"Memproses...":otpRequested?"Verifikasi & masuk":"Kirim kode WhatsApp"}</button>{otpRequested&&<button type="button" className="auth-v7-secondary-link auth-v7-resend" disabled={busy} onClick={()=>void requestWhatsappOtp()}>Kirim ulang kode</button>}</>}
           {view==="signup"&&<button type="button" className="auth-v7-primary" disabled={busy} onClick={()=>void signup()}>{busy?"Menyiapkan akun...":"Daftar"}</button>}
           {view==="forgot"&&!resetRequested&&<button type="button" className="auth-v7-primary" disabled={busy} onClick={()=>void forgot()}>{busy?"Mengirim...":"Kirim kode reset password"}</button>}
           {view==="forgot"&&resetRequested&&<><button type="button" className="auth-v7-primary" disabled={busy} onClick={()=>void verifyResetOtp()}>{busy?"Memverifikasi...":"Verifikasi kode & lanjutkan"}</button><button type="button" className="auth-v7-secondary-link auth-v7-resend" disabled={busy} onClick={()=>void forgot()}>Kirim ulang kode</button></>}
