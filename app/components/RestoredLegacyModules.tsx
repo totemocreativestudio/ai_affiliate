@@ -12,9 +12,10 @@ import UserProfile from "./UserProfile";
 const AdminDashboard=dynamic(()=>import("./AdminDashboard"),{ssr:false});
 import {CreatorAutocomplete,ProductAutocomplete,CreatorSearchResult,ProductSearchResult,resolveOrCreateCreator} from "./SmartAutocomplete";
 import TutorialCenter from "./TutorialCenter";
+import { readNumber, sortByValue } from "../../lib/numeric";
 
 type Row=Record<string,any>;
-const fmt=(v:any)=>new Intl.NumberFormat("id-ID").format(Number(v||0));
+const fmt=(v:any)=>new Intl.NumberFormat("id-ID").format(readNumber(v));
 
 export default function RestoredLegacyModules({workspaceId,userId,isAdmin}:{workspaceId:string;userId:string;isAdmin:boolean}){
   if(isAdmin) return <AdminDashboard workspaceId={workspaceId}/>;
@@ -34,7 +35,7 @@ export default function RestoredLegacyModules({workspaceId,userId,isAdmin}:{work
 function Table({rows,columns}:{rows:Row[];columns?:string[]}){
   const cols=useMemo(()=>(columns||(rows[0]?Object.keys(rows[0]):[])).filter(c=>c!=="workspace_id").slice(0,10),[columns,rows]);
   const [sort,setSort]=useState({key:cols[0]||"",asc:true});
-  const sorted=useMemo(()=>[...rows].sort((a,b)=>{const av=a?.[sort.key],bv=b?.[sort.key];const an=Number(av),bn=Number(bv);if(av!==""&&bv!==""&&Number.isFinite(an)&&Number.isFinite(bn))return(an-bn)*(sort.asc?1:-1);return String(av??"").localeCompare(String(bv??""),"id",{numeric:true,sensitivity:"base"})*(sort.asc?1:-1)}),[rows,sort]);
+  const sorted=useMemo(()=>sortByValue(rows,sort.key,sort.asc),[rows,sort]);
   if(!rows.length)return <div className="empty-state"><strong>Belum ada data.</strong></div>;
   return <div className="scroll"><table><thead><tr>{cols.map(c=><th key={c}><button className="table-sort" onClick={()=>setSort(v=>({key:c,asc:v.key===c?!v.asc:true}))}>{c.replaceAll("_"," ")}<span>{sort.key===c?(sort.asc?"↑":"↓"):"↕"}</span></button></th>)}</tr></thead><tbody>{sorted.map((r,i)=><tr key={r.id??i}>{cols.map(c=><td key={c}>{typeof r[c]==="object"?JSON.stringify(r[c]):String(r[c]??"")}</td>)}</tr>)}</tbody></table></div>
 }

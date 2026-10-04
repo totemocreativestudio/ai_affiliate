@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../../lib/supabase-browser";
+import { readNumber } from "../../lib/numeric";
 
 type Row=Record<string,any>;
 type ChatVariant={title:string;contact_name:string;messages:{side:"incoming"|"outgoing";text:string}[]};
 type ReviewVariant={username:string;rating:number;review:string;avatar_style:string};
-const money=(v:any)=>new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(Number(v||0));
+const money=(v:any)=>new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(readNumber(v));
 const CHANNELS=[
   ["BANK","BCA","BCA"],["BANK","BNI","BNI"],["BANK","BRI","BRI"],["BANK","MANDIRI","Mandiri"],["BANK","PERMATA","Permata"],
   ["EWALLET","ID_DANA","DANA"],["EWALLET","ID_GOPAY","GoPay"],["EWALLET","ID_OVO","OVO"],["EWALLET","ID_SHOPEEPAY","ShopeePay"],

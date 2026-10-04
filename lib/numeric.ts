@@ -58,9 +58,12 @@ function looksNumeric(v: any): boolean {
 export function sortByValue<T extends Record<string, any>>(rows: T[], key: string, asc: boolean): T[] {
   const numeric = rows.some((r) => looksNumeric(r?.[key]));
   const dir = asc ? 1 : -1;
-  return [...rows].sort((a, b) => {
-    const av = a?.[key], bv = b?.[key];
-    if (numeric) return (readNumber(av) - readNumber(bv)) * dir;
-    return String(av ?? "").localeCompare(String(bv ?? ""), "id", { numeric: true, sensitivity: "base" }) * dir;
-  });
+  return [...rows].sort((a, b) => compareValues(a?.[key], b?.[key], numeric) * dir);
+}
+
+// Same rule for callers holding bare values rather than keyed rows.
+export function compareValues(a: any, b: any, numeric?: boolean): number {
+  const numericColumn = numeric ?? (looksNumeric(a) || looksNumeric(b));
+  if (numericColumn) return readNumber(a) - readNumber(b);
+  return String(a ?? "").localeCompare(String(b ?? ""), "id", { numeric: true, sensitivity: "base" });
 }

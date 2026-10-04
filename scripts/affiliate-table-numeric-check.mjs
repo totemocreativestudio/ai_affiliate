@@ -3,7 +3,7 @@
 // "1.300", "Rp 12.000", "12,5", "(1.500)". Number() returns NaN for those, so the
 // old sorter fell back to localeCompare and ordered rows as text -- "12.500"
 // landed below "9", and the display collapsed the value to Rp 0.
-import { readNumber, sortByValue } from "../lib/numeric.ts";
+import { readNumber, sortByValue, compareValues } from "../lib/numeric.ts";
 
 // 1. Formatted money strings are read as numbers, not NaN.
 const cases = [
@@ -36,5 +36,11 @@ const names = [{ n: "Zaki" }, { n: "Andi" }, { n: "Budi" }];
 const sortedNames = sortByValue(names, "n", true).map((r) => r.n);
 console.log("asc name:", sortedNames.join(" "));
 console.assert(JSON.stringify(sortedNames) === JSON.stringify(["Andi", "Budi", "Zaki"]), "text sort");
+
+// 5. compareValues handles bare values, which is what the internal grid sorts.
+console.assert(compareValues("12.500", "9") > 0, "12.500 must beat 9");
+console.assert(compareValues("9", "12.500") < 0, "9 must lose to 12.500");
+console.assert(compareValues("Andi", "Budi") < 0, "text compare");
+console.assert(compareValues("Andi", "Budi", false) < 0, "explicit text column");
 
 console.log("OK: affiliate table numeric handling");

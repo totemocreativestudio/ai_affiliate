@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../../lib/supabase-browser";
+import { compareValues } from "../../lib/numeric";
 
 type Row = { id?: number; row_order: number; row_data: Record<string,string> };
 type Sheet = { id:number; name:string; columns_json:string[] };
@@ -156,7 +157,7 @@ export default function InternalExcelGrid({workspaceId}:{workspaceId:string}){
   async function deleteRow(row:Row){if(!row.id||!confirm("Hapus row ini?"))return;const {error}=await supabase.from("workspace_grid_rows").delete().eq("id",row.id).eq("workspace_id",workspaceId);if(error)return setStatus("error, terjadi kesalahan.");setRows(v=>v.filter(x=>x.id!==row.id))}
   const visibleRows=useMemo(()=>{
     let next=search.trim()?rows.filter(r=>Object.values(r.row_data||{}).some(v=>String(v||"").toLowerCase().includes(search.trim().toLowerCase()))):[...rows];
-    if(sortColumn)next=[...next].sort((a,b)=>String(a.row_data[sortColumn]||"").localeCompare(String(b.row_data[sortColumn]||""),"id",{numeric:true})*(sortAsc?1:-1));
+    if(sortColumn)next=[...next].sort((a,b)=>compareValues(a.row_data?.[sortColumn],b.row_data?.[sortColumn])*(sortAsc?1:-1));
     return next;
   },[rows,search,sortColumn,sortAsc]);
 
