@@ -121,7 +121,7 @@ export default function ProductMaster({workspaceId}:{workspaceId:string}){
   </div>
  }
 
- return <section className="pm-shell">
+ return <section id="product-master" className="legacy-page-anchor pm-shell">
   <div className="pm-header">
    <div><span className="pm-kicker">MASTER DATA</span><h2>Product Master</h2><p>Kelola SKU induk sebagai katalog visual. Satu SKU dapat terhubung ke banyak listing Shopee/TikTok dan variasi.</p></div>
    <button className="primary pm-add" onClick={openAdd}>+ Tambah Produk</button>

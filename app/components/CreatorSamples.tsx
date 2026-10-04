@@ -155,7 +155,7 @@ export default function CreatorSamples({workspaceId}:{workspaceId:string}){
   ];
   const activeStep=Math.max(0,steps.findIndex(step=>step.key===selected?.sample_status));
 
-  return <section className="samples-v2-page">
+  return <section id="creator-samples" className="legacy-page-anchor samples-v2-page">
     <header className="samples-v2-header">
       <div><span>CREATOR OPERATIONS</span><h2>Creator Samples</h2><p>Kelola sample creator dari persiapan, pengiriman, penerimaan, sampai hasil konten dalam satu tampilan.</p></div>
       <button className="primary" onClick={openAdd}>+ Tambah Sample</button>

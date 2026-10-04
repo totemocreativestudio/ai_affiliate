@@ -128,7 +128,7 @@ export default function RatecardMaster({workspaceId}:{workspaceId:string}){
     </button>;
   }
 
-  return <section className="rate-v2-page">
+  return <section id="ratecard" className="legacy-page-anchor rate-v2-page">
     <header className="rate-v2-header"><div><span>CREATOR COMMERCIAL</span><h2>Ratecard Master</h2><p>Kelola rate creator berdasarkan platform dan periode efektif dengan tampilan table, card, atau profile.</p></div><button className="primary" onClick={openAdd}>+ Tambah Ratecard</button></header>
 
     <div className="rate-v2-stats">

@@ -527,9 +527,9 @@ export default function LumawayWorkspaceApp() {
           <SocialLumaway workspaceId={workspace.id} userId={profile.id} />
           <RestoredLegacyModules workspaceId={workspace.id} userId={profile.id} isAdmin={false} />
           <UserTicketCenter workspaceId={workspace.id} />
-          <section id="product-master" className="legacy-page-anchor"><div className="eyebrow">MASTER DATA</div><ProductMaster workspaceId={workspace.id} /></section>
-          <section id="listings" className="legacy-page-anchor"><Listings workspaceId={workspace.id} /></section>
-          <section id="shipping" className="legacy-page-anchor"><Shipping workspaceId={workspace.id} /></section>
+          <ProductMaster workspaceId={workspace.id} />
+          <Listings workspaceId={workspace.id} />
+          <Shipping workspaceId={workspace.id} />
           <SpendingCenter workspaceId={workspace.id} />
           <DailyBriefCenter workspaceId={workspace.id} />
           <AutomationRulesCenter workspaceId={workspace.id} />
@@ -537,9 +537,9 @@ export default function LumawayWorkspaceApp() {
           <ScheduledReportCenter workspaceId={workspace.id} />
           <LiveStreamingCenter workspaceId={workspace.id} />
           <Affiliate360Search workspaceId={workspace.id} />
-          <section id="campaign-tracker" className="legacy-page-anchor"><CampaignTracker workspaceId={workspace.id} /></section>
-          <section id="creator-samples" className="legacy-page-anchor"><CreatorSamples workspaceId={workspace.id} /></section>
-          <section id="ratecard" className="legacy-page-anchor"><RatecardMaster workspaceId={workspace.id} /></section>
+          <CampaignTracker workspaceId={workspace.id} />
+          <CreatorSamples workspaceId={workspace.id} />
+          <RatecardMaster workspaceId={workspace.id} />
         </>}
         {!isAdmin && accessLocked && <div className="subscription-lock-banner"><strong>Masa akses Lumaway telah berakhir.</strong><span>Data workspace Anda tetap aman dan tidak dihapus. Buka Billing untuk memperpanjang akses.</span>{subscriptionEndsAt&&<small>Berakhir: {new Date(subscriptionEndsAt).toLocaleString("id-ID")}</small>}<button onClick={()=>navigateToSection("billing")}>Buka Billing</button></div>}
         {error && <LumaErrorMotion compact code={/403|access denied|tidak.*akses/i.test(error)?403:/404|tidak ditemukan/i.test(error)?404:/503|unavailable|maintenance|tidak dapat dimuat/i.test(error)?503:500} message={error} onRetry={()=>void loadSession()}/>} 

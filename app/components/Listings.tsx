@@ -332,7 +332,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
   const initials=creatorName.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase()||"C";
   const selectedSocialLinks=Object.entries(selectedCreator?.social_links||{}).filter(([,url])=>Boolean(String(url||"").trim()));
 
-  return <section className="listing-v2-page">
+  return <section id="listings" className="legacy-page-anchor listing-v2-page">
     <header className="listing-v2-header">
       <div><span>CREATOR OPERATIONS</span><h2>Listings</h2><p>Kelola hasil listing, follow up, sample, konten, dan progres creator dalam satu workspace.</p></div>
       <button className="primary" onClick={openAdd}>+ Tambah Listing</button>

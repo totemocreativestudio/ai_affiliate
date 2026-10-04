@@ -258,7 +258,7 @@ export default function CampaignTracker({workspaceId}:{workspaceId:string}){
     if(error)return setError(error.message);await syncCampaignActuals(row.campaign_id);await Promise.all([loadCreatorRows(row.campaign_id),load()]);
   }
 
-  return <section className="campaign-v1-page">
+  return <section id="campaign-tracker" className="legacy-page-anchor campaign-v1-page">
     <header className="campaign-v1-header">
       <div><span>GROWTH & WORKFLOW</span><h2>Campaign Tracker</h2><p>Monitor influencer dan affiliate campaign, deliverables, sample, shipping, serta hasil GMV dalam satu workspace.</p></div>
       <button className="primary" onClick={openCampaignAdd}>+ Buat Campaign</button>
