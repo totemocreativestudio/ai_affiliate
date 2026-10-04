@@ -24,6 +24,7 @@ const securityHeaders = [
 ];
 
 const config:NextConfig={
+  turbopack:{root:process.cwd()},
   // Public /web routes are served by this application directly.
   // Keeping them local avoids cross-project rewrite loops in the monorepo.
   poweredByHeader:false,
