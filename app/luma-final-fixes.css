@@ -19,7 +19,7 @@ body:has(.owner-sidebar) .content:not(:has(> .route-active)) > #administration{d
 .side-group[open] summary > .chevron,
 .side-group[open] summary svg.chevron{transform:rotate(180deg)!important}
 .side-subnav{padding:1px 0 4px 36px!important;gap:0!important;margin:0!important}
-.side-subnav a,.side-subnav button{min-height:28px!important;padding:4px 8px!important;line-height:1.2!important;margin:0!important;font-size:12px!important;border-radius:7px!important}
+.side-subnav a,.side-subnav button{min-height:38px!important;padding:8px 10px!important;line-height:1.35!important;margin:0!important;font-size:13.5px!important;border-radius:7px!important}
 .user-grouped-nav>a,.owner-nav>button{min-height:36px!important;margin:1px 0!important;padding-top:6px!important;padding-bottom:6px!important}
 .sidebar-controls{display:block!important;padding:0!important;margin:6px 8px 8px!important}
 .sidebar-controls .theme-toggle{width:100%!important;min-height:36px!important}
@@ -166,8 +166,8 @@ html[data-theme="dark"] .lumaway-loading-screen{background:#080e1b!important;col
   .notification-bell>svg{width:18px!important;height:18px!important;min-width:18px!important}
   .ai-history-scroll{overflow-x:auto!important;overflow-y:visible!important;-webkit-overflow-scrolling:touch!important}
   .ai-history-scroll table{min-width:680px!important}
-  .side-group summary{min-height:36px!important}
-  .side-subnav a,.side-subnav button{min-height:31px!important;font-size:12.5px!important}
+  .side-group summary{min-height:40px!important}
+  .side-subnav a,.side-subnav button{min-height:40px!important;font-size:14px!important}
 }
 
 

@@ -152,7 +152,7 @@ export default function LumawayAuthExperience({onAuthenticated}:{onAuthenticated
       const result=await response.json().catch(()=>({}));
       if(!response.ok||!result?.ok)throw new Error(String(result?.error||"Akun belum dapat dibuat."));
       setView("verify");setPassword("");
-      setMessage("Email verifikasi sudah dikirim. Buka email dari Lumaway lalu konfirmasi akun Anda.");
+      setMessage("Permintaan diterima. Jika email belum terdaftar, verifikasi sudah dikirim — buka email dari Lumaway lalu konfirmasi akun Anda. Jika sudah punya akun, silakan masuk.");
     }catch(e:any){setError(e?.message||"Akun belum dapat dibuat.");}
     finally{setBusy(false)}
   }
@@ -257,7 +257,7 @@ export default function LumawayAuthExperience({onAuthenticated}:{onAuthenticated
           {(view==="signin"||view==="signup"||view==="forgot")&&<div className="auth-v7-fields">
             <label><span>Email</span><input type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="nama@perusahaan.com" disabled={view==="forgot"&&resetRequested}/></label>
             {view==="forgot"&&resetRequested&&<label><span>Kode reset 6 digit</span><input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={resetOtp} onChange={e=>setResetOtp(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder="Masukkan 6 digit dari email" onKeyDown={e=>{if(e.key==="Enter")void verifyResetOtp()}}/><small className="auth-v7-helper">Kode berlaku 10 menit. Link reset di email tetap bisa digunakan sebagai alternatif.</small></label>}
-            {(view==="signin"||view==="signup")&&<label><span>Password</span><div className="auth-v7-password"><input type={showPassword?"text":"password"} autoComplete={view==="signin"?"current-password":"new-password"} value={password} onChange={e=>setPassword(e.target.value)} placeholder={view==="signup"?"Minimal 8 karakter":"Masukkan password"} onKeyDown={e=>{if(e.key==="Enter"&&view==="signin")void signin()}}/><button type="button" aria-label={showPassword?"Sembunyikan password":"Tampilkan password"} onClick={()=>setShowPassword(x=>!x)}><EyeIcon open={showPassword}/></button></div></label>}
+            {(view==="signin"||view==="signup")&&<label><span>Password</span><div className="auth-v7-password"><input type={showPassword?"text":"password"} autoComplete={view==="signin"?"current-password":"new-password"} value={password} onChange={e=>setPassword(e.target.value)} placeholder={view==="signup"?"Minimal 8 karakter":"Masukkan password"} onKeyDown={e=>{if(e.key==="Enter"){if(view==="signin")void signin();else if(view==="signup")void signup()}}}/><button type="button" aria-label={showPassword?"Sembunyikan password":"Tampilkan password"} onClick={()=>setShowPassword(x=>!x)}><EyeIcon open={showPassword}/></button></div></label>}
           </div>}
 
           {view==="signin"&&<div className="auth-v7-meta"><label><input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)}/><span>Ingat saya</span></label><button type="button" onClick={()=>go("forgot")}>Lupa password?</button></div>}

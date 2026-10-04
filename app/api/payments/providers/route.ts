@@ -9,11 +9,12 @@ export async function GET(req:NextRequest){
     const ctx=await getServerContext(workspaceId);
     const status=await getPaymentProviderStatus(ctx.admin);
     const mayar=(status.providers||[]).find((row:any)=>row.provider==="mayar")||null;
+    const safeMayar=mayar ? ctx.canManage ? mayar : (({provider,enabled,priority,health_status,configured})=>({provider,enabled,priority,health_status,configured}))(mayar) : null;
     return NextResponse.json({
       ok:true,
       mode:"mayar_only",
       available:Boolean(mayar?.enabled&&mayar?.configured),
-      providers:mayar?[mayar]:[],
+      providers:safeMayar?[safeMayar]:[],
       can_configure:Boolean(ctx.platformAdmin)
     });
   }catch(error:any){
