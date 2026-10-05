@@ -1,4 +1,5 @@
 import Link from "next/link";
+import {redirect} from "next/navigation";
 import {getPublicBlogs,STATIC_INSIGHTS} from "../../../lib/public-insights";
 
 export const dynamic="force-dynamic";
@@ -26,7 +27,29 @@ const roles=[
  ["Management","Mendapat ringkasan yang lebih mudah dibaca sebelum menentukan prioritas."]
 ];
 
-export default async function PublicHome(){
+export default async function PublicHome({
+ searchParams,
+}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
+ const params=await searchParams;
+ const rawCode=Array.isArray(params.code)?params.code[0]:params.code;
+ const code=String(rawCode||"").trim();
+ if(code){
+   const callback=new URL("https://app.lumaway.online/auth/callback");
+   callback.searchParams.set("code",code);
+   callback.searchParams.set("next","/dashboard");
+   redirect(callback.toString());
+ }
+ const rawError=Array.isArray(params.error)?params.error[0]:params.error;
+ const rawErrorCode=Array.isArray(params.error_code)?params.error_code[0]:params.error_code;
+ const authError=String(rawError||rawErrorCode||"").trim();
+ if(authError){
+   const login=new URL("https://app.lumaway.online/login");
+   login.searchParams.set("error",authError);
+   const rawDescription=Array.isArray(params.error_description)?params.error_description[0]:params.error_description;
+   const description=String(rawDescription||"").trim();
+   if(description)login.searchParams.set("error_description",description);
+   redirect(login.toString());
+ }
  const dbPosts=await getPublicBlogs(3);
  const insightCards=dbPosts.length?dbPosts.map(p=>({slug:p.slug,title:p.title,description:p.excerpt||"Insight terbaru dari Lumaway.",category:p.category||"Insight"})):STATIC_INSIGHTS.slice(0,3).map(p=>({slug:p.slug,title:p.title,description:p.description,category:p.category}));
  return <main>
