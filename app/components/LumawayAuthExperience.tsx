@@ -4,6 +4,7 @@ import {useEffect,useMemo,useState} from "react";
 import {createClient} from "../../lib/supabase-browser";
 
 type AuthView="signin"|"signup"|"forgot"|"whatsapp"|"verify";
+const APP_ORIGIN="https://app.lumaway.online";
 
 const slides=[
   {
@@ -96,6 +97,12 @@ export default function LumawayAuthExperience({onAuthenticated}:{onAuthenticated
     else setView("signin");
     if(params.get("verified")==="1")setMessage("Email berhasil diverifikasi. Silakan masuk menggunakan email dan password Anda.");
     void fetch("/api/auth/google-config",{cache:"no-store"}).then(r=>setGoogleEnabled(r.ok)).catch(()=>setGoogleEnabled(false));
+    if(params.get("oauth")==="google"&&window.location.origin===APP_ORIGIN){
+      const clean=new URL(window.location.href);
+      clean.searchParams.delete("oauth");
+      window.history.replaceState(null,"",clean.pathname+(clean.search?"?"+clean.searchParams.toString():""));
+      window.setTimeout(()=>void google(),0);
+    }
   },[]);
 
   function go(next:AuthView){
@@ -118,7 +125,17 @@ export default function LumawayAuthExperience({onAuthenticated}:{onAuthenticated
     if(!googleEnabled)return;
     setBusy(true);setError("");setMessage("");
     try{
-      const redirectTo=`${window.location.origin}/auth/callback?next=${encodeURIComponent("/dashboard")}`;
+      // PKCE verifier + callback must live on the same origin. If the auth UI is
+      // reached through www.lumaway.online, hand off to the app domain first.
+      if(window.location.origin!==APP_ORIGIN&&process.env.NODE_ENV!=="development"){
+        const target=new URL(`${APP_ORIGIN}/app.lumaway/login`);
+        target.searchParams.set("oauth","google");
+        const ref=new URLSearchParams(window.location.search).get("ref");
+        if(ref)target.searchParams.set("ref",ref);
+        window.location.assign(target.toString());
+        return;
+      }
+      const redirectTo=`${APP_ORIGIN}/auth/callback?next=${encodeURIComponent("/dashboard")}`;
       const {data,error}=await supabase.auth.signInWithOAuth({provider:"google",options:{redirectTo,skipBrowserRedirect:true}});
       if(error||!data?.url)throw error||new Error("OAuth URL unavailable");
       window.location.assign(data.url);
