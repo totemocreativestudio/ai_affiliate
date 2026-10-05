@@ -31,6 +31,7 @@ export default function MobileQuickNav() {
           key={section}
           href={routeForSection(section)}
           className={active === section ? "active" : ""}
+          aria-current={active === section ? "page" : undefined}
           onClick={(event) => {
             event.preventDefault();
             navigateToSection(section);

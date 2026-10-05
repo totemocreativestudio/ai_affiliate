@@ -6,7 +6,7 @@ type ErrorProps={code?:number|string;title?:string;message?:string;detail?:strin
 export function LumaLoadingMotion({label="Lumaway sedang memproses",detail="Mohon tunggu, sistem sedang menyiapkan hasil.",compact=false}:LoadingProps){
   return <div className={`luma-motion-state loading ${compact?"compact":""}`} role="status" aria-live="polite">
     <div className="luma-motion-loader" aria-hidden="true">
-      <span className="loader-orbit orbit-a"/><span className="loader-orbit orbit-b"/><span className="loader-core"><img src="/luma-mark.png" alt=""/></span>
+      <span className="loader-orbit orbit-a"/><span className="loader-orbit orbit-b"/><span className="loader-core"><img src="/luma-mark.png" alt="" width={32} height={32} decoding="async"/></span>
     </div>
     <div><strong>{label}</strong><p>{detail}</p></div>
   </div>;
@@ -32,6 +32,6 @@ export function LumaErrorMotion({code=500,title,message,detail,onRetry,compact=f
       <div className="error-code">{numeric}</div>
       <span className="error-dot dot-one"/><span className="error-dot dot-two"/><span className="error-dot dot-three"/>
     </div>
-    <div className="luma-error-copy"><span className="eyebrow">LUMAWAY SYSTEM STATUS</span><h2>{resolvedTitle}</h2><p>{resolvedMessage}</p>{detail&&<small>{detail}</small>}{onRetry&&<button className="primary" type="button" onClick={onRetry}>Coba Lagi</button>}</div>
+    <div className="luma-error-copy"><span className="eyebrow">LUMAWAY SYSTEM STATUS</span><h1>{resolvedTitle}</h1><p>{resolvedMessage}</p>{detail&&<small>{detail}</small>}{onRetry&&<button className="primary" type="button" onClick={onRetry}>Coba Lagi</button>}</div>
   </section>;
 }

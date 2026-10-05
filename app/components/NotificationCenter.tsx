@@ -271,7 +271,7 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
 
   return (
     <div className="notification-root">
-      <button className="notification-bell" aria-label="Notifications" title="Notifications" onClick={() => setOpen((value) => !value)}>
+      <button className="notification-bell" aria-label="Notifikasi" title="Notifikasi" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
         <LumaIcon name="bell" />
         {unread > 0 && <b>{unread > 99 ? "99+" : unread}</b>}
       </button>
@@ -279,17 +279,17 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
       {open && (
         <div className="notification-popover">
           <div className="notification-head">
-            <div><strong>Notifications</strong><span>{unread} belum dibaca</span></div>
+            <div><strong>Notifications</strong><span aria-live="polite" role="status">{unread} belum dibaca</span></div>
             <button onClick={() => void markAll()}>Mark all read</button>
           </div>
-          <div className="notification-priority-tabs">{(["all","critical","action","info"] as const).map(option=><button key={option} className={priorityFilter===option?"active":""} onClick={()=>setPriorityFilter(option)}>{option==="all"?"Semua":priorityLabel(option)}{option!=="all"?` ${priorityCounts[option]}`:""}</button>)}</div>
+          <div className="notification-priority-tabs">{(["all","critical","action","info"] as const).map(option=><button key={option} className={priorityFilter===option?"active":""} aria-pressed={priorityFilter===option} onClick={()=>setPriorityFilter(option)}>{option==="all"?"Semua":priorityLabel(option)}{option!=="all"?` ${priorityCounts[option]}`:""}</button>)}</div>
           <label className="notification-toast-pref"><input type="checkbox" checked={toastEnabled} onChange={e=>void saveToastPreference(e.target.checked)}/> Toast Critical/Action</label>
-          {categoryOptions.length>2&&<div className="notification-filters">{categoryOptions.map(option=><button key={option} className={categoryFilter===option?"active":""} onClick={()=>setCategoryFilter(option)}>{option==="all"?"Semua":option}</button>)}</div>}
+          {categoryOptions.length>2&&<div className="notification-filters">{categoryOptions.map(option=><button key={option} className={categoryFilter===option?"active":""} aria-pressed={categoryFilter===option} onClick={()=>setCategoryFilter(option)}>{option==="all"?"Semua":option}</button>)}</div>}
           <div className="notification-list">
             {visibleRows.length ? visibleRows.map((row) => (
               <article key={row.key} className={`notification-item notification-item-v2 ${row.read ? "read" : "unread"}`}>
                 <button type="button" className="notification-item-main" onClick={() => void markRead(row, true)}>
-                  {row.image_url && <img src={row.image_url} alt="" />}
+                  {row.image_url && <img src={row.image_url} alt="" loading="lazy" decoding="async" width={56} height={56}/>}
                   <div>
                     <span className={`notification-priority ${row.priority}`}>{priorityLabel(row.priority)}</span><span className={`notification-category n-${row.category}`}>{categoryLabel(row.category)}</span>
                     <strong>{row.title}</strong>

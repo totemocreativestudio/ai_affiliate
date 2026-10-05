@@ -20,7 +20,7 @@ body{background:var(--lw-soft)}
 button,a,input,select,textarea{transition:border-color .15s ease,background-color .15s ease,color .15s ease,box-shadow .15s ease,transform .1s ease,opacity .15s ease}
 button:active:not(:disabled),a.button:active{transform:scale(.98)}
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{
-  outline:none!important;box-shadow:var(--lw-focus)!important;border-color:rgba(117,104,255,.65)!important
+  outline:2px solid transparent;box-shadow:var(--lw-focus)!important;border-color:rgba(117,104,255,.65)!important
 }
 button:disabled{cursor:not-allowed;opacity:.58}
 .card,.dashboard-kpi-card,.filters{box-shadow:var(--lw-card-shadow)}

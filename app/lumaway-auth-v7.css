@@ -51,7 +51,7 @@
 .auth-v7-fields label{display:grid;gap:6px}
 .auth-v7-fields label>span{color:#475467;font-size:13px;font-weight:700}
 .auth-v7-fields input{width:100%;box-sizing:border-box;min-height:46px;padding:12px 13px;border:1px solid #d0d5dd;border-radius:11px;background:#fff;color:#101828;font-size:15px;outline:none;transition:border-color .16s ease,box-shadow .16s ease}
-.auth-v7-fields input:focus{border-color:#6674df;box-shadow:0 0 0 4px rgba(88,104,218,.10)}
+.auth-v7-fields input:focus-visible{border-color:#6674df;box-shadow:0 0 0 4px rgba(88,104,218,.10)}
 .auth-v7-password{position:relative}
 .auth-v7-password input{padding-right:48px}
 .auth-v7-password button{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:40px;height:40px;border:0;background:transparent;color:#667085;display:grid;place-items:center;cursor:pointer;border-radius:9px}

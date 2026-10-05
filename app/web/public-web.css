@@ -14,3 +14,17 @@
 .lumaway-public-loading{min-height:100vh;display:grid;place-items:center;align-content:center;gap:12px;background:#f7f8fb;color:#101828}.lumaway-public-loading img{width:44px;height:44px}.lumaway-public-loader{width:34px;height:34px;border-radius:50%;border:2px solid #ddd;border-top-color:#635bff;animation:lwspin .8s linear infinite}.lumaway-public-loading strong{font-size:12px}@keyframes lwspin{to{transform:rotate(360deg)}}
 @media(max-width:900px){.lw-hero,.lw-problem,.lw-section-head,.lw-dark{grid-template-columns:1fr}.lw-hero{gap:20px}.lw-cap-grid,.lw-role-grid,.lw-insight-grid,.lw-generic-grid{grid-template-columns:repeat(2,1fr)}.lw-transform{grid-template-columns:1fr}.lw-transform i{display:none}.lw-cta{margin-left:24px;margin-right:24px}.lw-footer{grid-template-columns:1fr}.lw-footer>div:nth-child(2){justify-content:flex-start}}
 @media(max-width:640px){.lw-nav{padding:0 16px}.lw-nav nav>a:not(.lw-primary-link){display:none}.lw-hero{padding:56px 18px;min-height:auto}.lw-hero-visual{min-height:360px}.lw-audience{margin:0 18px 20px;padding-left:0;padding-right:0}.lw-section,.lw-generic-hero{padding:62px 18px}.lw-cap-grid,.lw-role-grid,.lw-insight-grid,.lw-generic-grid{grid-template-columns:1fr}.lw-dark{padding:62px 18px}.lw-transform{margin:0 18px}.lw-cta{margin:0 18px 50px;padding:28px;display:grid}.lw-cta>div:last-child{align-items:flex-start}.lw-footer{padding:24px 18px}}
+/* Web Interface Guidelines: public a11y foundation */
+.lumaway-public-web #main-content{scroll-margin-top:88px}
+.lumaway-public-web :is(section,article)[id]{scroll-margin-top:88px}
+.lumaway-public-web :is(a,button,[tabindex]):focus-visible{outline:2px solid #635bff;outline-offset:2px;border-radius:6px}
+.lumaway-public-web :is(h1,h2,h3){text-wrap:balance}
+.lumaway-public-web :is(.lw-insight-grid b,.lw-cap-grid article>span,.lw-problem-list article>span,.lw-workflow article>span){font-variant-numeric:tabular-nums}
+.lumaway-public-web :is(.lw-insight-grid h3,.lw-insight-grid p,.lw-cap-grid p,.lw-role-grid p){overflow-wrap:break-word;min-width:0}
+@media (prefers-reduced-motion:reduce){
+.lumaway-public-web *,.lumaway-public-web *::before,.lumaway-public-web *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+.lumaway-public-loader{animation:none!important}
+}
+
+/* Footer nav landmark keeps link row layout */
+.lumaway-public-web .lw-footer nav{display:flex;gap:18px;justify-content:center}

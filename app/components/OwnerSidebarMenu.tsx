@@ -36,7 +36,7 @@ function Group({icon,label,children,open=false}:{icon:IconName;label:string;chil
 }
 
 export default function OwnerSidebarMenu({ownerTab,onOpenOwner,onCloseMobile}:{ownerTab:string;onOpenOwner:(tab:string,section?:string)=>void;onCloseMobile:()=>void}){
- return <nav className="side-nav owner-nav" onClick={onCloseMobile}>
+ return <nav className="side-nav owner-nav" aria-label="Navigasi admin" onClick={onCloseMobile}>
   <Group icon="dashboard" label="Overview" open>
    {ownerOverviewNav.map(([tab,icon,label])=><button type="button" key={tab} className={ownerTab===tab?"active":""} onClick={()=>onOpenOwner(tab)}><LumaIcon name={icon}/><span>{label}</span></button>)}
   </Group>

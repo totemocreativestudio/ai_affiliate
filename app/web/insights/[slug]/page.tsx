@@ -33,26 +33,26 @@ export default async function PublicInsightDetail({params}:{params:Promise<{slug
  const faqItems=Array.isArray(post?.faq_json)?post!.faq_json!.filter((item:any)=>String(item?.question||"").trim()&&String(item?.answer||"").trim()).slice(0,12):[];
  const faqJsonLd=faqItems.length?{"@context":"https://schema.org","@type":"FAQPage",mainEntity:faqItems.map((item:any)=>({"@type":"Question",name:String(item.question),acceptedAnswer:{"@type":"Answer",text:String(item.answer)}}))}:null;
 
- return <main>
+ return <main id="main-content" tabIndex={-1}>
   {post&&<PublicContentTracker contentId={post.id}/>}
-  <header className="public-insights-nav"><Link href="/web/home" className="public-insights-brand"><img src="/luma-mark.png" alt=""/><strong>LUMAWAY<span>.</span></strong></Link><nav><Link href="/web/home">Home</Link><Link href="/web/insights" className="active">Insights</Link><Link href="/app.lumaway/login">Login</Link></nav></header>
+  <header className="public-insights-nav"><Link href="/web/home" className="public-insights-brand"><img src="/luma-mark.png" alt="" width={30} height={30} decoding="async"/><strong>LUMAWAY<span aria-hidden="true">.</span></strong></Link><nav aria-label="Navigasi utama"><Link href="/web/home">Home</Link><Link href="/web/insights" className="active" aria-current="page">Insights</Link><Link href="/app.lumaway/login">Login</Link></nav></header>
   <article className="public-article redesigned">
    <header className="public-article-head">
-    <nav className="public-breadcrumb"><Link href="/web/home">Home</Link><span>/</span><Link href="/web/insights">Insights</Link><span>/</span><span>{stage}</span></nav>
+    <nav className="public-breadcrumb" aria-label="Breadcrumb"><Link href="/web/home">Home</Link><span aria-hidden="true">/</span><Link href="/web/insights">Insights</Link><span aria-hidden="true">/</span><span aria-current="page">{stage}</span></nav>
     <div className={"public-article-stage stage-"+stage.toLowerCase()}><b>{stage}</b><span>{stage==="TOFU"?"Kenali masalah":stage==="MOFU"?"Pahami caranya":"Ambil tindakan"}</span></div>
     <span className="public-eyebrow">{category}</span><h1>{title}</h1><p>{description}</p>
     <div className="public-article-meta"><span>Posted by {author}</span><time dateTime={date||undefined}>{date?new Date(date).toLocaleDateString("id-ID",{day:"numeric",month:"long",year:"numeric"}):""}</time>{fallback&&<span>{fallback.readTime} baca</span>}</div>
-    {post?.cover_image_url?<img className="public-article-cover" src={post.cover_image_url} alt={post.image_alt||title}/>:<div className="public-article-cover fallback-cover"><span>LUMAWAY INSIGHT</span><strong>{category}</strong><small>{stage} · Data → Understand → Decide → Act</small></div>}
+    {post?.cover_image_url?<img className="public-article-cover" src={post.cover_image_url} alt={post.image_alt||title} loading="lazy" decoding="async"/>:<div className="public-article-cover fallback-cover"><span>LUMAWAY INSIGHT</span><strong>{category}</strong><small>{stage} · Data → Understand → Decide → Act</small></div>}
    </header>
 
    <div className="public-article-layout">
     <div className="public-article-body">
-      <div className="public-reading-map"><div><b>01</b><span>Problem</span></div><i>→</i><div><b>02</b><span>Framework</span></div><i>→</i><div><b>03</b><span>Action</span></div></div>
+      <div className="public-reading-map" aria-hidden="true"><div><b>01</b><span>Problem</span></div><i>→</i><div><b>02</b><span>Framework</span></div><i>→</i><div><b>03</b><span>Action</span></div></div>
       {post?<div dangerouslySetInnerHTML={{__html:sanitized}}/>:fallback!.sections.map((section)=><section key={section.title}><h2>{section.title}</h2>{section.paragraphs.map((paragraph)=><p key={paragraph}>{paragraph}</p>)}</section>)}
-      {embed&&<div className="public-video"><iframe src={embed} title={title} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen/></div>}
+      {embed&&<div className="public-video"><iframe src={embed} title={title} loading="lazy" referrerPolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen/></div>}
       {post?.video_embed_url&&!embed&&<p className="public-source-link"><a href={post.video_embed_url} target="_blank" rel="noopener noreferrer">Lihat video terkait ↗</a></p>}
       {post?.external_dofollow_url&&<aside className="public-reference"><strong>Referensi terkait</strong><a href={post.external_dofollow_url} target="_blank" rel="noopener noreferrer">{post.external_dofollow_url}</a></aside>}
-      <aside className="public-action-checklist"><span>BOFU · NEXT ACTION</span><h3>Setelah membaca, lakukan ini</h3><label><i>1</i><p>Tentukan satu metrik atau masalah yang ingin dievaluasi.</p></label><label><i>2</i><p>Buka data terkait di Lumaway dan samakan periode.</p></label><label><i>3</i><p>Buat action, target, atau automation untuk tindak lanjut.</p></label><Link href="/app.lumaway/register">Praktikkan di Lumaway →</Link></aside>
+      <aside className="public-action-checklist"><span>BOFU · NEXT ACTION</span><h3>Setelah membaca, lakukan ini</h3><ol><li><span aria-hidden="true">1</span><p>Tentukan satu metrik atau masalah yang ingin dievaluasi.</p></li><li><span aria-hidden="true">2</span><p>Buka data terkait di Lumaway dan samakan periode.</p></li><li><span aria-hidden="true">3</span><p>Buat action, target, atau automation untuk tindak lanjut.</p></li></ol><Link href="/app.lumaway/register">Praktikkan di Lumaway →</Link></aside>
     </div>
     <aside className="public-article-side enhanced">
       <span>DALAM ARTIKEL INI</span>{toc.length?<ol>{toc.map((x,i)=><li key={i}>{x}</li>)}</ol>:<small>Problem → Framework → Action</small>}

@@ -141,7 +141,7 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
       {collapsed && <button type="button" className="sidebar-hidden-reopen" onClick={toggleCollapsed} aria-label="Buka sidebar" title="Buka sidebar"><LumaIcon name="menu" /></button>}
       <aside className={`sidebar ${isOwner ? "owner-sidebar" : ""} ${collapsed ? "is-collapsed" : ""} ${mobileOpen ? "mobile-open" : ""} ${accessLocked && !isOwner ? "subscription-locked" : ""}`} id="sidebar">
         <div className="brand">
-          <img src="/luma-mark.png" alt="Lumaway" className="brand-mark" />
+          <img src="/luma-mark.png" alt="Lumaway" className="brand-mark" width={36} height={36}/>
           <div className="brand-wordmark">
             <strong>LUMAWAY<span className="brand-dot">.</span></strong>
             <small>{isOwner ? "Control Center" : "Light Up Your Potential."}</small>
@@ -165,7 +165,7 @@ export default function LumaSidebar({ profile, workspace, onLogout, accessLocked
         ) : (
           <>
             <div className="sidebar-label">WORKSPACE</div>
-            <nav className="side-nav user-grouped-nav">
+            <nav className="side-nav user-grouped-nav" aria-label="Navigasi workspace">
               <a className={activeSection === "dashboard" ? "active" : ""} href={routeForSection("dashboard")} onClick={(event) => go(event, "dashboard")}>
                 <NavIcon name="dashboard" /><span className="nav-label">Dashboard</span>
               </a>

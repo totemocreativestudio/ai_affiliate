@@ -292,8 +292,8 @@ export default function LumawayAuthExperience({onAuthenticated}:{onAuthenticated
             {otpRequested&&<label><span>Kode OTP</span><input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={otp} onChange={e=>setOtp(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder="6 digit"/></label>}
           </div>}
 
-          {error&&<div className="auth-v7-alert error"><b>Perlu diperiksa</b><span>{error}</span></div>}
-          {message&&<div className="auth-v7-alert success"><b>Informasi</b><span>{message}</span></div>}
+          {error&&<div className="auth-v7-alert error" role="alert"><b>Perlu diperiksa</b><span>{error}</span></div>}
+          {message&&<div className="auth-v7-alert success" role="status"><b>Informasi</b><span>{message}</span></div>}
 
           {view==="signin"&&method==="email"&&<button type="button" className="auth-v7-primary" disabled={busy} onClick={()=>void signin()}>{busy?"Memproses...":"Masuk"}</button>}
           {view==="signin"&&method==="whatsapp"&&<><button type="button" className="auth-v7-primary" disabled={busy} onClick={()=>void (otpRequested?verifyWhatsappOtp():requestWhatsappOtp())}>{busy?"Memproses...":otpRequested?"Verifikasi & masuk":"Kirim kode WhatsApp"}</button>{otpRequested&&<button type="button" className="auth-v7-secondary-link auth-v7-resend" disabled={busy} onClick={()=>void requestWhatsappOtp()}>Kirim ulang kode</button>}</>}

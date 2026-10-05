@@ -64,11 +64,12 @@ export default function PWAInstallButton({ compact = false }: { compact?: boolea
         className="pwa-install-button"
         onClick={install}
         title={installed ? "Lumaway sudah terpasang" : "Install Lumaway sebagai aplikasi"}
+        aria-label={installed ? "Lumaway sudah terpasang" : "Install Lumaway sebagai aplikasi"}
       >
         <LumaIcon name="install" />
         {!compact && <span>{installed ? "App Installed" : "Install Lumaway"}</span>}
       </button>
-      {hint && <div className="pwa-install-hint">{hint}</div>}
+      {hint && <div className="pwa-install-hint" role="status">{hint}</div>}
     </div>
   );
 }

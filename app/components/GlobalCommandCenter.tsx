@@ -145,7 +145,7 @@ export default function GlobalCommandCenter({
   return <>
     <div className="global-command-root">
       <button className="global-search-trigger" type="button" onClick={()=>{setOpen(true);setQuickOpen(false)}} aria-label="Cari di Lumaway">
-        <SearchIcon/><span>Cari creator, host, SKU, Live, campaign...</span><kbd>⌘ K</kbd>
+        <SearchIcon/><span>Cari creator, host, SKU, Live, campaign…</span><kbd>⌘&nbsp;K</kbd>
       </button>
       <div className="quick-create-root">
         <button className="quick-create-trigger" type="button" onClick={()=>{setQuickOpen(value=>!value);setOpen(false)}} aria-expanded={quickOpen}>
@@ -164,7 +164,7 @@ export default function GlobalCommandCenter({
       <section className="global-command-panel" role="dialog" aria-modal="true" aria-label="Pencarian global Lumaway" onMouseDown={event=>event.stopPropagation()}>
         <header>
           <SearchIcon/>
-          <input ref={inputRef} value={query} onChange={event=>setQuery(event.target.value)} onKeyDown={onInputKey} placeholder="Cari creator, host, SKU, produk Live, campaign, resi, Saved View..."/>
+          <input ref={inputRef} value={query} onChange={event=>setQuery(event.target.value)} onKeyDown={onInputKey} placeholder="Cari creator, host, SKU, produk Live, campaign, resi, Saved View…" aria-label="Cari di Lumaway" role="combobox" aria-expanded={open} aria-controls="global-command-results" aria-autocomplete="list" autoComplete="off" spellCheck={false} aria-activedescendant={rows.length?`global-command-option-${activeIndex}`:undefined}/>
           <kbd>ESC</kbd>
         </header>
         <div className="global-command-body">
@@ -173,13 +173,13 @@ export default function GlobalCommandCenter({
             <strong>Temukan data lintas workspace lebih cepat.</strong>
             <p>Ketik minimal 2 karakter. Gunakan ↑ ↓ lalu Enter untuk membuka hasil.</p>
             <div>{QUICK_CREATE.slice(0,4).map(item=><button type="button" key={item.key} onClick={()=>quickCreate(item)}><LumaIcon name={item.icon}/>{item.label}</button>)}</div>
-          </div>:loading?<div className="global-command-loading"><i/><span>Mencari di workspace...</span></div>:rows.length?<div className="global-command-results">
-            {rows.map((row,index)=><button type="button" key={row.entity_type+"-"+row.entity_id} className={activeIndex===index?"active":""} onMouseEnter={()=>setActiveIndex(index)} onClick={()=>void openResult(row)}>
-              <span className={"global-result-icon type-"+row.entity_type}>{row.entity_type==="creator"?"C":row.entity_type==="product"?"P":row.entity_type==="campaign"?"M":row.entity_type==="shipping"?"S":row.entity_type==="task"?"T":row.entity_type==="live_host"?"H":row.entity_type==="live_session"?"LS":row.entity_type==="live_product"?"LP":row.entity_type==="saved_view"?"V":row.entity_type==="module"?"M":"L"}</span>
+          </div>:loading?<div className="global-command-loading" role="status"><i aria-hidden="true"/><span>Mencari di workspace…</span></div>:rows.length?<><p className="sr-only" role="status">{rows.length} hasil ditemukan</p><div className="global-command-results" id="global-command-results" role="listbox" aria-label="Hasil pencarian">
+            {rows.map((row,index)=><button type="button" id={`global-command-option-${index}`} role="option" aria-selected={activeIndex===index} key={row.entity_type+"-"+row.entity_id} className={activeIndex===index?"active":""} onMouseEnter={()=>setActiveIndex(index)} onClick={()=>void openResult(row)}>
+              <span className={"global-result-icon type-"+row.entity_type} aria-hidden="true">{row.entity_type==="creator"?"C":row.entity_type==="product"?"P":row.entity_type==="campaign"?"M":row.entity_type==="shipping"?"S":row.entity_type==="task"?"T":row.entity_type==="live_host"?"H":row.entity_type==="live_session"?"LS":row.entity_type==="live_product"?"LP":row.entity_type==="saved_view"?"V":row.entity_type==="module"?"M":"L"}</span>
               <span className="global-result-copy"><b>{row.title}</b>{row.subtitle&&<small>{row.subtitle}</small>}</span>
               <span className="global-result-meta"><em>{entityLabel(row.entity_type)}</em>{row.meta&&<small>{row.meta}</small>}</span>
             </button>)}
-          </div>:<div className="global-command-empty"><strong>Tidak ada hasil.</strong><span>Coba nama, username, SKU, host, session Live, Saved View, nomor resi, atau menu.</span></div>}
+          </div></>:<div className="global-command-empty"><strong>Tidak ada hasil.</strong><span>Coba nama, username, SKU, host, session Live, Saved View, nomor resi, atau menu.</span></div>}
         </div>
         <footer><span><kbd>↑</kbd><kbd>↓</kbd> Navigasi</span><span><kbd>Enter</kbd> Buka</span><span><kbd>Esc</kbd> Tutup</span></footer>
       </section>
