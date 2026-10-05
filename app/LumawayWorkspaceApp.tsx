@@ -77,6 +77,7 @@ type Profile = { id: string; email: string | null; full_name: string | null; nic
 type Workspace = { id: string; name: string; slug: string; status: string };
 type AuthMode = "signin" | "signup";
 const REFERRAL_STORAGE_KEY="lumaway_referral_code";
+const OAUTH_APP_ORIGIN = "https://app.lumaway.online";
 
 function captureReferralCode(){
   if(typeof window==="undefined")return "";
@@ -394,7 +395,15 @@ export default function LumawayWorkspaceApp() {
     setLoading(true);
     try {
       const next = "/dashboard";
-      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+      if (window.location.origin !== OAUTH_APP_ORIGIN && process.env.NODE_ENV !== "development") {
+        const target = new URL(`${OAUTH_APP_ORIGIN}${APP_BASE}/login`);
+        target.searchParams.set("oauth", "google");
+        const ref = captureReferralCode();
+        if (ref) target.searchParams.set("ref", ref);
+        window.location.assign(target.toString());
+        return;
+      }
+      const redirectTo = `${OAUTH_APP_ORIGIN}/auth/callback?next=${encodeURIComponent(next)}`;
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
