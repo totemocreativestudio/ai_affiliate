@@ -14,7 +14,6 @@
     "check:migrations": "node scripts/lumaway-db-migration-check.mjs",
     "check:routes": "node scripts/lumaway-route-check.mjs",
     "check:assets": "node scripts/check-public-assets.mjs",
-    "check:problems": "node scripts/watch-f2-problems.mjs",
     "check:numeric": "node --experimental-strip-types scripts/affiliate-table-numeric-check.mjs",
     "check:smoke": "node scripts/lumaway-http-smoke.mjs",
     "check:load": "node scripts/lumaway-load-test.mjs",

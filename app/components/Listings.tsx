@@ -58,6 +58,23 @@ function stageTone(stage:string|null){
   return"neutral";
 }
 
+function splitPostLinks(value:string|null|undefined){
+  if(!value)return[];
+  const parts=String(value).split(/[\r\n]+/).flatMap(part=>String(part).split(/[\s,;]+/));
+  const cleaned=parts.map(s=>s.trim()).filter(Boolean).map(s=>{
+    if(/^https?:\/\//i.test(s))return s;
+    if(s.includes(".")&&!s.includes(" "))return`https://${s}`;
+    return s;
+  });
+  return[...new Set(cleaned)];
+}
+function normalizePostLinksInput(value:string){
+  return splitPostLinks(value).join("\n");
+}
+function scrollToListingEditor(){
+  setTimeout(()=>{try{document.querySelector(".listing-v2-editor")?.scrollIntoView({behavior:"smooth",block:"start"})}catch{}},60);
+}
+
 export default function Listings({workspaceId}:{workspaceId:string}){
   const supabase=useMemo(()=>createClient(),[]);
   const [rows,setRows]=useState<Listing[]>([]);
@@ -182,6 +199,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
   function openAdd(){
     setEditingId(null);setForm({...EMPTY_FORM,data_date:new Date().toISOString().slice(0,10)});
     setCreatorSearch("");setProductSearch("");setManualCreatorConfirmed(false);setError("");setShowForm(true);
+    scrollToListingEditor();
   }
 
   function openEdit(row:Listing){
@@ -195,6 +213,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
     });
     setCreatorSearch(row.creator_name||"");setProductSearch(row.sku||row.product_name||"");setManualCreatorConfirmed(!row.creator_id&&Boolean(row.creator_name));
     setError("");setShowForm(true);
+    scrollToListingEditor();
   }
 
   async function saveListing(){
@@ -214,7 +233,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
       platform:form.platform||creator?.platform||null,product_master_id:form.product_master_id?Number(form.product_master_id):null,
       product_name:product?.product_name||null,sku:product?.sku||null,product_hpp:product?.cost_price!=null?Number(product.cost_price):Number(form.product_hpp||0),
       stage:form.stage||"New Lead",payment_type:form.payment_type||null,ratecard:form.ratecard?Number(form.ratecard):0,
-      posting_date:form.posting_date||null,post_link:form.post_link||null,next_action:form.next_action||null,agreement_id:form.agreement_id||null,follow_up_channel:form.follow_up_channel||null,next_follow_up_at:form.next_follow_up_at?new Date(form.next_follow_up_at).toISOString():null,follow_up_priority:form.follow_up_priority||"normal",follow_up_owner_user_id:form.follow_up_owner_user_id||null,follow_up_completed_at:form.next_follow_up_at?null:null,notes:form.notes||null,
+      posting_date:form.posting_date||null,post_link:normalizePostLinksInput(form.post_link)||null,next_action:form.next_action||null,agreement_id:form.agreement_id||null,follow_up_channel:form.follow_up_channel||null,next_follow_up_at:form.next_follow_up_at?new Date(form.next_follow_up_at).toISOString():null,follow_up_priority:form.follow_up_priority||"normal",follow_up_owner_user_id:form.follow_up_owner_user_id||null,follow_up_completed_at:form.next_follow_up_at?null:null,notes:form.notes||null,
     };
 
     if(editingId!==null){
@@ -384,7 +403,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
         <label><span>Payment Type</span><input value={form.payment_type} onChange={e=>updateField("payment_type",e.target.value)} placeholder="Paid / Barter"/></label>
         <label><span>Ratecard</span><input type="number" value={form.ratecard} onChange={e=>updateField("ratecard",e.target.value)} placeholder="0"/></label>
         <label><span>Posting Date</span><input type="date" value={form.posting_date} onChange={e=>updateField("posting_date",e.target.value)}/></label>
-        <label><span>Post Link</span><input value={form.post_link} onChange={e=>updateField("post_link",e.target.value)} placeholder="https://..."/></label>
+        <label className="wide"><span>Post Link / Link Konten <small>· bisa lebih dari 1, satu link per baris</small></span><textarea rows={3} value={form.post_link} onChange={e=>updateField("post_link",e.target.value)} placeholder={"https://tiktok.com/...\nhttps://shopee.co.id/..."}/>{splitPostLinks(form.post_link).length>0&&<small>{splitPostLinks(form.post_link).length} link terdeteksi. Pisahkan dengan baris baru / koma / spasi.</small>}</label>
         <label><span>Next Action</span><input value={form.next_action} onChange={e=>updateField("next_action",e.target.value)} placeholder="Follow up / kirim brief"/></label>
         <label><span>Follow Up Via</span><select value={form.follow_up_channel} onChange={e=>updateField("follow_up_channel",e.target.value)}><option value="">Pilih channel</option>{FOLLOW_UP_CHANNELS.map(x=><option key={x}>{x}</option>)}</select><small>Channel utama / terakhir yang dipakai untuk komunikasi creator.</small></label>
         <label><span>Next Follow Up</span><input type="datetime-local" value={form.next_follow_up_at} onChange={e=>updateField("next_follow_up_at",e.target.value)}/><small>Jadwal tindak lanjut berikutnya.</small></label>
@@ -401,13 +420,14 @@ export default function Listings({workspaceId}:{workspaceId:string}){
         <div className="listing-v2-section-head"><div><h3>Hasil Listing</h3><p>Aktivitas terbaru creator dan progres listing.</p></div><span>{visibleRows.length.toLocaleString("id-ID")} hasil</span></div>
         {loading?<div className="listing-v2-empty">Memuat Listings...</div>:visibleRows.length===0?<div className="listing-v2-empty"><b>Belum ada hasil listing.</b><span>Tambahkan listing atau ubah filter pencarian.</span></div>:
         <div className="listing-v2-table-wrap"><table><thead><tr><th>Creator</th><th>Platform</th><th>Contact</th><th>Product / SKU</th><th>Stage</th><th>Ratecard</th><th>Latest / Next</th><th>Action</th></tr></thead><tbody>
-          {visibleRows.map(row=>{const rowCreator=creators.find(item=>item.id===row.creator_id);return <tr key={row.id} className={selected?.id===row.id?"selected":""} onClick={()=>setSelected(row)}>
+          {visibleRows.map(row=>{const rowCreator=creators.find(item=>item.id===row.creator_id)||masterCreators.find(item=>item.id===row.creator_id);const links=splitPostLinks(row.post_link);return <tr key={row.id} className={selected?.id===row.id?"selected":""} onClick={()=>setSelected(row)}>
             <td><div className="listing-v2-creator-cell"><span className={rowCreator?.avatar_url?"has-photo":""}>{rowCreator?.avatar_url?<img src={rowCreator.avatar_url} alt="" referrerPolicy="no-referrer"/>:String(row.creator_name||"C").slice(0,1).toUpperCase()}</span><div><b>{row.creator_name||"-"}</b><small>{dateLabel(row.data_date)}</small></div></div></td>
             <td><span className="listing-v2-platform">{row.platform||"-"}</span></td>
+            <td><b>{rowCreator?.phone||"-"}</b>{rowCreator?.phone?<small>WhatsApp tersedia</small>:<small>Belum ada nomor</small>}</td>
             <td><b>{row.product_name||"-"}</b><small>{row.sku||"Tanpa SKU"}</small></td>
             <td><span className={"listing-v2-stage "+stageTone(row.stage)}>{row.stage||"New Lead"}</span></td>
             <td>{money(row.ratecard)}</td>
-            <td><b>{row.next_action||"Belum ada next action"}</b><small>{row.posting_date?`Posting ${dateLabel(row.posting_date)}`:""}</small>{row.follow_up_channel&&<span className="listing-channel-badge">{row.follow_up_channel}</span>}</td>
+            <td><b>{row.next_action||"Belum ada next action"}</b><small>{row.posting_date?`Posting ${dateLabel(row.posting_date)}`:""}{links.length?` · ${links.length} link konten`:""}</small>{links.length>0&&<span className="listing-channel-badge">{links.length>1?`${links.length} link`:`1 link`}</span>}{row.follow_up_channel&&<span className="listing-channel-badge">{row.follow_up_channel}</span>}</td>
             <td><div className="listing-v2-actions" onClick={e=>e.stopPropagation()}><button onClick={()=>setSelected(row)}>Detail</button><button onClick={()=>openActivity(row,"Follow Up")}>+ Follow Up</button><button onClick={()=>openEdit(row)}>Edit</button><button className="danger" onClick={()=>void deleteListing(row.id)}>Hapus</button></div></td>
           </tr>})}
         </tbody></table></div>}
@@ -438,7 +458,8 @@ export default function Listings({workspaceId}:{workspaceId:string}){
             {selectedCreator?.social_profile_updated_at&&<small>Profil diperbarui {new Date(selectedCreator.social_profile_updated_at).toLocaleString("id-ID")}</small>}
           </section>
           <ListingQuickMessage workspaceId={workspaceId} listing={selected} creatorUsername={selectedCreator?.username||null} picName={followupOwners.find(x=>x.id===selected.follow_up_owner_user_id)?.safe_label||null} creatorPhone={selectedCreator?.phone||null}/>
-          <div className="listing-v2-detail-actions"><button className="primary" onClick={()=>openActivity(selected,"Follow Up")}>+ Tambah Follow Up</button><button className="secondary" onClick={()=>openEdit(selected)}>Edit Listing</button>{selected.post_link&&<a href={selected.post_link} target="_blank" rel="noreferrer">Buka Konten</a>}</div>
+          {splitPostLinks(selected.post_link).length>0&&<div className="listing-v2-social"><div className="listing-v2-social-head"><div><span>KONTEN / POST LINK</span><h4>{splitPostLinks(selected.post_link).length} link konten</h4></div></div><div className="listing-v2-social-links">{splitPostLinks(selected.post_link).map((url,i)=><a key={i} href={url} target="_blank" rel="noreferrer"><span>Link {i+1}</span><b>↗</b></a>)}</div></div>}
+          <div className="listing-v2-detail-actions"><button className="primary" onClick={()=>openActivity(selected,"Follow Up")}>+ Tambah Follow Up</button><button className="secondary" onClick={()=>openEdit(selected)}>Edit Listing</button>{splitPostLinks(selected.post_link).slice(0,1).map((url,i)=><a key={i} href={url} target="_blank" rel="noreferrer">Buka Konten{splitPostLinks(selected.post_link).length>1?` (1/${splitPostLinks(selected.post_link).length})`:""}</a>)}</div>
           <div className="listing-v2-timeline-head"><div><h4>Activity Timeline</h4><p>Riwayat listing, follow up, sample, konten, dan hasil creator.</p></div></div>
           {detailLoading?<div className="listing-v2-empty small">Memuat timeline...</div>:activities.length===0?<div className="listing-v2-empty small">Belum ada aktivitas.</div>:
           <div className="listing-v2-timeline">{activities.map(activity=><article key={activity.id}><span className="dot"/><time>{dateLabel(activity.activity_date)}</time><div><b>{activity.activity_type}</b>{activity.follow_up_channel&&<span className="listing-channel-badge timeline">{activity.follow_up_channel}</span>}{activity.result&&<em>{activity.result}</em>}{activity.note&&<p>{activity.note}</p>}</div></article>)}</div>}

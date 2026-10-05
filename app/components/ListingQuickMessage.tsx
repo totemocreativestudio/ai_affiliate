@@ -39,7 +39,7 @@ export default function ListingQuickMessage({workspaceId,listing,creatorUsername
  const [aiBusy,setAiBusy]=useState(false);
  const [aiMode,setAiMode]=useState("");
  const [aiHistoryCount,setAiHistoryCount]=useState(0);
- const [aiNote,setAiNote]=useState("");
+ const [aiNote,setAiNote]=useState(""); const [customComment,setCustomComment]=useState(""); const [phoneOverride,setPhoneOverride]=useState("");
 
  async function load(){
   const x=await supabase.from("luma_followup_message_templates").select("*").eq("workspace_id",workspaceId).eq("active",true).order("name");
@@ -54,14 +54,14 @@ export default function ListingQuickMessage({workspaceId,listing,creatorUsername
   setAiDraft("");
   setAiMode("");
   setAiHistoryCount(0);
-  setAiNote("");
+  setAiNote(""); setCustomComment(""); setPhoneOverride("");
  },[listing.id]);
 
  const filtered=templates.filter(x=>(!channel||x.channel===channel)&&(!x.stage||x.stage===stage));
  const selected=templates.find(x=>String(x.id)===selectedId)||filtered[0]||null;
  const preview=selected?renderTemplate(selected.body,{...listing,creator_username:creatorUsername,pic_name:picName}):"";
- const activeText=aiDraft||preview;
- const phone=waDigits(creatorPhone);
+ const activeBase=aiDraft||preview; const activeText=[activeBase,customComment.trim()].filter(Boolean).join("\n\n");
+ const phone=waDigits((phoneOverride||"").trim()||creatorPhone);
 
  async function copy(){
   if(!activeText)return;
@@ -132,11 +132,12 @@ export default function ListingQuickMessage({workspaceId,listing,creatorUsername
    <div className="lqm-preview"><span>PREVIEW TEMPLATE</span><p>{preview}</p></div>
    :<div className="lqm-empty">Belum ada template. Anda tetap bisa memilih Generate dari History.</div>}
 
-  <div className="lqm-actions">
+  <div className="lqm-extra"><label><span>TAMBAHAN KOMENTAR</span><textarea rows={2} value={customComment} onChange={e=>setCustomComment(e.target.value)} placeholder="Tambah teks / angka tambahan, mis: kode voucher, nominal, jadwal..."/><small>Komentar ini digabung otomatis ke pesan WhatsApp.</small></label><label><span>NOMOR WA LAIN (OPSIONAL)</span><input value={phoneOverride} onChange={e=>setPhoneOverride(e.target.value)} placeholder="08xx / 62xx - kosongkan untuk pakai nomor creator"/><small>Jika creator belum punya nomor, isi manual di sini.</small></label></div>
+   <div className="lqm-actions">
    <small>{aiDraft?"Draft dapat diedit sebelum dikirim.":selected?selected.name+" · "+selected.channel+(selected.stage?" · "+selected.stage:""):"Review pesan sebelum menghubungi creator."}</small>
    <div>
     <button disabled={!activeText} onClick={()=>void copy()}>Copy Message</button>
-    {phone&&<button className="whatsapp" onClick={openWhatsapp}><span className="wa-mark">WA</span> Buka WhatsApp</button>}
+    <button className="whatsapp" onClick={openWhatsapp}><span className="wa-mark">WA</span> Buka WhatsApp</button>
    </div>
   </div>
 
