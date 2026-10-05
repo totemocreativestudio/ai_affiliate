@@ -19,7 +19,16 @@ function requestOrigin(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
+  const host = String(request.headers.get("x-forwarded-host") || request.headers.get("host") || "").split(",")[0].trim().toLowerCase();
   const code = url.searchParams.get("code");
+  // Do not exchange a PKCE code on the marketing origin: the resulting auth
+  // cookies would be scoped to www.lumaway.online and disappear on app redirect.
+  if (process.env.NODE_ENV !== "development" && host && host !== "app.lumaway.online") {
+    const restart = new URL("/app.lumaway/login", PROD_ORIGIN);
+    restart.searchParams.set("oauth", "google");
+    restart.searchParams.set("error", "oauth_wrong_origin");
+    return NextResponse.redirect(restart);
+  }
   const next = safeNext(url.searchParams.get("next"));
   const origin = requestOrigin(request);
 
