@@ -264,6 +264,7 @@ export default function LumawayWorkspaceApp() {
       } else {
         const currentParams=new URLSearchParams(window.location.search);
         const sessionRequestedMode=currentParams.get("auth");
+        const oauthIntent=String(currentParams.get("oauth")||"");
         const requestedView=String(currentParams.get("view")||"");
         const authPath=sessionRequestedMode==="signup"||window.location.pathname.endsWith("/register")
           ? `${APP_BASE}/register`
@@ -272,6 +273,10 @@ export default function LumawayWorkspaceApp() {
         if(authPath===`${APP_BASE}/login`&&["forgot","whatsapp"].includes(requestedView)){
           const url=new URL(authUrlWithReferral(authPath),window.location.origin);
           url.searchParams.set("view",requestedView);
+          window.history.replaceState(null,"",url.pathname+url.search);
+        }else if(authPath===`${APP_BASE}/login`&&oauthIntent==="google"){
+          const url=new URL(authUrlWithReferral(authPath),window.location.origin);
+          url.searchParams.set("oauth","google");
           window.history.replaceState(null,"",url.pathname+url.search);
         }else{
           window.history.replaceState(null,"",authUrlWithReferral(authPath));
