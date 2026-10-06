@@ -48,16 +48,21 @@ function EyeIcon({open}:{open:boolean}){
 function AuthCarousel(){
   const [index,setIndex]=useState(0);
   const [paused,setPaused]=useState(false);
+  const prefersReducedMotion = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }, []);
+
   useEffect(()=>{
-    if(paused) return;
+    if (paused || prefersReducedMotion) return;
     const timer=window.setInterval(()=>setIndex(current=>(current+1)%slides.length),5000);
     return()=>window.clearInterval(timer);
-  },[paused]);
+  },[paused, prefersReducedMotion]);
   return <aside className="auth-v7-showcase" onMouseEnter={()=>setPaused(true)} onMouseLeave={()=>setPaused(false)} onFocus={()=>setPaused(true)} onBlur={()=>setPaused(false)}>
     <div className="auth-v7-brand"><img src="/luma-mark.png" alt="Lumaway"/><b>LUMA</b><span>Light Up Your Potential.</span></div>
     <div className="auth-v7-slides">
       {slides.map((slide,i)=><article key={slide.title} className={"auth-v7-slide "+(i===index?"active":"")}>
-        <img src={slide.image} alt="" loading={i===0?"eager":"lazy"}/>
+        <img src={slide.image} alt="" loading={i===0?"eager":"lazy"} width={1800} height={1013} />
         <div className="auth-v7-slide-overlay"/>
         <div className="auth-v7-slide-copy">
           <span>{slide.eyebrow}</span>
