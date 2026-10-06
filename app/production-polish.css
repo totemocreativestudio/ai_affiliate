@@ -1,4 +1,31 @@
 /* Final production polish: owner isolation and less synthetic visual treatment. */
+
+/* Focus visible styles for accessibility */
+*:focus-visible{
+  outline:2px solid #6f63ff;
+  outline-offset:2px;
+}
+*:focus:not(:focus-visible){
+  outline:none;
+}
+@media (forced-colors: active){
+  *:focus-visible{
+    outline:2px solid ButtonText;
+    outline-offset:2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce){
+  *,
+  *::before,
+  *::after{
+    animation-duration:0.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:0.01ms !important;
+    scroll-behavior:auto !important;
+  }
+}
+
 body:has(.owner-sidebar) .content>.legacy-page-anchor:not(#administration){display:none!important}
 body:has(.owner-sidebar) .content>#administration{display:block!important;animation:none!important}
 body:has(.owner-sidebar) .content{max-width:1600px;padding-top:28px}

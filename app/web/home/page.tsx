@@ -50,7 +50,7 @@ export default async function PublicHome({
    if(description)login.searchParams.set("error_description",description);
    redirect(login.toString());
  }
- const dbPosts=await getPublicBlogs(3);
+ const {posts: dbPosts} = await getPublicBlogs(3);
  const insightCards=dbPosts.length?dbPosts.map(p=>({slug:p.slug,title:p.title,description:p.excerpt||"Insight terbaru dari Lumaway.",category:p.category||"Insight"})):STATIC_INSIGHTS.slice(0,3).map(p=>({slug:p.slug,title:p.title,description:p.description,category:p.category}));
  return <main id="main-content" tabIndex={-1}>
   <header className="lw-nav"><Link href="/web/home" className="lw-brand"><img src="/luma-mark.png" alt="" width={28} height={28} decoding="async"/><strong>LUMAWAY<span aria-hidden="true">.</span></strong></Link><nav aria-label="Navigasi utama"><Link href="/web/home#platform">Platform</Link><Link href="/web/home#workflow">Cara Kerja</Link><Link href="/web/insights">Insights</Link><Link href="/web/pricing">Pricing</Link><Link href="/app.lumaway/login">Login</Link><Link className="lw-primary-link" href="/app.lumaway/register">Buat Akun</Link></nav></header>

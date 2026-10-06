@@ -79,28 +79,38 @@ function publicConfig(){
   return {url:url.replace(/\/$/,""),key};
 }
 
-export async function getPublicBlogs(limit=100):Promise<PublicBlogPost[]>{
+export async function getPublicBlogs(limit=12, page=1):Promise<{posts:PublicBlogPost[], total:number, totalPages:number}>{
   const {url,key}=publicConfig();
-  if(!url||!key)return [];
+  if(!url||!key)return {posts:[], total:0, totalPages:0};
+  const offset=(page-1)*limit;
   const query=new URLSearchParams({
     select:"id,slug,title,excerpt,content_html,category,cover_image_url,seo_title,seo_description,seo_keywords,external_dofollow_url,video_embed_url,image_alt,author_name,published_at,updated_at,faq_json",
     status:"eq.published",
     order:"published_at.desc",
-    limit:String(limit)
+    limit:String(limit),
+    offset:String(offset)
   });
   try{
-    const response=await fetch(`${url}/rest/v1/luma_blog_posts?${query.toString()}`,{
-      headers:{apikey:key,Authorization:`Bearer ${key}`},
-      cache:"no-store"
-    });
-    if(!response.ok)return [];
-    return await response.json();
-  }catch{return []}
+    const [postsRes, countRes] = await Promise.all([
+      fetch(`${url}/rest/v1/luma_blog_posts?${query.toString()}`,{
+        headers:{apikey:key,Authorization:`Bearer ${key}`},
+        cache:"no-store"
+      }),
+      fetch(`${url}/rest/v1/luma_blog_posts?status=eq.published&select=count`,{
+        headers:{apikey:key,Authorization:`Bearer ${key}`,Prefer:"count=exact"},
+        cache:"no-store"
+      })
+    ]);
+    if(!postsRes.ok)return {posts:[], total:0, totalPages:0};
+    const posts = await postsRes.json();
+    const total = Number(countRes.headers.get("content-range")?.split("/")[1] || "0");
+    return {posts, total, totalPages:Math.ceil(total/limit)};
+  }catch{return {posts:[], total:0, totalPages:0}}
 }
 
 export async function getPublicBlog(slug:string){
-  const rows=await getPublicBlogs(200);
-  return rows.find((row)=>row.slug===slug)||null;
+  const {posts}=await getPublicBlogs(200,1);
+  return posts.find((row)=>row.slug===slug)||null;
 }
 
 export function getStaticInsight(slug:string){

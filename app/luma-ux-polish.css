@@ -18,6 +18,34 @@ html[data-theme="dark"]{
   --luma-shadow:0 14px 34px rgba(0,0,0,.28);
 }
 
+/* Focus visible styles for accessibility */
+*:focus-visible{
+  outline:2px solid var(--luma-accent);
+  outline-offset:2px;
+}
+*:focus:not(:focus-visible){
+  outline:none;
+}
+/* High contrast mode focus */
+@media (forced-colors: active){
+  *:focus-visible{
+    outline:2px solid ButtonText;
+    outline-offset:2px;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce){
+  *,
+  *::before,
+  *::after{
+    animation-duration:0.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:0.01ms !important;
+    scroll-behavior:auto !important;
+  }
+}
+
 /* brand icon system */
 .nav-ico{background:rgba(111,99,255,.10)!important;color:#a9a2ff!important;border:1px solid rgba(139,124,255,.08)}
 .nav-ico svg,.side-subnav svg,.owner-subnav svg{width:15px;height:15px;display:block;flex:0 0 auto}

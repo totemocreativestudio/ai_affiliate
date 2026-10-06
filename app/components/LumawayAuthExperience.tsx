@@ -47,11 +47,13 @@ function EyeIcon({open}:{open:boolean}){
 
 function AuthCarousel(){
   const [index,setIndex]=useState(0);
+  const [paused,setPaused]=useState(false);
   useEffect(()=>{
+    if(paused) return;
     const timer=window.setInterval(()=>setIndex(current=>(current+1)%slides.length),5000);
     return()=>window.clearInterval(timer);
-  },[]);
-  return <aside className="auth-v7-showcase">
+  },[paused]);
+  return <aside className="auth-v7-showcase" onMouseEnter={()=>setPaused(true)} onMouseLeave={()=>setPaused(false)} onFocus={()=>setPaused(true)} onBlur={()=>setPaused(false)}>
     <div className="auth-v7-brand"><img src="/luma-mark.png" alt="Lumaway"/><b>LUMA</b><span>Light Up Your Potential.</span></div>
     <div className="auth-v7-slides">
       {slides.map((slide,i)=><article key={slide.title} className={"auth-v7-slide "+(i===index?"active":"")}>
@@ -65,7 +67,7 @@ function AuthCarousel(){
       </article>)}
     </div>
     <div className="auth-v7-dots" role="tablist" aria-label="Carousel Lumaway">
-      {slides.map((slide,i)=><button key={slide.title} type="button" className={i===index?"active":""} onClick={()=>setIndex(i)} aria-label={"Tampilkan slide "+(i+1)}/>)}
+      {slides.map((slide,i)=><button key={slide.title} type="button" className={i===index?"active":""} onClick={()=>setIndex(i)} aria-label={"Tampilkan slide "+(i+1)} aria-selected={i===index}/>)}
     </div>
   </aside>;
 }
@@ -274,26 +276,47 @@ export default function LumawayAuthExperience({onAuthenticated}:{onAuthenticated
           {view==="signin"&&method==="email"&&!googleEnabled&&<p className="auth-v7-helper auth-v7-helper-box">Login Google sedang disesuaikan. Silakan gunakan email dan password.</p>}
 
           {((view==="signin"&&method==="email")||view==="signup"||view==="forgot")&&<div className="auth-v7-fields">
-            <label><span>Email</span><input type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="nama@perusahaan.com" disabled={view==="forgot"&&resetRequested}/></label>
-            {view==="forgot"&&resetRequested&&<label><span>Kode reset 6 digit</span><input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={resetOtp} onChange={e=>setResetOtp(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder="Masukkan 6 digit dari email" onKeyDown={e=>{if(e.key==="Enter")void verifyResetOtp()}}/><small className="auth-v7-helper">Kode berlaku 10 menit. Link reset di email tetap bisa digunakan sebagai alternatif.</small></label>}
-            {(view==="signup"||(view==="signin"&&method==="email"))&&<label><span>Password</span><div className="auth-v7-password"><input type={showPassword?"text":"password"} autoComplete={view==="signin"?"current-password":"new-password"} value={password} onChange={e=>setPassword(e.target.value)} placeholder={view==="signup"?"Minimal 8 karakter":"Masukkan password"} onKeyDown={e=>{if(e.key==="Enter"){if(view==="signin")void signin();else if(view==="signup")void signup()}}}/><button type="button" aria-label={showPassword?"Sembunyikan password":"Tampilkan password"} onClick={()=>setShowPassword(x=>!x)}><EyeIcon open={showPassword}/></button></div></label>}
+            <label htmlFor="auth-email"><span>Email</span><input id="auth-email" type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="nama@perusahaan.com…" disabled={view==="forgot"&&resetRequested} aria-invalid={error && (view==="forgot"||method==="email") ? true : false} aria-describedby={error && (view==="forgot"||method==="email") ? "auth-error" : undefined} spellCheck={false} autoCapitalize="none" autoCorrect="off"/></label>
+            {view==="forgot"&&resetRequested&&<label htmlFor="auth-reset-otp"><span>Kode reset 6 digit</span><input id="auth-reset-otp" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={resetOtp} onChange={e=>setResetOtp(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder="Masukkan 6 digit dari email…" onKeyDown={e=>{if(e.key==="Enter")void verifyResetOtp()}} aria-invalid={error && view==="forgot" && resetRequested ? true : false} aria-describedby={error && view==="forgot" && resetRequested ? "auth-error" : undefined}/><small className="auth-v7-helper">Kode berlaku 10 menit. Link reset di email tetap bisa digunakan sebagai alternatif.</small></label>}
+            {(view==="signup"||(view==="signin"&&method==="email"))&&(
+              <label htmlFor="auth-password">
+                <span>Password</span>
+                <div className="auth-v7-password">
+                  <input
+                    id="auth-password"
+                    type={showPassword?"text":"password"}
+                    autoComplete={view==="signin"?"current-password":"new-password"}
+                    value={password}
+                    onChange={(e)=>setPassword(e.target.value)}
+                    placeholder={view==="signup"?"Minimal 8 karakter…":"Masukkan password…"}
+                    onKeyDown={(e)=>{if(e.key==="Enter"){if(view==="signin"){void signin()}else if(view==="signup"){void signup()}}}}
+                    spellCheck={false}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                  />
+                  <button type="button" aria-label={showPassword?"Sembunyikan password":"Tampilkan password"} onClick={()=>setShowPassword(x=>!x)}>
+                    <EyeIcon open={showPassword}/>
+                  </button>
+                </div>
+              </label>
+            )}
           </div>}
 
-          {view==="signin"&&method==="email"&&<div className="auth-v7-meta"><label><input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)}/><span>Ingat saya</span></label><button type="button" onClick={()=>go("forgot")}>Lupa password?</button></div>}
-          {view==="signup"&&<label className="auth-v7-consent"><input type="checkbox" checked={terms} onChange={e=>setTerms(e.target.checked)}/><span>Saya menyetujui <a href="/web/terms">Syarat Layanan</a> dan <a href="/web/privacy">Kebijakan Privasi</a> Lumaway.</span></label>}
+          {view==="signin"&&method==="email"&&<div className="auth-v7-meta"><label htmlFor="auth-remember"><input id="auth-remember" type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)}/><span>Ingat saya</span></label><button type="button" onClick={()=>go("forgot")}>Lupa password?</button></div>}
+          {view==="signup"&&<label className="auth-v7-consent" htmlFor="auth-terms"><input id="auth-terms" type="checkbox" checked={terms} onChange={e=>setTerms(e.target.checked)}/><span>Saya menyetujui <a href="/web/terms">Syarat Layanan</a> dan <a href="/web/privacy">Kebijakan Privasi</a> Lumaway.</span></label>}
 
           {view==="signin"&&method==="whatsapp"&&<div className="auth-v7-fields">
-            <label><span>Nomor WhatsApp</span><input inputMode="tel" autoComplete="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+62812xxxx" disabled={otpRequested}/></label>
-            {otpRequested&&<label><span>Kode OTP</span><input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={otp} onChange={e=>setOtp(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder="6 digit dari WhatsApp" onKeyDown={e=>{if(e.key==="Enter")void verifyWhatsappOtp()}}/><small className="auth-v7-helper">Kode berlaku 5 menit.</small></label>}
+            <label htmlFor="auth-phone"><span>Nomor WhatsApp</span><input id="auth-phone" inputMode="tel" autoComplete="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+62812xxxx…" disabled={otpRequested} aria-invalid={error && method==="whatsapp" ? true : false} aria-describedby={error && method==="whatsapp" ? "auth-error" : undefined}/></label>
+            {otpRequested&&<label htmlFor="auth-otp"><span>Kode OTP</span><input id="auth-otp" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={otp} onChange={e=>setOtp(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder="6 digit dari WhatsApp…" onKeyDown={e=>{if(e.key==="Enter")void verifyWhatsappOtp()}} aria-invalid={error && otpRequested ? true : false} aria-describedby={error && otpRequested ? "auth-error" : undefined}/><small className="auth-v7-helper">Kode berlaku 5 menit.</small></label>}
           </div>}
 
           {view==="whatsapp"&&<div className="auth-v7-fields">
-            <label><span>Nomor WhatsApp</span><input inputMode="tel" autoComplete="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+62812xxxx"/></label>
-            {otpRequested&&<label><span>Kode OTP</span><input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={otp} onChange={e=>setOtp(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder="6 digit"/></label>}
+            <label htmlFor="auth-phone-wa"><span>Nomor WhatsApp</span><input id="auth-phone-wa" inputMode="tel" autoComplete="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+62812xxxx…" aria-invalid={error ? true : false} aria-describedby={error ? "auth-error" : undefined}/></label>
+            {otpRequested&&<label htmlFor="auth-otp-wa"><span>Kode OTP</span><input id="auth-otp-wa" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={otp} onChange={e=>setOtp(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder="6 digit…" aria-invalid={error && otpRequested ? true : false} aria-describedby={error && otpRequested ? "auth-error" : undefined}/></label>}
           </div>}
 
-          {error&&<div className="auth-v7-alert error" role="alert"><b>Perlu diperiksa</b><span>{error}</span></div>}
-          {message&&<div className="auth-v7-alert success" role="status"><b>Informasi</b><span>{message}</span></div>}
+          {error&&<div id="auth-error" className="auth-v7-alert error" role="alert"><b>Perlu diperiksa</b><span>{error}</span></div>}
+          {message&&<div id="auth-message" className="auth-v7-alert success" role="status"><b>Informasi</b><span>{message}</span></div>}
 
           {view==="signin"&&method==="email"&&<button type="button" className="auth-v7-primary" disabled={busy} onClick={()=>void signin()}>{busy?"Memproses...":"Masuk"}</button>}
           {view==="signin"&&method==="whatsapp"&&<><button type="button" className="auth-v7-primary" disabled={busy} onClick={()=>void (otpRequested?verifyWhatsappOtp():requestWhatsappOtp())}>{busy?"Memproses...":otpRequested?"Verifikasi & masuk":"Kirim kode WhatsApp"}</button>{otpRequested&&<button type="button" className="auth-v7-secondary-link auth-v7-resend" disabled={busy} onClick={()=>void requestWhatsappOtp()}>Kirim ulang kode</button>}</>}

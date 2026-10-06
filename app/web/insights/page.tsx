@@ -21,7 +21,7 @@ function StageCard({stage}:{stage:string}){
 }
 
 export default async function PublicInsightsPage(){
-  const dynamicPosts=await getPublicBlogs(100);
+  const {posts: dynamicPosts} = await getPublicBlogs(100);
   const dynamicSlugs=new Set(dynamicPosts.map((post)=>post.slug));
   const all=[...dynamicPosts.map((p:any)=>({...p,description:p.excerpt||"Insight terbaru dari Lumaway.",readTime:"Insight",dynamic:true})),...STATIC_INSIGHTS.filter((post)=>!dynamicSlugs.has(post.slug)).map((p:any)=>({...p,dynamic:false}))];
   const groups=["TOFU","MOFU","BOFU"].map(stage=>({stage,items:all.filter((p:any)=>stageFor(p)===stage)}));

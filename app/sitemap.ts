@@ -4,7 +4,7 @@ import {getPublicBlogs,STATIC_INSIGHTS,PUBLIC_SITE_ORIGIN} from "../lib/public-i
 export const dynamic="force-dynamic";
 
 export default async function sitemap():Promise<MetadataRoute.Sitemap>{
-  const db=await getPublicBlogs(200);
+  const {posts: db} = await getPublicBlogs(200);
   const seen=new Set(db.map(x=>x.slug));
   const fallback=STATIC_INSIGHTS.filter(x=>!seen.has(x.slug));
   const now=new Date();

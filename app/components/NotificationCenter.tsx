@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "../../lib/supabase-browser";
 import { navigateLumawayUrl } from "../../lib/luma-navigation";
 import LumaIcon from "./LumaIcon";
+import { List as VirtualList } from "react-window";
 
 type NotificationRow = {
   key: string;
@@ -285,21 +286,36 @@ export default function NotificationCenter({ workspaceId, userId }: { workspaceI
           <div className="notification-priority-tabs">{(["all","critical","action","info"] as const).map(option=><button key={option} className={priorityFilter===option?"active":""} aria-pressed={priorityFilter===option} onClick={()=>setPriorityFilter(option)}>{option==="all"?"Semua":priorityLabel(option)}{option!=="all"?` ${priorityCounts[option]}`:""}</button>)}</div>
           <label className="notification-toast-pref"><input type="checkbox" checked={toastEnabled} onChange={e=>void saveToastPreference(e.target.checked)}/> Toast Critical/Action</label>
           {categoryOptions.length>2&&<div className="notification-filters">{categoryOptions.map(option=><button key={option} className={categoryFilter===option?"active":""} aria-pressed={categoryFilter===option} onClick={()=>setCategoryFilter(option)}>{option==="all"?"Semua":option}</button>)}</div>}
-          <div className="notification-list">
-            {visibleRows.length ? visibleRows.map((row) => (
-              <article key={row.key} className={`notification-item notification-item-v2 ${row.read ? "read" : "unread"}`}>
-                <button type="button" className="notification-item-main" onClick={() => void markRead(row, true)}>
-                  {row.image_url && <img src={row.image_url} alt="" loading="lazy" decoding="async" width={56} height={56}/>}
-                  <div>
-                    <span className={`notification-priority ${row.priority}`}>{priorityLabel(row.priority)}</span><span className={`notification-category n-${row.category}`}>{categoryLabel(row.category)}</span>
-                    <strong>{row.title}</strong>
-                    <p>{row.body}</p>
-                    <small>{row.published_at ? new Date(row.published_at).toLocaleString("id-ID") : ""}{row.action_label ? ` · ${row.action_label}` : ""}</small>
-                  </div>
-                </button>
-                <div className="notification-row-actions"><button type="button" onClick={()=>void setNotificationState(row,"snooze")}>Snooze 1j</button><button type="button" onClick={()=>void setNotificationState(row,"archive")}>Arsip</button></div>
-              </article>
-            )) : <div className="empty-state"><strong>Belum ada notifikasi.</strong></div>}
+          <div className="notification-list" style={{height: 400, overflow: "auto"}}>
+            {visibleRows.length ? (
+              <VirtualList<{ items: NotificationRow[] }>
+                rowCount={visibleRows.length}
+                rowHeight={120}
+                style={{ width: "100%", height: 400 }}
+                rowComponent={({ index, style, items, ariaAttributes }: { index: number; style: React.CSSProperties; items: NotificationRow[]; ariaAttributes: { "aria-posinset": number; "aria-setsize": number; role: "listitem" } }) => {
+                  const row = items[index];
+                  return (
+                    <div style={style} {...ariaAttributes}>
+                      <article key={row.key} className={`notification-item notification-item-v2 ${row.read ? "read" : "unread"}`}>
+                        <button type="button" className="notification-item-main" onClick={() => void markRead(row, true)}>
+                          {row.image_url && <img src={row.image_url} alt="" loading="lazy" decoding="async" width={56} height={56} />}
+                          <div>
+                            <span className={`notification-priority ${row.priority}`}>{priorityLabel(row.priority)}</span><span className={`notification-category n-${row.category}`}>{categoryLabel(row.category)}</span>
+                            <strong>{row.title}</strong>
+                            <p>{row.body}</p>
+                            <small>{row.published_at ? new Date(row.published_at).toLocaleString("id-ID") : ""}{row.action_label ? ` · ${row.action_label}` : ""}</small>
+                          </div>
+                        </button>
+                        <div className="notification-row-actions"><button type="button" onClick={() => void setNotificationState(row, "snooze")}>Snooze 1j</button><button type="button" onClick={() => void setNotificationState(row, "archive")}>Arsip</button></div>
+                      </article>
+                    </div>
+                  );
+                }}
+                rowProps={{ items: visibleRows }}
+              />
+            ) : (
+              <div className="empty-state"><strong>Belum ada notifikasi.</strong></div>
+            )}
           </div>
         </div>
       )}

@@ -28,7 +28,7 @@ export default async function PublicInsightDetail({params}:{params:Promise<{slug
  const embed=youtubeEmbed(post?.video_embed_url||null),articleUrl=PUBLIC_SITE_ORIGIN+"/web/insights/"+slug,stage=stageFor(title,category,slug);
  const sanitized=post?sanitizeBlogHtml(post.content_html||""):"";
  const toc=post?headings(sanitized):fallback!.sections.map(x=>x.title);
- const dynamicRelated=await getPublicBlogs(10);const related=[...dynamicRelated.filter(x=>x.slug!==slug).slice(0,3),...STATIC_INSIGHTS.filter(x=>x.slug!==slug).slice(0,3)].slice(0,3);
+ const {posts: dynamicRelated} = await getPublicBlogs(10);const related=[...dynamicRelated.filter(x=>x.slug!==slug).slice(0,3),...STATIC_INSIGHTS.filter(x=>x.slug!==slug).slice(0,3)].slice(0,3);
  const jsonLd={"@context":"https://schema.org","@type":"Article",headline:title,description:description||"",datePublished:date,dateModified:post?.updated_at||date,author:{"@type":"Organization",name:author},publisher:{"@type":"Organization",name:"Lumaway"},mainEntityOfPage:articleUrl,image:post?.cover_image_url||PUBLIC_SITE_ORIGIN+"/luma-mark.png"};
  const faqItems=Array.isArray(post?.faq_json)?post!.faq_json!.filter((item:any)=>String(item?.question||"").trim()&&String(item?.answer||"").trim()).slice(0,12):[];
  const faqJsonLd=faqItems.length?{"@context":"https://schema.org","@type":"FAQPage",mainEntity:faqItems.map((item:any)=>({"@type":"Question",name:String(item.question),acceptedAnswer:{"@type":"Answer",text:String(item.answer)}}))}:null;
