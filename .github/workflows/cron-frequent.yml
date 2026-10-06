@@ -1,74 +1,79 @@
 name: Frequent Crons (GitHub Actions)
 
+# Hobby plan Vercel hanya mengizinkan 1 cron per hari, jadi seluruh cron
+# operasional yang butuh frekuensi lebih tinggi dijalankan dari sini.
+# Route /api/cron/* hanya menerima method GET, sehingga pemanggilan memakai GET.
 on:
   schedule:
-    # Every 15 minutes
+    # Alert operasional + eskalasi insiden (tiap 15 menit)
     - cron: '*/15 * * * *'
-    # Every 30 minutes (offset by 5 min to not collide)
-    - cron: '5-55/30 * * * *'
+    # Follow-up listing (tiap 30 menit)
+    - cron: '*/30 * * * *'
+    # Maintenance pembayaran (tiap jam)
+    - cron: '0 * * * *'
+    # Laporan terjadwal (tiap jam, offset 30 menit)
+    - cron: '30 * * * *'
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: cron-frequent-${{ github.event.schedule || github.ref }}
+  cancel-in-progress: false
+
 jobs:
   operational-alerts:
     name: Operational Alerts (15min)
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' && github.event.schedule == '*/15 * * * *'
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/15 * * * *'
     steps:
       - name: Call operational-alerts cron
         run: |
-          curl -X POST "https://app.lumaway.online/api/cron/operational-alerts" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json" \
-            --fail --silent --show-error --max-time 30
+          curl --fail --silent --show-error --max-time 60 \
+            -X GET "https://app.lumaway.online/api/cron/operational-alerts" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
 
   incident-escalation:
     name: Incident Escalation (15min)
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' && github.event.schedule == '*/15 * * * *'
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/15 * * * *'
     steps:
       - name: Call incident-escalation cron
         run: |
-          curl -X POST "https://app.lumaway.online/api/cron/incident-escalation" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json" \
-            --fail --silent --show-error --max-time 30
+          curl --fail --silent --show-error --max-time 60 \
+            -X GET "https://app.lumaway.online/api/cron/incident-escalation" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
 
   listing-followups:
     name: Listing Followups (30min)
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' && github.event.schedule == '5-55/30 * * * *'
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/30 * * * *'
     steps:
       - name: Call listing-followups cron
         run: |
-          curl -X POST "https://app.lumaway.online/api/cron/listing-followups" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json" \
-            --fail --silent --show-error --max-time 30
+          curl --fail --silent --show-error --max-time 60 \
+            -X GET "https://app.lumaway.online/api/cron/listing-followups" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
 
   payment-maintenance:
     name: Payment Maintenance (hourly)
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' && github.event.schedule == '5 * * * *'
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 * * * *'
     steps:
       - name: Call payment-maintenance cron
         run: |
-          curl -X POST "https://app.lumaway.online/api/cron/payment-maintenance" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json" \
-            --fail --silent --show-error --max-time 60
+          curl --fail --silent --show-error --max-time 60 \
+            -X GET "https://app.lumaway.online/api/cron/payment-maintenance" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
 
   scheduled-reports:
     name: Scheduled Reports (hourly)
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' && github.event.schedule == '15 * * * *'
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '30 * * * *'
     steps:
       - name: Call scheduled-reports cron
         run: |
-          curl -X POST "https://app.lumaway.online/api/cron/scheduled-reports" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json" \
-            --fail --silent --show-error --max-time 60
-
+          curl --fail --silent --show-error --max-time 60 \
+            -X GET "https://app.lumaway.online/api/cron/scheduled-reports" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
