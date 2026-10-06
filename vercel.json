@@ -25,26 +25,6 @@
     {
       "path": "/api/cron/weekly-insights",
       "schedule": "0 1 * * 1"
-    },
-    {
-      "path": "/api/cron/payment-maintenance",
-      "schedule": "5 * * * *"
-    },
-    {
-      "path": "/api/cron/scheduled-reports",
-      "schedule": "15 * * * *"
-    },
-    {
-      "path": "/api/cron/operational-alerts",
-      "schedule": "*/15 * * * *"
-    },
-    {
-      "path": "/api/cron/incident-escalation",
-      "schedule": "*/15 * * * *"
-    },
-    {
-      "path": "/api/cron/listing-followups",
-      "schedule": "*/30 * * * *"
     }
   ]
 }

@@ -1,0 +1,73 @@
+name: Frequent Crons (GitHub Actions)
+
+on:
+  schedule:
+    # Every 15 minutes
+    - cron: '*/15 * * * *'
+    # Every 30 minutes (offset by 5 min to not collide)
+    - cron: '5-55/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  operational-alerts:
+    name: Operational Alerts (15min)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' && github.event.schedule == '*/15 * * * *'
+    steps:
+      - name: Call operational-alerts cron
+        run: |
+          curl -X POST "https://app.lumaway.online/api/cron/operational-alerts" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --fail --silent --show-error --max-time 30
+
+  incident-escalation:
+    name: Incident Escalation (15min)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' && github.event.schedule == '*/15 * * * *'
+    steps:
+      - name: Call incident-escalation cron
+        run: |
+          curl -X POST "https://app.lumaway.online/api/cron/incident-escalation" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --fail --silent --show-error --max-time 30
+
+  listing-followups:
+    name: Listing Followups (30min)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' && github.event.schedule == '5-55/30 * * * *'
+    steps:
+      - name: Call listing-followups cron
+        run: |
+          curl -X POST "https://app.lumaway.online/api/cron/listing-followups" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --fail --silent --show-error --max-time 30
+
+  payment-maintenance:
+    name: Payment Maintenance (hourly)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' && github.event.schedule == '5 * * * *'
+    steps:
+      - name: Call payment-maintenance cron
+        run: |
+          curl -X POST "https://app.lumaway.online/api/cron/payment-maintenance" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --fail --silent --show-error --max-time 60
+
+  scheduled-reports:
+    name: Scheduled Reports (hourly)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' && github.event.schedule == '15 * * * *'
+    steps:
+      - name: Call scheduled-reports cron
+        run: |
+          curl -X POST "https://app.lumaway.online/api/cron/scheduled-reports" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --fail --silent --show-error --max-time 60
