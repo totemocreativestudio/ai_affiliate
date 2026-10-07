@@ -345,14 +345,14 @@ export default function Listings({workspaceId}:{workspaceId:string}){
     if(dateStart&&String(row.data_date||"")<dateStart)return false;
     if(dateEnd&&String(row.data_date||"")>dateEnd)return false;
     if(!q)return true;
-    const rowCreator=creators.find(item=>item.id===row.creator_id);
+    const rowCreator=creators.find(item=>item.id===row.creator_id)||masterCreators.find(item=>item.id===row.creator_id);
     const textMatch=[row.creator_name,row.product_name,row.sku,row.platform,row.stage,row.payment_type,row.next_action,row.follow_up_channel,rowCreator?.phone,rowCreator?.affiliate_id,rowCreator?.username].filter(Boolean).some(value=>String(value).toLowerCase().includes(q));
     if(textMatch)return true;
     // Cari berdasarkan nomor WA walau formatnya beda (spasi, +, 0 vs 62).
     const qDigits=q.replace(/\D/g,"");
     const phoneDigits=String(rowCreator?.phone||"").replace(/\D/g,"");
     return qDigits.length>=3&&phoneDigits.includes(qDigits);
-  }),[rows,search,platformFilter,stageFilter,channelFilter,dateStart,dateEnd,creators]);
+  }),[rows,search,platformFilter,stageFilter,channelFilter,dateStart,dateEnd,creators,masterCreators]);
 
   const stats=useMemo(()=>({
     total:rows.length,
@@ -371,6 +371,12 @@ export default function Listings({workspaceId}:{workspaceId:string}){
     if(owner.is_self&&selfName)return selfName;
     return owner.safe_label;
   };
+  const waHref=(phone:string|null|undefined)=>{
+    const digits=String(phone||"").replace(/\D/g,"");
+    if(!digits)return null;
+    const intl=digits.startsWith("0")?"62"+digits.slice(1):digits.startsWith("8")?"62"+digits:digits;
+    return "https://wa.me/"+intl;
+  };
 
   return <section id="listings" className="legacy-page-anchor listing-v2-page">
     <header className="listing-v2-header">
@@ -386,7 +392,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
     </div>
 
     <div className="listing-v2-toolbar">
-      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Cari creator, produk, SKU, platform, next action..."/>
+      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Cari creator, produk, SKU, platform, no WA, next action..."/>
       <select value={platformFilter} onChange={e=>setPlatformFilter(e.target.value)}><option value="">Semua Platform</option>{platforms.map(x=><option key={x}>{x}</option>)}</select>
       <select value={stageFilter} onChange={e=>setStageFilter(e.target.value)}><option value="">Semua Stage</option>{STAGES.map(x=><option key={x}>{x}</option>)}</select>
       <select value={channelFilter} onChange={e=>setChannelFilter(e.target.value)}><option value="">Semua Follow Up Via</option>{FOLLOW_UP_CHANNELS.map(x=><option key={x}>{x}</option>)}</select>
@@ -440,11 +446,12 @@ export default function Listings({workspaceId}:{workspaceId:string}){
       <section className="listing-v2-main">
         <div className="listing-v2-section-head"><div><h3>Hasil Listing</h3><p>Aktivitas terbaru creator dan progres listing.</p></div><span>{visibleRows.length.toLocaleString("id-ID")} hasil</span></div>
         {loading?<div className="listing-v2-empty">Memuat Listings...</div>:visibleRows.length===0?<div className="listing-v2-empty"><b>Belum ada hasil listing.</b><span>Tambahkan listing atau ubah filter pencarian.</span></div>:
-        <div className="listing-v2-table-wrap"><table><thead><tr><th>Creator</th><th>Platform</th><th>Contact</th><th>Product / SKU</th><th>Stage</th><th>Ratecard</th><th>Latest / Next</th><th>Action</th></tr></thead><tbody>
+        <div className="listing-v2-table-wrap"><table><thead><tr><th>Creator</th><th>Platform</th><th>Contact</th><th>Follow Up Via</th><th>Product / SKU</th><th>Stage</th><th>Ratecard</th><th>Latest / Next</th><th>Action</th></tr></thead><tbody>
           {visibleRows.map(row=>{const rowCreator=creators.find(item=>item.id===row.creator_id)||masterCreators.find(item=>item.id===row.creator_id);const links=splitPostLinks(row.post_link);return <tr key={row.id} className={selected?.id===row.id?"selected":""} onClick={()=>setSelected(row)}>
             <td><div className="listing-v2-creator-cell"><span className={rowCreator?.avatar_url?"has-photo":""}>{rowCreator?.avatar_url?<img src={rowCreator.avatar_url} alt="" referrerPolicy="no-referrer"/>:String(row.creator_name||"C").slice(0,1).toUpperCase()}</span><div><b>{row.creator_name||"-"}</b><small>{dateLabel(row.data_date)}</small></div></div></td>
             <td><span className="listing-v2-platform">{row.platform||"-"}</span></td>
             <td><b>{rowCreator?.phone||"-"}</b>{rowCreator?.phone?<small>WhatsApp tersedia</small>:<small>Belum ada nomor</small>}</td>
+            <td><div className="listing-followup-cell">{row.follow_up_channel?<span className="listing-channel-badge">{row.follow_up_channel}</span>:<small>Belum ditentukan</small>}{rowCreator?.phone&&waHref(rowCreator.phone)?<a className="listing-wa-direct" href={waHref(rowCreator.phone)||undefined} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}><span className="wa-mark">WA</span><b>{rowCreator.phone}</b></a>:<small>Nomor WA belum ada</small>}</div></td>
             <td><b>{row.product_name||"-"}</b><small>{row.sku||"Tanpa SKU"}</small></td>
             <td><span className={"listing-v2-stage "+stageTone(row.stage)}>{row.stage||"New Lead"}</span></td>
             <td>{money(row.ratecard)}</td>
