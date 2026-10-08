@@ -12,9 +12,11 @@ export default function PWAOperationalStatus(){
   window.addEventListener("online",onOnline);window.addEventListener("offline",onOffline);
 
   if("serviceWorker" in navigator){
-   navigator.serviceWorker.register("/sw.js").then(reg=>{
+   const updateTimer=window.setInterval(()=>{navigator.serviceWorker.getRegistration().then(reg=>reg&&reg.update()).catch(()=>undefined)},60000);
+   navigator.serviceWorker.register("/sw.js",{updateViaCache:"none"}).then(reg=>{
     const capture=()=>{if(reg.waiting){setWaiting(reg.waiting);setUpdateReady(true)}};
     capture();
+    reg.update().catch(()=>undefined);
     reg.addEventListener("updatefound",()=>{
       const worker=reg.installing;if(!worker)return;
       worker.addEventListener("statechange",()=>{if(worker.state==="installed"&&navigator.serviceWorker.controller){setWaiting(worker);setUpdateReady(true)}});
@@ -24,6 +26,7 @@ export default function PWAOperationalStatus(){
    const controller=()=>window.location.reload();
    navigator.serviceWorker.addEventListener("controllerchange",controller);
    return()=>{
+    window.clearInterval(updateTimer);
     window.removeEventListener("online",onOnline);window.removeEventListener("offline",onOffline);
     navigator.serviceWorker.removeEventListener("controllerchange",controller);
    };

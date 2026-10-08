@@ -218,7 +218,7 @@ export default function LumawayWorkspaceApp() {
 
     document.documentElement.dataset.theme = "light";
     window.localStorage.removeItem("lumaway_theme");
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).catch(() => undefined);
     void loadSession();
   }, []);
 
