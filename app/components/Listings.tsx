@@ -140,9 +140,14 @@ export default function Listings({workspaceId}:{workspaceId:string}){
     try{
       const {data:{user}}=await supabase.auth.getUser();
       if(user?.id){
-        const profileResult=await supabase.from("profiles").select("full_name,email").eq("id",user.id).maybeSingle();
-        const profileName=String(profileResult.data?.full_name||profileResult.data?.email?.split("@")[0]||"").trim();
+        const profileResult=await supabase.from("profiles").select("full_name,nickname,email").eq("id",user.id).maybeSingle();
+        const metaName=String(user.user_metadata?.full_name||user.user_metadata?.name||user.user_metadata?.nickname||"").trim();
+        const profileName=String(profileResult.data?.full_name||profileResult.data?.nickname||metaName||profileResult.data?.email?.split("@")[0]||"").trim();
         setSelfName(profileName);
+        // Pastikan PIC "diri sendiri" tampil dengan nama profil (bukan label "Saya").
+        setFollowupOwners(prev=>prev.some(x=>x.is_self)
+          ?prev.map(x=>x.is_self?{...x,safe_label:profileName||x.safe_label}:x)
+          :(profileName?[{id:String(user.id),safe_label:profileName,is_self:true},...prev]:prev));
       }
     }catch{}
     setLoading(false);
