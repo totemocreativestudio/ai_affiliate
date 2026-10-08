@@ -193,6 +193,10 @@
 .listing-v2-toolbar{display:grid;grid-template-columns:minmax(250px,1fr) 135px 160px 140px 140px auto;gap:7px;margin-bottom:13px}
 .listing-v2-toolbar input,.listing-v2-toolbar select{min-height:38px!important;font-size:9.5px!important}
 .listing-v2-toolbar button{min-height:38px!important;font-size:9px!important}
+.listing-v2-toolbar-inline{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 12px;padding:10px;border:1px solid #e7e9f0;border-radius:12px;background:#fbfbfe}
+.listing-v2-toolbar-inline>input,.listing-v2-toolbar-inline>select{flex:1 1 132px;min-width:0}
+.listing-v2-toolbar-inline>input:first-child{flex:2 1 240px}
+.listing-v2-toolbar-inline>button{flex:0 0 auto}
 .listing-v2-alert{margin:9px 0;padding:9px 11px;border-radius:9px;font-size:9.5px}.listing-v2-alert.error{border:1px solid #fecaca;background:#fff5f5;color:#b42318}.listing-v2-alert.success{border:1px solid #b7ead0;background:#f2fff8;color:#067647}
 .listing-v2-editor{margin:10px 0 14px;padding:15px;border:1px solid #dce2ea;border-radius:13px;background:#fafbfc}
 .listing-v2-editor-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}.listing-v2-editor-head h3{margin:4px 0 3px;font-size:15px}.listing-v2-editor-head p{margin:0;color:#7d8797;font-size:9px}

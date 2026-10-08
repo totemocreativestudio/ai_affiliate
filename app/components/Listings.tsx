@@ -83,6 +83,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
   const [creators,setCreators]=useState<Creator[]>([]);
   const [products,setProducts]=useState<Product[]>([]);
   const [followupOwners,setFollowupOwners]=useState<FollowupOwner[]>([]);
+  const [channelChoices,setChannelChoices]=useState<string[]>(FOLLOW_UP_CHANNELS);
   const [selfName,setSelfName]=useState("");
   const [masterCreators,setMasterCreators]=useState<Creator[]>([]);
   const [masterCreatorSearch,setMasterCreatorSearch]=useState("");
@@ -123,11 +124,12 @@ export default function Listings({workspaceId}:{workspaceId:string}){
 
   async function loadData(){
     setLoading(true);setError("");
-    const [listingResult,creatorResult,productResult,safeOwnerResult]=await Promise.all([
+    const [listingResult,creatorResult,productResult,safeOwnerResult,channelContactResult]=await Promise.all([
       supabase.from("listings").select("id,data_date,creator_id,creator_name,platform,product_master_id,product_name,sku,product_hpp,stage,payment_type,ratecard,posting_date,post_link,next_action,agreement_id,follow_up_channel,next_follow_up_at,follow_up_priority,follow_up_completed_at,follow_up_owner_user_id,notes").eq("workspace_id",workspaceId).order("id",{ascending:false}),
       supabase.from("creators").select("id,creator_code,name,username,platform,affiliate_id,phone,payment_type,ratecard,status,profile_url,avatar_url,social_links,social_profile_updated_at").eq("workspace_id",workspaceId).order("name").limit(7770),
       supabase.from("product_master").select("id,sku,product_name,category,cost_price").eq("workspace_id",workspaceId).order("sku").limit(1000),
       supabase.rpc("luma_safe_workspace_assignees_v1",{p_workspace_id:workspaceId}),
+      supabase.from("luma_channel_contacts").select("channel").eq("workspace_id",workspaceId),
     ]);
     if(listingResult.error)setError(listingResult.error.message); else {
       const data=(listingResult.data||[]) as Listing[];
@@ -137,17 +139,25 @@ export default function Listings({workspaceId}:{workspaceId:string}){
     if(!creatorResult.error)setCreators((creatorResult.data||[]) as Creator[]);
     if(!productResult.error)setProducts((productResult.data||[]) as Product[]);
     if(!safeOwnerResult.error)setFollowupOwners((safeOwnerResult.data||[]).map((x:any)=>({id:String(x.user_id),safe_label:String(x.safe_label||"PIC"),is_self:Boolean(x.is_self)})));
+    // Daftar kanal follow-up berasal dari database (luma_channel_contacts). Bila tabel belum ada, pakai daftar bawaan.
+    if(!channelContactResult.error){
+      const fromDb=(channelContactResult.data||[]).map((x:any)=>String(x.channel||"").trim()).filter(Boolean);
+      setChannelChoices([...new Set([...FOLLOW_UP_CHANNELS,...fromDb])]);
+    }
     try{
       const {data:{user}}=await supabase.auth.getUser();
       if(user?.id){
-        const profileResult=await supabase.from("profiles").select("full_name,nickname,email").eq("id",user.id).maybeSingle();
+        const profileResult=await supabase.from("profiles").select("full_name,n,email").eq("id",user.id).maybeSingle();
         const metaName=String(user.user_metadata?.full_name||user.user_metadata?.name||user.user_metadata?.nickname||"").trim();
-        const profileName=String(profileResult.data?.full_name||profileResult.data?.nickname||metaName||profileResult.data?.email?.split("@")[0]||"").trim();
+        const profileName=String(profileResult.data?.full_name||profileResult.data?.n||metaName||profileResult.data?.email?.split("@")[0]||"").trim();
         setSelfName(profileName);
-        // Pastikan PIC "diri sendiri" tampil dengan nama profil (bukan label "Saya").
-        setFollowupOwners(prev=>prev.some(x=>x.is_self)
-          ?prev.map(x=>x.is_self?{...x,safe_label:profileName||x.safe_label}:x)
-          :(profileName?[{id:String(user.id),safe_label:profileName,is_self:true},...prev]:prev));
+        // PIC "diri sendiri" memakai nama profil asli, bukan label statis "Saya".
+        const selfLabel=profileName&&profileName.toLowerCase()!=="saya"?profileName:null;
+        if(selfLabel){
+          setFollowupOwners(prev=>prev.some(x=>x.is_self)
+            ?prev.map(x=>x.is_self?{...x,safe_label:selfLabel}:x)
+            :[{id:String(user.id),safe_label:selfLabel,is_self:true},...prev]);
+        }
       }
     }catch{}
     setLoading(false);
@@ -433,9 +443,14 @@ export default function Listings({workspaceId}:{workspaceId:string}){
   const initials=creatorName.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase()||"C";
   const selectedSocialLinks=Object.entries(selectedCreator?.social_links||{}).filter(([,url])=>Boolean(String(url||"").trim()));
   const picLabel=(ownerId:string|null|undefined)=>{
+    if(!ownerId)return null;
     const owner=followupOwners.find(x=>x.id===ownerId);
     if(!owner)return null;
-    if(owner.is_self&&selfName)return selfName;
+    if(owner.is_self){
+      const self=String(selfName||"").trim();
+      if(self&&self.toLowerCase()!=="saya")return self;
+      return owner.safe_label&&owner.safe_label.toLowerCase()!=="saya"?owner.safe_label:null;
+    }
     return owner.safe_label;
   };
   const waHref=(phone:string|null|undefined)=>{
@@ -454,16 +469,6 @@ export default function Listings({workspaceId}:{workspaceId:string}){
       <article><span>Follow Up / Negotiation</span><b>{stats.followup.toLocaleString("id-ID")}</b></article>
       <article><span>Sample Sent</span><b>{stats.sample.toLocaleString("id-ID")}</b></article>
       <article><span>Uploaded / Live / Active</span><b>{stats.active.toLocaleString("id-ID")}</b></article>
-    </div>
-
-    <div className="listing-v2-toolbar">
-      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Cari creator, produk, SKU, platform, no WA, next action..."/>
-      <select value={platformFilter} onChange={e=>setPlatformFilter(e.target.value)}><option value="">Semua Platform</option>{platforms.map(x=><option key={x}>{x}</option>)}</select>
-      <select value={stageFilter} onChange={e=>setStageFilter(e.target.value)}><option value="">Semua Stage</option>{STAGES.map(x=><option key={x}>{x}</option>)}</select>
-      <select value={channelFilter} onChange={e=>setChannelFilter(e.target.value)}><option value="">Semua Follow Up Via</option>{FOLLOW_UP_CHANNELS.map(x=><option key={x}>{x}</option>)}</select>
-      <input type="date" value={dateStart} onChange={e=>setDateStart(e.target.value)}/>
-      <input type="date" value={dateEnd} onChange={e=>setDateEnd(e.target.value)}/>
-      {(search||platformFilter||stageFilter||channelFilter||dateStart||dateEnd)&&<button className="secondary" onClick={()=>{setSearch("");setPlatformFilter("");setStageFilter("");setChannelFilter("");setDateStart("");setDateEnd("")}}>Reset</button>}
     </div>
 
     {error&&<div className="listing-v2-alert error">{error}</div>}
@@ -497,7 +502,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
         <label><span>Posting Date</span><input type="date" value={form.posting_date} onChange={e=>updateField("posting_date",e.target.value)}/></label>
         <label className="wide"><span>Post Link / Link Konten <small>· bisa lebih dari 1, satu link per baris</small></span><textarea rows={3} value={form.post_link} onChange={e=>updateField("post_link",e.target.value)} placeholder={"https://tiktok.com/...\nhttps://shopee.co.id/..."}/>{splitPostLinks(form.post_link).length>0&&<small>{splitPostLinks(form.post_link).length} link terdeteksi. Pisahkan dengan baris baru / koma / spasi.</small>}</label>
         <label><span>Next Action</span><input value={form.next_action} onChange={e=>updateField("next_action",e.target.value)} placeholder="Follow up / kirim brief"/></label>
-        <label><span>Follow Up Via</span><select value={form.follow_up_channel} onChange={e=>updateField("follow_up_channel",e.target.value)}><option value="">Pilih channel</option>{FOLLOW_UP_CHANNELS.map(x=><option key={x}>{x}</option>)}</select><small>Channel utama / terakhir yang dipakai untuk komunikasi creator.</small></label>
+        <label><span>Follow Up Via</span><select value={form.follow_up_channel} onChange={e=>updateField("follow_up_channel",e.target.value)}><option value="">Pilih channel</option>{channelChoices.map(x=><option key={x}>{x}</option>)}</select><small>Channel utama / terakhir yang dipakai untuk komunikasi creator.</small></label>
         <label><span>Next Follow Up</span><input type="datetime-local" value={form.next_follow_up_at} onChange={e=>updateField("next_follow_up_at",e.target.value)}/><small>Jadwal tindak lanjut berikutnya.</small></label>
         <label><span>Priority</span><select value={form.follow_up_priority} onChange={e=>updateField("follow_up_priority",e.target.value)}><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></label>
         <label><span>PIC Follow Up</span><select value={form.follow_up_owner_user_id} onChange={e=>updateField("follow_up_owner_user_id",e.target.value)}><option value="">Belum ditentukan</option>{followupOwners.map(x=><option key={x.id} value={x.id}>{picLabel(x.id)||x.safe_label}</option>)}</select><small>PIC menerima reminder in-app saat follow-up mendekati jatuh tempo.</small></label>
@@ -509,6 +514,15 @@ export default function Listings({workspaceId}:{workspaceId:string}){
 
     <div className="listing-v2-layout">
       <section className="listing-v2-main">
+        <div className="listing-v2-toolbar listing-v2-toolbar-inline">
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Cari creator, produk, SKU, platform, no WA, next action..."/>
+          <select value={platformFilter} onChange={e=>setPlatformFilter(e.target.value)}><option value="">Semua Platform</option>{platforms.map(x=><option key={x}>{x}</option>)}</select>
+          <select value={stageFilter} onChange={e=>setStageFilter(e.target.value)}><option value="">Semua Stage</option>{STAGES.map(x=><option key={x}>{x}</option>)}</select>
+          <select value={channelFilter} onChange={e=>setChannelFilter(e.target.value)}><option value="">Semua Follow Up Via</option>{channelChoices.map(x=><option key={x}>{x}</option>)}</select>
+          <input type="date" value={dateStart} onChange={e=>setDateStart(e.target.value)}/>
+          <input type="date" value={dateEnd} onChange={e=>setDateEnd(e.target.value)}/>
+          {(search||platformFilter||stageFilter||channelFilter||dateStart||dateEnd)&&<button className="secondary" onClick={()=>{setSearch("");setPlatformFilter("");setStageFilter("");setChannelFilter("");setDateStart("");setDateEnd("")}}>Reset</button>}
+        </div>
         <div className="listing-v2-section-head"><div><h3>Hasil Listing</h3><p>Aktivitas terbaru creator dan progres listing.</p></div><span>{visibleRows.length.toLocaleString("id-ID")} hasil</span></div>
         {loading?<div className="listing-v2-empty">Memuat Listings...</div>:visibleRows.length===0?<div className="listing-v2-empty"><b>Belum ada hasil listing.</b><span>Tambahkan listing atau ubah filter pencarian.</span></div>:
         <div className="listing-v2-table-wrap"><table><thead><tr><th>Creator</th><th>Platform</th><th>Contact</th><th>No. WhatsApp</th><th>Follow Up Via</th><th>Product / SKU</th><th>Stage</th><th>Ratecard</th><th>Latest / Next</th><th>Action</th></tr></thead><tbody>
@@ -590,7 +604,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
         <div className="listing-v2-activity-form">
           <label><span>Tanggal</span><input type="date" value={activityForm.activity_date} onChange={e=>setActivityForm({...activityForm,activity_date:e.target.value})}/></label>
           <label><span>Aktivitas</span><select value={activityForm.activity_type} onChange={e=>setActivityForm({...activityForm,activity_type:e.target.value})}>{ACTIVITY_TYPES.map(x=><option key={x}>{x}</option>)}</select></label>
-          <label><span>Follow Up Via</span><select value={activityForm.follow_up_channel} onChange={e=>setActivityForm({...activityForm,follow_up_channel:e.target.value})}><option value="">Tidak ditentukan</option>{FOLLOW_UP_CHANNELS.map(x=><option key={x}>{x}</option>)}</select><small>Pilih channel yang benar-benar digunakan pada aktivitas ini.</small></label>
+          <label><span>Follow Up Via</span><select value={activityForm.follow_up_channel} onChange={e=>setActivityForm({...activityForm,follow_up_channel:e.target.value})}><option value="">Tidak ditentukan</option>{channelChoices.map(x=><option key={x}>{x}</option>)}</select><small>Pilih channel yang benar-benar digunakan pada aktivitas ini.</small></label>
           <label><span>Hasil / Next Action</span><input value={activityForm.result} onChange={e=>setActivityForm({...activityForm,result:e.target.value})} placeholder="Contoh: Follow up 3 hari lagi"/></label>
           <label><span>Next Follow Up</span><input type="datetime-local" value={activityForm.next_follow_up_at} onChange={e=>setActivityForm({...activityForm,next_follow_up_at:e.target.value})}/><small>Opsional. Jadwalkan follow-up berikutnya setelah aktivitas ini.</small></label>
           <label><span>Catatan</span><textarea rows={4} value={activityForm.note} onChange={e=>setActivityForm({...activityForm,note:e.target.value})} placeholder="Catatan aktivitas..."/></label>
