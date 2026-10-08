@@ -469,7 +469,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
             <td><span className={"listing-v2-stage "+stageTone(row.stage)}>{row.stage||"New Lead"}</span></td>
             <td>{money(row.ratecard)}</td>
             <td><b>{row.next_action||"Belum ada next action"}</b><small>{row.posting_date?`Posting ${dateLabel(row.posting_date)}`:""}{links.length?` · ${links.length} link konten`:""}</small>{links.length>0&&<span className="listing-channel-badge">{links.length>1?`${links.length} link`:`1 link`}</span>}{row.follow_up_channel&&<span className="listing-channel-badge">{row.follow_up_channel}</span>}</td>
-            <td><div className="listing-v2-actions" onClick={e=>e.stopPropagation()}><button onClick={()=>setSelected(row)}>Detail</button><button onClick={()=>openActivity(row,"Follow Up")}>+ Follow Up</button><button onClick={()=>openEdit(row)}>Edit</button><button className="danger" onClick={()=>void deleteListing(row.id)}>Hapus</button></div></td>
+            <td><div className="listing-v2-actions" onClick={e=>e.stopPropagation()}>{rowCreator?.phone&&waHref(rowCreator.phone)?<a className="wa-action" href={waHref(rowCreator.phone)||undefined} target="_blank" rel="noreferrer"><span className="wa-mark">WA</span>Chat WA</a>:null}<button onClick={()=>setSelected(row)}>Detail</button><button onClick={()=>openActivity(row,"Follow Up")}>+ Follow Up</button><button onClick={()=>openEdit(row)}>Edit</button><button className="danger" onClick={()=>void deleteListing(row.id)}>Hapus</button></div></td>
           </tr>})}
         </tbody></table></div>}
       </section>
