@@ -21,7 +21,8 @@ self.addEventListener("fetch",event=>{
   const request=event.request;
   if(request.method!=="GET")return;
   const url=new URL(request.url);
-  if(url.origin!==self.location.origin||isSensitive(url))return;\n  if(url.pathname.startsWith("/_next/"))return;
+  if(url.origin!==self.location.origin||isSensitive(url))return;
+  if(url.pathname.startsWith("/_next/"))return;
 
   if(request.mode==="navigate"){
     event.respondWith(fetch(request, { cache: "no-store" }).catch(()=>caches.match("/offline.html")));
