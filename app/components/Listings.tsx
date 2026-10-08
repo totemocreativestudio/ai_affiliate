@@ -1,6 +1,6 @@
 "use client";
 
-import {useEffect,useMemo,useState} from "react";
+import {useCallback,useEffect,useMemo,useState} from "react";
 import {createClient} from "../../lib/supabase-browser";
 import {CreatorAutocomplete,ProductAutocomplete,CreatorSearchResult,ProductSearchResult,resolveOrCreateCreator} from "./SmartAutocomplete";
 import ListingFollowupInsights from "./ListingFollowupInsights";
@@ -43,6 +43,8 @@ const EMPTY_FORM:FormState={data_date:"",creator_id:"",creator_name:"",platform:
 const toLocalInput=(value:string|null)=>{if(!value)return"";const d=new Date(value);const off=d.getTimezoneOffset();return new Date(d.getTime()-off*60000).toISOString().slice(0,16)};
 const money=(value:any)=>"Rp "+new Intl.NumberFormat("id-ID",{maximumFractionDigits:0}).format(Number(value||0));
 const dateLabel=(value:string|null)=>value?new Date(value+"T00:00:00").toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"}):"-";
+const phoneDigits=(value:string|null|undefined)=>String(value||"").replace(/\D/g,"");
+const intlPhone=(value:string|null|undefined)=>{const digits=phoneDigits(value);if(!digits)return"";return digits.startsWith("0")?"62"+digits.slice(1):digits.startsWith("8")?"62"+digits:digits};
 const SOCIAL_FIELDS=[
   ["instagram","Instagram"],["tiktok","TikTok"],["facebook","Facebook"],["lemon8","Lemon8"],
   ["youtube","YouTube"],["threads","Threads"],["x","X / Twitter"],["other","Lainnya"]
@@ -337,6 +339,18 @@ export default function Listings({workspaceId}:{workspaceId:string}){
   }
 
   const platforms=useMemo(()=>[...new Set(rows.map(x=>x.platform).filter(Boolean) as string[])].sort(),[rows]);
+  const creatorIndex=useMemo(()=>{
+    const map=new Map<string,Creator>();
+    for(const creator of [...creators,...masterCreators]){
+      const keys=[creator.id!=null?String(creator.id):"",String(creator.username||""),String(creator.name||"")];
+      for(const key of keys){const normalized=key.trim().toLowerCase();if(normalized&&!map.has(normalized))map.set(normalized,creator)}
+    }
+    return map;
+  },[creators,masterCreators]);
+  const resolveCreator=useCallback((row:Listing):Creator|undefined=>
+    (row.creator_id!=null?creatorIndex.get(String(row.creator_id)):undefined)
+    ||creatorIndex.get(String(row.creator_name||"").trim().toLowerCase())
+  ,[creatorIndex]);
   const visibleRows=useMemo(()=>rows.filter(row=>{
     const q=search.trim().toLowerCase();
     if(platformFilter&&row.platform!==platformFilter)return false;
@@ -345,14 +359,14 @@ export default function Listings({workspaceId}:{workspaceId:string}){
     if(dateStart&&String(row.data_date||"")<dateStart)return false;
     if(dateEnd&&String(row.data_date||"")>dateEnd)return false;
     if(!q)return true;
-    const rowCreator=creators.find(item=>item.id===row.creator_id)||masterCreators.find(item=>item.id===row.creator_id);
+    const rowCreator=resolveCreator(row);
     const textMatch=[row.creator_name,row.product_name,row.sku,row.platform,row.stage,row.payment_type,row.next_action,row.follow_up_channel,rowCreator?.phone,rowCreator?.affiliate_id,rowCreator?.username].filter(Boolean).some(value=>String(value).toLowerCase().includes(q));
     if(textMatch)return true;
     // Cari berdasarkan nomor WA walau formatnya beda (spasi, +, 0 vs 62).
     const qDigits=q.replace(/\D/g,"");
-    const phoneDigits=String(rowCreator?.phone||"").replace(/\D/g,"");
-    return qDigits.length>=3&&phoneDigits.includes(qDigits);
-  }),[rows,search,platformFilter,stageFilter,channelFilter,dateStart,dateEnd,creators,masterCreators]);
+    const rowPhoneDigits=phoneDigits(rowCreator?.phone);
+    return qDigits.length>=3&&rowPhoneDigits.includes(qDigits);
+  }),[rows,search,platformFilter,stageFilter,channelFilter,dateStart,dateEnd,resolveCreator]);
 
   const stats=useMemo(()=>({
     total:rows.length,
@@ -372,10 +386,8 @@ export default function Listings({workspaceId}:{workspaceId:string}){
     return owner.safe_label;
   };
   const waHref=(phone:string|null|undefined)=>{
-    const digits=String(phone||"").replace(/\D/g,"");
-    if(!digits)return null;
-    const intl=digits.startsWith("0")?"62"+digits.slice(1):digits.startsWith("8")?"62"+digits:digits;
-    return "https://wa.me/"+intl;
+    const intl=intlPhone(phone);
+    return intl?"https://wa.me/"+intl:null;
   };
 
   return <section id="listings" className="legacy-page-anchor listing-v2-page">
@@ -446,12 +458,13 @@ export default function Listings({workspaceId}:{workspaceId:string}){
       <section className="listing-v2-main">
         <div className="listing-v2-section-head"><div><h3>Hasil Listing</h3><p>Aktivitas terbaru creator dan progres listing.</p></div><span>{visibleRows.length.toLocaleString("id-ID")} hasil</span></div>
         {loading?<div className="listing-v2-empty">Memuat Listings...</div>:visibleRows.length===0?<div className="listing-v2-empty"><b>Belum ada hasil listing.</b><span>Tambahkan listing atau ubah filter pencarian.</span></div>:
-        <div className="listing-v2-table-wrap"><table><thead><tr><th>Creator</th><th>Platform</th><th>Contact</th><th>Follow Up Via</th><th>Product / SKU</th><th>Stage</th><th>Ratecard</th><th>Latest / Next</th><th>Action</th></tr></thead><tbody>
-          {visibleRows.map(row=>{const rowCreator=creators.find(item=>item.id===row.creator_id)||masterCreators.find(item=>item.id===row.creator_id);const links=splitPostLinks(row.post_link);return <tr key={row.id} className={selected?.id===row.id?"selected":""} onClick={()=>setSelected(row)}>
+        <div className="listing-v2-table-wrap"><table><thead><tr><th>Creator</th><th>Platform</th><th>Contact</th><th>No. WhatsApp</th><th>Follow Up Via</th><th>Product / SKU</th><th>Stage</th><th>Ratecard</th><th>Latest / Next</th><th>Action</th></tr></thead><tbody>
+          {visibleRows.map(row=>{const rowCreator=resolveCreator(row);const links=splitPostLinks(row.post_link);return <tr key={row.id} className={selected?.id===row.id?"selected":""} onClick={()=>setSelected(row)}>
             <td><div className="listing-v2-creator-cell"><span className={rowCreator?.avatar_url?"has-photo":""}>{rowCreator?.avatar_url?<img src={rowCreator.avatar_url} alt="" referrerPolicy="no-referrer"/>:String(row.creator_name||"C").slice(0,1).toUpperCase()}</span><div><b>{row.creator_name||"-"}</b><small>{dateLabel(row.data_date)}</small></div></div></td>
             <td><span className="listing-v2-platform">{row.platform||"-"}</span></td>
-            <td><b>{rowCreator?.phone||"-"}</b>{rowCreator?.phone?<small>WhatsApp tersedia</small>:<small>Belum ada nomor</small>}</td>
-            <td><div className="listing-followup-cell">{row.follow_up_channel?<span className="listing-channel-badge">{row.follow_up_channel}</span>:<small>Belum ditentukan</small>}{rowCreator?.phone&&waHref(rowCreator.phone)?<a className="listing-wa-direct" href={waHref(rowCreator.phone)||undefined} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}><span className="wa-mark">WA</span><b>{rowCreator.phone}</b></a>:<small>Nomor WA belum ada</small>}</div></td>
+            <td><div className="listing-contact-mini">{rowCreator?.username?<small>@{rowCreator.username}</small>:<small>Belum ada social</small>}{rowCreator?.affiliate_id?<small>ID: {rowCreator.affiliate_id}</small>:null}</div></td>
+            <td>{rowCreator?.phone&&waHref(rowCreator.phone)?<a className="listing-wa-direct" href={waHref(rowCreator.phone)||undefined} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}><span className="wa-mark">WA</span><b>{rowCreator.phone}</b></a>:<small className="listing-wa-empty">Belum ada nomor</small>}</td>
+            <td><div className="listing-followup-cell">{row.follow_up_channel?<span className="listing-channel-badge">{row.follow_up_channel}</span>:<small>Belum ditentukan</small>}</div></td>
             <td><b>{row.product_name||"-"}</b><small>{row.sku||"Tanpa SKU"}</small></td>
             <td><span className={"listing-v2-stage "+stageTone(row.stage)}>{row.stage||"New Lead"}</span></td>
             <td>{money(row.ratecard)}</td>
