@@ -1,6 +1,6 @@
 "use client";
 
-import {useCallback,useEffect,useMemo,useState} from "react";
+import {useCallback,useEffect,useMemo,useRef,useState} from "react";
 import {createClient} from "../../lib/supabase-browser";
 import {CreatorAutocomplete,ProductAutocomplete,CreatorSearchResult,ProductSearchResult,resolveOrCreateCreator} from "./SmartAutocomplete";
 import ListingFollowupInsights from "./ListingFollowupInsights";
@@ -88,6 +88,8 @@ export default function Listings({workspaceId}:{workspaceId:string}){
   const [masterCreatorSearch,setMasterCreatorSearch]=useState("");
   const [masterCreatorPage,setMasterCreatorPage]=useState(1);
   const [masterCreatorTotal,setMasterCreatorTotal]=useState(0);
+  const [resolvedContacts,setResolvedContacts]=useState<Record<string,Creator>>({});
+  const resolvedByKeyRef=useRef<Set<string>>(new Set());
 
   const [search,setSearch]=useState("");
   const [platformFilter,setPlatformFilter]=useState("");
@@ -167,7 +169,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
     if(activitiesResult.error)setError(activitiesResult.error.message);
     else setActivities((activitiesResult.data||[]) as Activity[]);
 
-    let creator=creators.find(x=>x.id===row.creator_id)||null;
+    let creator=creators.find(x=>x.id===row.creator_id)||resolveCreatorFromIndex(row)||(row.creator_name?resolvedContacts[String(row.creator_name).trim().toLowerCase()]:undefined)||null;
     if(!creator&&row.creator_name){
       try{
         const params=new URLSearchParams({workspace_id:workspaceId,page:"1",page_size:"25",q:row.creator_name});
@@ -347,10 +349,14 @@ export default function Listings({workspaceId}:{workspaceId:string}){
     }
     return map;
   },[creators,masterCreators]);
-  const resolveCreator=useCallback((row:Listing):Creator|undefined=>
+  const resolveCreatorFromIndex=useCallback((row:Listing):Creator|undefined=>
     (row.creator_id!=null?creatorIndex.get(String(row.creator_id)):undefined)
     ||creatorIndex.get(String(row.creator_name||"").trim().toLowerCase())
   ,[creatorIndex]);
+  const resolveCreator=useCallback((row:Listing):Creator|undefined=>
+    resolveCreatorFromIndex(row)
+    ||(row.creator_name?resolvedContacts[String(row.creator_name).trim().toLowerCase()]:undefined)
+  ,[resolveCreatorFromIndex,resolvedContacts]);
   const visibleRows=useMemo(()=>rows.filter(row=>{
     const q=search.trim().toLowerCase();
     if(platformFilter&&row.platform!==platformFilter)return false;
@@ -367,6 +373,48 @@ export default function Listings({workspaceId}:{workspaceId:string}){
     const rowPhoneDigits=phoneDigits(rowCreator?.phone);
     return qDigits.length>=3&&rowPhoneDigits.includes(qDigits);
   }),[rows,search,platformFilter,stageFilter,channelFilter,dateStart,dateEnd,resolveCreator]);
+
+  // Defensive contact enrichment (PR87): lengkapi kontak creator untuk listing tanpa creator_id.
+  // Bila RPC belum tersedia (migrasi belum diterapkan), error diabaikan tanpa efek samping.
+  useEffect(()=>{
+    const seen=new Set<string>();
+    const pending=visibleRows.filter(row=>{
+      if(row.creator_id!=null)return false;
+      if(resolveCreatorFromIndex(row))return false;
+      const name=String(row.creator_name||"").trim();
+      if(!name)return false;
+      const key=workspaceId+"::"+name.toLowerCase();
+      if(resolvedByKeyRef.current.has(key)||seen.has(key))return false;
+      seen.add(key);return true;
+    }).slice(0,40);
+    if(!pending.length)return;
+    let cancelled=false;
+    void (async()=>{
+      const updates:Record<string,Creator>={};
+      await Promise.all(pending.map(async row=>{
+        const name=String(row.creator_name||"").trim();
+        const key=workspaceId+"::"+name.toLowerCase();
+        try{
+          const {data,error}=await supabase.rpc("luma_resolve_listing_creator_v1",{p_workspace_id:workspaceId,p_creator_id:row.creator_id??null,p_creator_name:name});
+          if(error)return;
+          const found:any=Array.isArray(data)?data[0]:data;
+          if(!found||found.id==null)return;
+          resolvedByKeyRef.current.add(key);
+          updates[name.toLowerCase()]={id:Number(found.id),creator_code:found.creator_code??null,name:found.name??null,username:found.username??null,platform:found.platform??null,affiliate_id:found.affiliate_id??null,phone:found.phone??null,payment_type:null,ratecard:null,status:null,avatar_url:found.avatar_url??null};
+        }catch{}
+      }));
+      if(cancelled)return;
+      if(Object.keys(updates).length)setResolvedContacts(prev=>({...prev,...updates}));
+    })();
+    return()=>{cancelled=true};
+  },[visibleRows,workspaceId,supabase,resolveCreatorFromIndex]);
+
+  // Tampilkan kontak hasil resolusi pada panel detail listing yang belum ter-link.
+  useEffect(()=>{
+    if(!selected||(selectedCreator&&selectedCreator.id))return;
+    const name=String(selected.creator_name||"").trim().toLowerCase();
+    if(name&&resolvedContacts[name])setSelectedCreator(prev=>prev??resolvedContacts[name]);
+  },[resolvedContacts,selected,selectedCreator]);
 
   const stats=useMemo(()=>({
     total:rows.length,
@@ -484,7 +532,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
           <div className="listing-v2-profile-grid">
             <div><span>Affiliate ID</span><b>{selectedCreator?.affiliate_id||"-"}</b></div>
             <div><span>Ratecard</span><b>{money(selectedCreator?.ratecard??selected.ratecard)}</b></div>
-            <div><span>WhatsApp</span>{selectedCreator?.phone?<a className="listing-wa-direct" href={"https://wa.me/"+String(selectedCreator.phone).replace(/\\D/g,"").replace(/^0/,"62")} target="_blank" rel="noreferrer"><span className="wa-mark">WA</span><b>{selectedCreator.phone}</b></a>:<b>-</b>}</div>
+            <div><span>WhatsApp</span>{waHref(selectedCreator?.phone)?<a className="listing-wa-direct" href={waHref(selectedCreator?.phone)||undefined} target="_blank" rel="noreferrer"><span className="wa-mark">WA</span><b>{selectedCreator?.phone}</b></a>:<b>-</b>}</div>
             <div><span>Payment</span><b>{selectedCreator?.payment_type||selected.payment_type||"-"}</b></div>
             <div><span>Follow Up Via</span><b>{selected.follow_up_channel||"-"}</b></div>
             <div><span>Next Follow Up</span><b>{selected.next_follow_up_at?new Date(selected.next_follow_up_at).toLocaleString("id-ID"):"-"}</b></div>
