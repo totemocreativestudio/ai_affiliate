@@ -113,7 +113,7 @@ export default function AffiliateProgramWorkspace({workspaceId}:{workspaceId:str
  const summary=(leaderboard.summary||{}) as Row;
  const metricTitle=METRICS.find(x=>x[0]===selected?.metric)?.[1]||"Pencapaian";
  const detailCurrency=selected?.metric==="gmv_net"||selected?.metric==="ads_spend";
- return <section className="asp-workspace">
+ return <section id="affiliate-support" className="legacy-page-anchor asp-workspace">
   <header className="asp-hero"><div><span>CREATOR GROWTH & INCENTIVE OPERATIONS</span><h2>Affiliate Support & Challenge</h2><p>Bangun program reward, target creator, Spark Ads, dan challenge dalam satu tracker terhubung dengan Creator Master, SKU, Agreement, dan toko.</p></div><button className="asp-primary" onClick={newProgram}>+ Buat Program</button></header>
   <div className="asp-top-stats"><article><span>Total program</span><b>{totals.total}</b><small>Semua jenis support</small></article><article><span>Program aktif</span><b>{totals.active}</b><small>Masa program berjalan</small></article><article><span>Affiliate challenge</span><b>{totals.challenge}</b><small>Campaign khusus creator</small></article><article><span>Perkiraan biaya bonus</span><b>{rupiah(Number(summary.estimated_bonus||0))}</b><small>Bukan anggaran disetujui / nilai pembayaran</small></article></div>
   {error&&<div role="alert" className="asp-message error">{error}</div>}{notice&&<div role="status" className="asp-message">{notice}</div>}
