@@ -147,9 +147,9 @@ export default function Listings({workspaceId}:{workspaceId:string}){
     try{
       const {data:{user}}=await supabase.auth.getUser();
       if(user?.id){
-        const profileResult=await supabase.from("profiles").select("full_name,n,email").eq("id",user.id).maybeSingle();
+        const profileResult=await supabase.from("profiles").select("full_name,nickname,email").eq("id",user.id).maybeSingle();
         const metaName=String(user.user_metadata?.full_name||user.user_metadata?.name||user.user_metadata?.nickname||"").trim();
-        const profileName=String(profileResult.data?.full_name||profileResult.data?.n||metaName||profileResult.data?.email?.split("@")[0]||"").trim();
+        const profileName=String(profileResult.data?.full_name||profileResult.data?.nickname||metaName||profileResult.data?.email?.split("@")[0]||"").trim();
         setSelfName(profileName);
         // PIC "diri sendiri" memakai nama profil asli, bukan label statis "Saya".
         const selfLabel=profileName&&profileName.toLowerCase()!=="saya"?profileName:null;
@@ -280,14 +280,14 @@ export default function Listings({workspaceId}:{workspaceId:string}){
       }
     }
     setSaving(false);setShowForm(false);setEditingId(null);setForm(EMPTY_FORM);setCreatorSearch("");setProductSearch("");setManualCreatorConfirmed(false);
-    setMessage(editingId!==null?"Listing diperbarui.":"Listing berhasil ditambahkan.");await loadData();
+    setMessage(editingId!==null?"Listing diperbarui.":"Listing berhasil ditambahkan.");window.dispatchEvent(new Event("lumaway-database-updated"));await loadData();
   }
 
   async function deleteListing(id:number){
     if(!window.confirm("Hapus listing ini beserta history aktivitasnya?"))return;
     const result=await supabase.from("listings").delete().eq("id",id).eq("workspace_id",workspaceId);
     if(result.error)return setError(result.error.message);
-    setMessage("Listing dihapus.");if(selected?.id===id)setSelected(null);await loadData();
+    setMessage("Listing dihapus.");if(selected?.id===id)setSelected(null);window.dispatchEvent(new Event("lumaway-database-updated"));await loadData();
   }
 
   function openActivity(row:Listing,type="Follow Up"){
@@ -323,7 +323,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
       }).eq("workspace_id",workspaceId).eq("id",activityFor.id);
       if(update.error){setSaving(false);return setError(update.error.message)}
     }
-    setSaving(false);setMessage("Aktivitas creator ditambahkan.");setActivityFor(null);await loadData();
+    setSaving(false);setMessage("Aktivitas creator ditambahkan.");setActivityFor(null);window.dispatchEvent(new Event("lumaway-database-updated"));await loadData();
   }
 
   function openSocialProfile(){
