@@ -33,7 +33,7 @@ export default function AffiliateProgramWorkspace({workspaceId}:{workspaceId:str
  const [participants,setParticipants]=useState<Row[]>([]),[imports,setImports]=useState<Row[]>([]);
  const [form,setForm]=useState<Form>({...INITIAL}),[tiers,setTiers]=useState<Tier[]>([]);
  const [formOpen,setFormOpen]=useState(false),[editingId,setEditingId]=useState(""),[mode,setMode]=useState("all");
- const [creatorName,setCreatorName]=useState(""),[creatorId,setCreatorId]=useState(""),[productLabel,setProductLabel]=useState("");
+ const [creatorName,setCreatorName]=useState(""),[creatorId,setCreatorId]=useState(""),[productLabel,setProductLabel]=useState(""),[rewardProductLabel,setRewardProductLabel]=useState("");
  const [saving,setSaving]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState(""),[detailBusy,setDetailBusy]=useState(false);
  async function load(){
   const [pr,st]=await Promise.all([
@@ -61,12 +61,12 @@ export default function AffiliateProgramWorkspace({workspaceId}:{workspaceId:str
  useEffect(()=>{void load()},[workspaceId]);
  useEffect(()=>{if(selected?.id)void loadDetail(selected.id)},[selected?.id,workspaceId]);
  function newProgram(){
-  setForm({...INITIAL});setTiers([]);setEditingId("");setProductLabel("");setError("");setNotice("");setFormOpen(true);
+  setForm({...INITIAL});setTiers([]);setEditingId("");setProductLabel("");setRewardProductLabel("");setError("");setNotice("");setFormOpen(true);
  }
  function editProgram(p:Row){
   setEditingId(String(p.id));
   setForm(Object.fromEntries(Object.keys(INITIAL).map(k=>[k,p[k]===null||p[k]===undefined?"":String(p[k])])) as Form);
-  setTiers(Array.isArray(p.tier_rules)?p.tier_rules.map((x:Row)=>({tier:String(x.tier),target:Number(x.target),reward_value:Number(x.reward_value)})):[]);
+  setTiers(Array.isArray(p.tier_rules)?p.tier_rules.map((x:Row)=>({tier:String(x.tier),target:Number(x.target),reward_value:Number(x.reward_value)})):[]);setProductLabel(p.product_master_id?"SKU #"+p.product_master_id:"");setRewardProductLabel(p.reward_product_master_id?"Produk #"+p.reward_product_master_id:"");
   setFormOpen(true);setError("");
  }
  function change(field:keyof Form,value:string){setForm(p=>({...p,[field]:value}))}
@@ -134,6 +134,7 @@ export default function AffiliateProgramWorkspace({workspaceId}:{workspaceId:str
     <label>Target Minimal<input type="number" min="0" value={form.target_value} onChange={e=>change("target_value",e.target.value)}/></label>
     <label>Jenis Reward<select value={form.reward_type} onChange={e=>change("reward_type",e.target.value)}><option value="cash">Uang Tunai</option><option value="product">Barang / Produk</option><option value="ads_credit">Budget Ads / Spark Ads</option><option value="sample">Sample</option><option value="other">Reward Lainnya</option></select></label>
     <label>Nilai Reward Dasar (Rp)<input type="number" min="0" value={form.reward_value} onChange={e=>change("reward_value",e.target.value)}/></label>
+    {(form.reward_type==="product"||form.reward_type==="sample")&&<label>Produk Hadiah / Sample<ProductAutocomplete workspaceId={workspaceId} selectedId={form.reward_product_master_id} value={rewardProductLabel} onTextChange={value=>{setRewardProductLabel(value);change("reward_product_master_id","")}} onSelect={(x:ProductSearchResult)=>{change("reward_product_master_id",String(x.id));setRewardProductLabel(x.sku+" · "+(x.product_name||""))}}/><small>Pilih barang/SKU hadiah dari Product Master workspace.</small></label>}
     <label>Tambahan Insentif per Qty (Rp)<input type="number" min="0" value={form.extra_incentive_per_unit} onChange={e=>change("extra_incentive_per_unit",e.target.value)}/></label>
     <label>Mulai Periode<input type="date" value={form.start_date} onChange={e=>change("start_date",e.target.value)}/></label>
     <label>Akhir Periode<input type="date" min={form.start_date} value={form.end_date} onChange={e=>change("end_date",e.target.value)}/></label>
