@@ -4,6 +4,7 @@ import {useEffect,useMemo,useState} from "react";
 import {createClient} from "../../lib/supabase-browser";
 import {CreatorAutocomplete,CreatorSearchResult,ProductAutocomplete,ProductSearchResult} from "./SmartAutocomplete";
 import AffiliateProgramImporter from "./AffiliateProgramImporter";
+import AffiliateRewardClaims from "./AffiliateRewardClaims";
 
 type Row=Record<string,any>;
 type Tier={tier:string;target:number;reward_value:number};
@@ -73,6 +74,7 @@ export default function AffiliateProgramWorkspace({workspaceId}:{workspaceId:str
  async function save(){
   if(!form.program_name.trim()||!form.start_date||!form.end_date){setError("Nama program, tanggal mulai, dan tanggal berakhir wajib diisi.");return}
   if(form.end_date<form.start_date){setError("Tanggal berakhir harus setelah tanggal mulai.");return}
+  if(form.claim_deadline&&form.claim_deadline<=form.end_date){setError("Batas klaim harus sesudah akhir program. Jika kosong, otomatis 30 hari setelah program berakhir.");return}
   const invalidTier=tiers.some(x=>!x.tier.trim()||!Number.isFinite(x.target)||x.target<=0||x.reward_value<0);
   if(invalidTier){setError("Periksa nilai target/reward setiap tier.");return}
   setSaving(true);setError("");
@@ -138,8 +140,8 @@ export default function AffiliateProgramWorkspace({workspaceId}:{workspaceId:str
     <label>Tambahan Insentif per Qty (Rp)<input type="number" min="0" value={form.extra_incentive_per_unit} onChange={e=>change("extra_incentive_per_unit",e.target.value)}/></label>
     <label>Mulai Periode<input type="date" value={form.start_date} onChange={e=>change("start_date",e.target.value)}/></label>
     <label>Akhir Periode<input type="date" min={form.start_date} value={form.end_date} onChange={e=>change("end_date",e.target.value)}/></label>
-    <label>Batas Klaim<input type="date" min={form.end_date||form.start_date} value={form.claim_deadline} onChange={e=>change("claim_deadline",e.target.value)}/><small>Jika kosong, batas klaim sama dengan akhir program.</small></label>
-    <label>Maksimal Frekuensi Klaim / Creator<input type="number" min="1" max="24" value={form.claim_limit} onChange={e=>change("claim_limit",e.target.value)}/><small>Misalnya 1, 2, atau 3 kali dalam periode.</small></label>
+    <label>Batas Klaim<input type="date" min={form.end_date||form.start_date} value={form.claim_deadline} onChange={e=>change("claim_deadline",e.target.value)}/><small>Jika kosong, batas klaim otomatis 30 hari setelah program selesai.</small></label>
+    <label>Maksimal Frekuensi Klaim / Creator<input type="number" min="1" max="24" value={form.claim_limit} onChange={e=>change("claim_limit",e.target.value)}/><small>Maksimal satu klaim per periode bulanan; target berlaku untuk setiap periode, bukan total kumulatif.</small></label>
     <label>Status Program<select value={form.status} onChange={e=>change("status",e.target.value)}><option value="draft">Draft</option><option value="active">Active</option><option value="paused">Paused</option><option value="closed">Closed</option></select></label>
     <label className="wide">Deskripsi, Syarat & Gimmick<textarea rows={3} value={form.description} onChange={e=>change("description",e.target.value)} placeholder="Syarat kelayakan, konten wajib, live/video, hashtag, persetujuan Spark Ads, pengecualian refund..."/></label>
    </div>
@@ -156,8 +158,9 @@ export default function AffiliateProgramWorkspace({workspaceId}:{workspaceId:str
     {entries.map((row,index)=><tr key={row.creator_id}><td><b>#{index+1}</b></td><td><strong>{row.creator_name}</strong></td><td><div className="asp-progress"><span>{detailCurrency?rupiah(row.actual):num(row.actual)} / {detailCurrency?rupiah(selected.target_value):num(selected.target_value)}</span><div><i style={{width:clamp(Number(row.actual)/Math.max(Number(selected.target_value),1)*100)+"%"}}/></div></div></td><td>{num(row.qty_net)} pcs</td><td>{rupiah(row.gmv_net)}</td><td>{rupiah(row.platform_commission)}</td><td>{row.tier_name||"—"}</td><td>{rupiah(row.estimated_reward)}</td><td><Status value={row.qualification}/></td></tr>)}
     {!entries.length&&<tr><td colSpan={9}>Belum ada peserta. Tambahkan creator, lalu upload laporan.</td></tr>}
    </tbody></table></div></div>
-   <AffiliateProgramImporter workspaceId={workspaceId} program={selected} onImported={()=>void loadDetail(selected.id)}/>
-   <section className="asp-import-history"><header><h4>Riwayat Import Program</h4><span>{imports.length} berkas</span></header><div>{imports.map(item=><article key={item.id}><div><b>{item.filename}</b><small>{item.created_at?.slice(0,10)} · {item.platform} · {item.status}</small></div><div>{item.rows_imported} baris masuk · {item.rows_rejected} ditolak</div></article>)}{!imports.length&&<p>Belum ada file performa program.</p>}</div></section>
+   <AffiliateRewardClaims key={"claim-"+selected.id} workspaceId={workspaceId} program={selected} entries={entries} onChanged={()=>void loadDetail(selected.id)}/>
+   <AffiliateProgramImporter key={"import-"+selected.id} workspaceId={workspaceId} program={selected} onImported={()=>void loadDetail(selected.id)}/>
+   <section className="asp-import-history"><header><h4>Riwayat Import Program</h4><span>{imports.length} berkas</span></header><div>{imports.map(item=><article key={item.id}><div><b>{item.filename}</b><small>{item.created_at?.slice(0,10)} · {item.platform} · {item.status}</small></div><div>{item.rows_imported} baris masuk · {item.rows_rejected} ditolak <button className="asp-delete-import" disabled={saving} onClick={()=>void deleteImport(item.id)}>Hapus & Reset</button></div></article>)}{!imports.length&&<p>Belum ada file performa program.</p>}</div></section>
   </section>}
  </section>;
 }
