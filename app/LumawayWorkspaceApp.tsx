@@ -316,8 +316,11 @@ export default function LumawayWorkspaceApp() {
       return;
     }
 
+    // An invite link may select a workspace only if the account is already a member.
+    const requestedWorkspace = new URLSearchParams(window.location.search).get("workspace");
     const preferred = window.localStorage.getItem("luma_active_workspace");
-    const selected = memberships.find((item: any) => item.workspace_id === preferred) || memberships[0];
+    const selected = memberships.find((item: any) => requestedWorkspace && item.workspace_id === requestedWorkspace)
+      || memberships.find((item: any) => item.workspace_id === preferred) || memberships[0];
     const { data: workspaceData, error: workspaceError } = await supabase
       .from("workspaces")
       .select("id,name,slug,status")
