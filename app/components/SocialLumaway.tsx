@@ -9,6 +9,7 @@ type FeedRow={
   social_alias:string;social_avatar_key:string;social_avatar_url:string|null;
   like_count:number;save_count:number;liked_by_me:boolean;saved_by_me:boolean;subscribed_by_me:boolean;subscriber_count:number;
 };
+type Discover={posts:{id:number;author:string;summary:string;likes:number;saves:number;views:number;shares:number;score:number}[];keywords:{keyword:string;uses:number}[]};
 type Archive={id:number;image_url:string;created_at:string};
 type Identity={social_alias:string;social_avatar_key:string;social_avatar_url:string|null};
 type SocialProfile={
@@ -34,6 +35,7 @@ function SocialAvatar({alias,avatarUrl,size="normal"}:{alias:string;avatarUrl?:s
 export default function SocialLumaway({workspaceId,userId}:{workspaceId:string;userId:string}){
   const supabase=useMemo(()=>createClient(),[]);
   const [feed,setFeed]=useState<FeedRow[]>([]);
+  const [discovery,setDiscovery]=useState<Discover>({posts:[],keywords:[]});
   const [archives,setArchives]=useState<Archive[]>([]);
   const [identity,setIdentity]=useState<Identity>({social_alias:"LumaUser",social_avatar_key:"default",social_avatar_url:null});
   const [myProfile,setMyProfile]=useState<SocialProfile|null>(null);
@@ -51,13 +53,16 @@ export default function SocialLumaway({workspaceId,userId}:{workspaceId:string;u
 
   async function load(){
     const scope=tab==="following"?"following":"for_you";
-    const [feedResult,archiveResult,identityResult,profileResult]=await Promise.all([
+    const [feedResult,archiveResult,identityResult,profileResult,discoverResult]=await Promise.all([
       supabase.rpc("luma_get_social_feed_v2",{p_limit:100,p_offset:0,p_scope:scope}),
       supabase.from("luma_social_archives").select("id,image_url,created_at").eq("user_id",userId).order("created_at",{ascending:false}).limit(12),
       supabase.rpc("luma_get_my_social_identity_v2"),
-      supabase.rpc("luma_get_social_profile_v3",{p_user_id:userId})
+      supabase.rpc("luma_get_social_profile_v3",{p_user_id:userId}),
+       supabase.rpc("luma_social_discover_v1")
     ]);
     setFeed((feedResult.data||[]) as FeedRow[]);
+     if(!discoverResult.error)setDiscovery((discoverResult.data||{posts:[],keywords:[]}) as Discover);
+     if(feedResult.error)setStatus("Feed belum dapat dimuat: "+feedResult.error.message);
     setArchives((archiveResult.data||[]) as Archive[]);
     const me=(identityResult.data||[])[0] as Identity|undefined;if(me)setIdentity(me);
     const mine=(profileResult.data||[])[0] as SocialProfile|undefined;if(mine)setMyProfile(mine);
@@ -161,13 +166,31 @@ export default function SocialLumaway({workspaceId,userId}:{workspaceId:string;u
     }catch(error:any){setStatus(error?.message||"Profil belum dapat dibuka.")}finally{setProfileBusy(false)}
   }
 
-  function openDetail(row:FeedRow){setDetail(row);setCarouselIndex(0)}
+  function track(postId:number,eventType:"view"|"share"){
+    void supabase.from("luma_community_post_events").insert({post_id:postId,user_id:userId,event_type:eventType}).then(()=>{});
+  }
+  async function deletePost(row:FeedRow){
+    if(row.user_id!==userId)return;
+    if(!window.confirm("Hapus post ini beserta foto dan interaksi yang terkait?"))return;
+    setBusy(true);
+    try{
+      const response=await fetch("/api/social/delete",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({workspace_id:workspaceId,post_id:row.id})});
+      const data=await response.json();
+      if(!response.ok||!data.ok)throw new Error(data.error||"Gagal menghapus post.");
+      setDetail(null);setProfile(null);setShareRow(null);
+      setStatus(data.media_deleted?"Post dan media berhasil dihapus.":"Post terhapus dari feed, tetapi sebagian media perlu dibersihkan admin.");
+      await load();
+    }catch(error){setStatus(error instanceof Error?error.message:"Post belum dapat dihapus.")}
+    finally{setBusy(false)}
+  }
+  function openDetail(row:FeedRow){setDetail(row);setCarouselIndex(0);track(row.id,"view")}
   function shareUrl(row:FeedRow){return window.location.origin+"/share/social/"+row.id+"?ref="+encodeURIComponent(userId)}
   function shareText(row:FeedRow){return row.social_alias+" di Lumaway Community: "+(row.body||"Lihat post terbaru")}
   async function nativeShare(row:FeedRow){
     const url=shareUrl(row),text=shareText(row);
-    if(navigator.share){try{await navigator.share({title:"Lumaway Community",text,url});return}catch{}}
-    await navigator.clipboard.writeText(text+"\n"+url);setStatus("Link post disalin.");
+    if(navigator.share){try{await navigator.share({title:"Lumaway Community",text,url});track(row.id,"share");return}catch{}}
+    await navigator.clipboard.writeText(text+"\n"+url);track(row.id,"share");setStatus("Link post disalin.");
   }
   function openShare(network:string,row:FeedRow){
     const url=encodeURIComponent(shareUrl(row)),text=encodeURIComponent(shareText(row));let target="";
@@ -175,7 +198,7 @@ export default function SocialLumaway({workspaceId,userId}:{workspaceId:string;u
     if(network==="linkedin")target="https://www.linkedin.com/sharing/share-offsite/?url="+url;
     if(network==="threads")target="https://www.threads.net/intent/post?text="+text+"%20"+url;
     if(network==="instagram"){void nativeShare(row);setStatus("Pilih Instagram/Story dari menu share perangkat Anda.");setShareRow(null);return}
-    if(target)window.open(target,"_blank","noopener,noreferrer");setShareRow(null);
+    if(target){window.open(target,"_blank","noopener,noreferrer");track(row.id,"share")}setShareRow(null);
   }
 
   function renderPost(row:FeedRow,compact=false){
@@ -186,7 +209,7 @@ export default function SocialLumaway({workspaceId,userId}:{workspaceId:string;u
           <SocialAvatar alias={row.social_alias} avatarUrl={row.social_avatar_url} size="small"/>
           <span><b>{row.social_alias}</b><small>{shortDate(row.created_at)}</small></span>
         </button>
-        {row.user_id!==userId&&<button className={"social-v3-follow-mini "+(row.subscribed_by_me?"active":"")} onClick={()=>void toggleSubscribe(row)}>{row.subscribed_by_me?"Mengikuti":"Ikuti"}</button>}
+        {row.user_id!==userId?<button className={"social-v3-follow-mini "+(row.subscribed_by_me?"active":"")} onClick={()=>void toggleSubscribe(row)}>{row.subscribed_by_me?"Mengikuti":"Ikuti"}</button>:<button className="social-v3-delete-post" disabled={busy} title="Hapus postingan Anda" onClick={()=>void deletePost(row)}>Hapus</button>}
       </header>
       <button className="social-v3-post-open" onClick={()=>openDetail(row)}>
         {images.length?<div className="social-v3-post-media"><img src={images[0]} alt="Community post"/>{images.length>1&&<span>{images.length} foto</span>}</div>:<div className="social-v3-text-post">{row.body}</div>}
@@ -260,9 +283,9 @@ export default function SocialLumaway({workspaceId,userId}:{workspaceId:string;u
         <section className="social-v3-feed">
           <div className="social-v3-section-title"><div><h3>{tab==="saved"?"Post Tersimpan":tab==="following"?"Dari Profil yang Anda Ikuti":tab==="popular"?"Sedang Populer":"Community Feed"}</h3><p>Klik nama profil untuk membuka profile stack, atau klik post untuk melihat detail.</p></div></div>
           <div className="social-v3-feed-grid">
-            {(tab==="for_you"?otherPosts:sorted).map(row=>renderPost(row))}
+            {sorted.map(row=>renderPost(row))}
           </div>
-          {(tab==="for_you"?otherPosts:sorted).length===0&&<div className="social-v3-empty"><b>Belum ada post pada feed ini.</b><span>Coba tab lain atau buat post baru.</span></div>}
+          {sorted.length===0&&<div className="social-v3-empty"><b>Belum ada post pada feed ini.</b><span>Coba tab lain atau buat post baru.</span></div>}
         </section>
 
         {!!archives.length&&<section className="social-v3-archive"><div><h3>Koleksi Saya</h3><span>Foto terbaru dari post Anda.</span></div><div>{archives.map(item=><img key={item.id} src={item.image_url} alt="Archive"/>)}</div></section>}
@@ -271,7 +294,12 @@ export default function SocialLumaway({workspaceId,userId}:{workspaceId:string;u
       <aside className="social-v3-right">
         <section><header><h3>Aktivitas Terbaru</h3><span>{feed.length}</span></header><div className="social-v3-activity-list">{feed.slice(0,5).map(row=><button key={row.id} onClick={()=>openDetail(row)}><SocialAvatar alias={row.social_alias} avatarUrl={row.social_avatar_url} size="small"/><span><b>{row.social_alias}</b><small>{row.body||"Membagikan media baru"}</small></span><em>{shortDate(row.created_at)}</em></button>)}</div></section>
         <section><header><h3>Creator Populer</h3><span>{people.length}</span></header><div className="social-v3-people-list">{people.map(row=><div key={row.user_id}><button className="profile" onClick={()=>void openProfile(row.user_id)}><SocialAvatar alias={row.social_alias} avatarUrl={row.social_avatar_url} size="small"/><span><b>{row.social_alias}</b><small>{num(row.subscriber_count)} followers</small></span></button><button className={row.subscribed_by_me?"active":""} onClick={()=>void toggleSubscribe(row)}>{row.subscribed_by_me?"Following":"Follow"}</button></div>)}</div></section>
-        <section className="social-v3-community-note"><span>COMMUNITY</span><h3>Berinteraksi tanpa komentar publik.</h3><p>Lumaway Community menggunakan Follow, Like, Save, dan Share agar interaksi tetap ringkas dan fokus.</p></section>
+        <section className="social-v3-popular-posts"><header><h3>Trending Konten</h3><span>Top 5</span></header>
+    <div className="social-v3-discovery-ranking">{discovery.posts.slice(0,5).map((item,i)=><button key={item.id} onClick={()=>{const post=feed.find(x=>x.id===item.id);if(post)openDetail(post)}}><b>{String(i+1).padStart(2,"0")}</b><span><strong>{item.author}</strong><small>{item.summary||"Postingan media"} · {item.views} view · {item.likes} suka · {item.shares} share</small></span></button>)}</div>
+    {!discovery.posts.length&&<p>Ranking tersedia setelah ada postingan publik.</p>}
+   </section>
+   <section className="social-v3-keywords"><header><h3>Top Kata Kunci</h3><span>Top 5</span></header><div>{discovery.keywords.slice(0,5).map((item,i)=><div key={item.keyword}><b>#{i+1}</b><span>{item.keyword}</span><small>{item.uses} pemakaian</small></div>)}</div>{!discovery.keywords.length&&<p>Belum ada kata kunci yang cukup sering dipakai.</p>}</section>
+   <section className="social-v3-community-note"><span>COMMUNITY</span><h3>Bagikan insight, temukan inspirasi.</h3><p>Setiap postingan publik dapat dilihat pengguna Lumaway lain. Anda bisa menghapus postingan sendiri dari menu Hapus.</p></section>
       </aside>
     </div>
 
