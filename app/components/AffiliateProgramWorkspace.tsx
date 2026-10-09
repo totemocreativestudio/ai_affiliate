@@ -4,6 +4,7 @@ import {useEffect,useMemo,useState} from "react";
 import {createClient} from "../../lib/supabase-browser";
 import {CreatorAutocomplete,CreatorSearchResult,ProductAutocomplete,ProductSearchResult} from "./SmartAutocomplete";
 import AffiliateProgramImporter from "./AffiliateProgramImporter";
+import AffiliateBatchEvidencePanel from "./AffiliateBatchEvidencePanel";
 import AffiliateRewardClaims from "./AffiliateRewardClaims";
 
 type Row=Record<string,any>;
@@ -178,7 +179,10 @@ export default function AffiliateProgramWorkspace({workspaceId}:{workspaceId:str
     {!entries.length&&<tr><td colSpan={9}>Belum ada peserta. Tambahkan creator, lalu upload laporan.</td></tr>}
    </tbody></table></div></div>
    <AffiliateRewardClaims key={"claim-"+selected.id} workspaceId={workspaceId} program={selected} entries={entries} onChanged={()=>void loadDetail(selected.id)}/>
-   <AffiliateProgramImporter key={"import-"+selected.id} workspaceId={workspaceId} program={selected} onImported={()=>void loadDetail(selected.id)}/>
+   <AffiliateBatchEvidencePanel key={"batch-"+selected.id} workspaceId={workspaceId} program={selected} onImported={()=>void loadDetail(selected.id)}/>
+    <details className="asp-manual-import-details"><summary>Mapping Manual Laporan Harian (untuk perhitungan reward berdasarkan tanggal transaksi)</summary>
+      <AffiliateProgramImporter key={"import-"+selected.id} workspaceId={workspaceId} program={selected} onImported={()=>void loadDetail(selected.id)}/>
+    </details>
    <section className="asp-import-history"><header><h4>Riwayat Import Program</h4><span>{imports.length} berkas</span></header><div>{imports.map(item=><article key={item.id}><div><b>{item.filename}</b><small>{item.created_at?.slice(0,10)} · {item.platform} · {item.status}</small></div><div>{item.rows_imported} baris masuk · {item.rows_rejected} ditolak <button className="asp-delete-import" disabled={saving} onClick={()=>void deleteImport(item.id)}>Hapus & Reset</button></div></article>)}{!imports.length&&<p>Belum ada file performa program.</p>}</div></section>
   </section>}
  </section>;
