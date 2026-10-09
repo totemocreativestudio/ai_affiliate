@@ -12,6 +12,7 @@ import UserProfile from "./UserProfile";
 const AdminDashboard=dynamic(()=>import("./AdminDashboard"),{ssr:false});
 import {CreatorAutocomplete,ProductAutocomplete,CreatorSearchResult,ProductSearchResult,resolveOrCreateCreator} from "./SmartAutocomplete";
 import TutorialCenter from "./TutorialCenter";
+import AffiliateProgramWorkspace from "./AffiliateProgramWorkspace";
 import { readNumber, sortByValue } from "../../lib/numeric";
 
 type Row=Record<string,any>;
@@ -22,7 +23,7 @@ export default function RestoredLegacyModules({workspaceId,userId,isAdmin}:{work
   return <>
     <InternalExcelGrid workspaceId={workspaceId}/>
     <Agreements workspaceId={workspaceId}/>
-    <AffiliateSupport workspaceId={workspaceId}/>
+    <AffiliateProgramWorkspace workspaceId={workspaceId}/>
     <LumaAffiliateCenter workspaceId={workspaceId} userId={userId}/>
     <PromoStudioV2 workspaceId={workspaceId} userId={userId}/>
     <KanbanBoard workspaceId={workspaceId} userId={userId}/>
@@ -42,15 +43,21 @@ function Table({rows,columns}:{rows:Row[];columns?:string[]}){
 
 function Agreements({workspaceId}:{workspaceId:string}){
   const supabase=createClient();
-  const empty:Row={creator_id:"",creator_name:"",platform:"TikTok",brand:"",category:"",product_master_id:"",product_name:"",product_hpp:0,deal_type:"",ratecard:"",support_type:"",support_value:"",start_date:"",end_date:"",document_status:"Approved",support_status:"Pending",bonus_eligible:"No",notes:"",signed_by_name:""};
-  const [rows,setRows]=useState<Row[]>([]),[msg,setMsg]=useState("");
+  const empty:Row={creator_id:"",creator_name:"",platform:"TikTok",brand:"",category:"",product_master_id:"",product_name:"",product_hpp:0,deal_type:"",ratecard:"",support_type:"",support_value:"",store_name:"",store_id:"",program_id:"",start_date:"",end_date:"",document_status:"Pending",support_status:"Pending",bonus_eligible:"No",notes:"",signed_by_name:""};
+  const [rows,setRows]=useState<Row[]>([]),[stores,setStores]=useState<Row[]>([]),[supportPrograms,setSupportPrograms]=useState<Row[]>([]),[msg,setMsg]=useState("");
   const [form,setForm]=useState<Row>(empty);
   const [creatorSearch,setCreatorSearch]=useState("");
   const [productSearch,setProductSearch]=useState("");
 
   async function load(){
-    const {data,error}=await supabase.from("agreements").select("*").eq("workspace_id",workspaceId).order("id",{ascending:false}).limit(300);
-    if(error)setMsg(error.message);else setRows((data||[]) as Row[]);
+    const [agreementResult,storeResult,programResult]=await Promise.all([
+      supabase.from("agreements").select("*").eq("workspace_id",workspaceId).order("id",{ascending:false}).limit(300),
+      supabase.rpc("luma_workspace_store_options_v1",{p_workspace_id:workspaceId}),
+      supabase.from("luma_affiliate_programs").select("id,program_name,platform,status,start_date,end_date").eq("workspace_id",workspaceId).order("created_at",{ascending:false}).limit(150)
+    ]);
+    if(agreementResult.error)setMsg(agreementResult.error.message);else setRows((agreementResult.data||[]) as Row[]);
+    if(!storeResult.error)setStores((storeResult.data||[]) as Row[]);
+    if(!programResult.error)setSupportPrograms((programResult.data||[]) as Row[]);
   }
   useEffect(()=>{void load()},[workspaceId]);
 
@@ -94,13 +101,13 @@ function Agreements({workspaceId}:{workspaceId:string}){
       updated_at:new Date().toISOString()
     };
     const {error}=await supabase.from("agreements").insert(payload);
-    setMsg(error?error.message:"Agreement tersimpan. Program creator otomatis Active dan PDF siap dibuat.");
+    setMsg(error?error.message:"Agreement tersimpan sebagai dokumen internal. Tinjau status dan tanda tangan sebelum mengaktifkan support; PDF bisa diunduh dari tabel.");
     if(!error){await load();setForm({...empty});setCreatorSearch("");setProductSearch("")}
   }
   const f=(k:string,l:string,type="text")=><label>{l}<input type={type} value={form[k]||""} onChange={e=>setForm({...form,[k]:e.target.value})}/></label>;
 
-  return <section id="agreements" className="legacy-page-anchor">
-    <div className="eyebrow">CREATOR MANAGEMENT</div><h1>Agreement</h1>
+  return <section id="agreements" className="legacy-page-anchor asp-agreements">
+    <div className="eyebrow">CREATOR MANAGEMENT · DIGITAL WORKFLOW</div><h1>Agreement & Creator Support</h1><p className="asp-agreement-description">Hubungkan kontrak dengan Master Creator, toko, produk, dan program reward/challenge. Digital Seal Lumaway adalah verifikasi internal dokumen, bukan e-Meterai resmi.</p>
     <div className="card">
       <div className="grid">
         <label>Creator Search<CreatorAutocomplete workspaceId={workspaceId} value={creatorSearch} selectedId={form.creator_id}
@@ -108,10 +115,12 @@ function Agreements({workspaceId}:{workspaceId:string}){
         {f("platform","Platform")}
         {f("brand","Brand")}
         {f("category","Category")}
+        <label>Nama Toko / Store<select value={form.store_name||""} onChange={e=>{const store=stores.find(x=>x.store_name===e.target.value);setForm(prev=>({...prev,store_name:e.target.value,store_id:store?.store_id||""}))}}><option value="">Pilih toko (opsional)</option>{stores.map(x=><option key={x.platform+"-"+x.store_name} value={x.store_name}>{x.store_name}{x.store_id?" · ID "+x.store_id:""} ({x.platform})</option>)}</select><small className="field-note">Toko sama dengan daftar di Shipping & Affiliate Performance.</small></label>
+        <label>Program Support / Challenge<select value={form.program_id||""} onChange={e=>setForm(prev=>({...prev,program_id:e.target.value}))}><option value="">Tidak terhubung ke program</option>{supportPrograms.filter(x=>!form.platform||x.platform===form.platform).map(x=><option key={x.id} value={x.id}>{x.program_name} · {x.status}</option>)}</select><small className="field-note">Hubungkan ke Affiliate Support, lalu creator ditambahkan sebagai peserta program dari tracker.</small></label>
         <label>Product / SKU Search<ProductAutocomplete workspaceId={workspaceId} value={productSearch} selectedId={form.product_master_id} onTextChange={value=>{setProductSearch(value);setForm(p=>({...p,product_master_id:"",product_name:"",product_hpp:0}))}} onSelect={chooseProduct}/><small className="field-note">HPP terhubung otomatis: Rp {Number(form.product_hpp||0).toLocaleString("id-ID")}</small></label>
         {f("deal_type","Deal Type")}
         {f("ratecard","Ratecard","number")}
-        {f("support_type","Support Type")}
+        <label>Jenis Support<select value={form.support_type||""} onChange={e=>setForm(prev=>({...prev,support_type:e.target.value}))}><option value="">Pilih support</option><option value="reward">Reward</option><option value="challenge">Affiliate Challenge</option><option value="spark_ads">Spark Ads</option><option value="sampling">Sample Produk</option><option value="incentive">Extra Insentif</option></select></label>
         {f("support_value","Support Value","number")}
         {f("start_date","Start","date")}
         {f("end_date","End","date")}
@@ -121,12 +130,12 @@ function Agreements({workspaceId}:{workspaceId:string}){
         {f("signed_by_name","Nama Tanda Tangan")}
       </div>
       <label>Notes<textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></label>
-      <div className="owner-inline-note"><b>Digital Seal ID:</b> dibuat otomatis 22 karakter unik saat Agreement disimpan. PDF akan memuat nama tanda tangan sebagai watermark. Untuk e-Meterai dengan status hukum resmi, tetap gunakan penyedia e-Meterai resmi/berizin.</div>
+      <div className="owner-inline-note"><b>Digital Seal ID:</b> dibuat otomatis 22 karakter unik saat Agreement disimpan. PDF akan memuat nama tanda tangan sebagai watermark. Seal ini berupa identitas verifikasi internal Lumaway, bukan e-Meterai maupun tanda tangan elektronik tersertifikasi. Untuk dokumen yang memerlukan e-Meterai sah, gunakan penyedia resmi/berizin.</div>
       <button className="primary" onClick={()=>void save()}>Simpan Agreement</button>{msg&&<p className="muted">{msg}</p>}
     </div>
-    <div className="card"><h3>Agreement aktif</h3>
+    <div className="card"><h3>Agreement & Status Dokumen</h3>
       <div className="scroll"><table><thead><tr>{["Agreement","Creator","Platform","Product","Status","Program","Digital Seal","Signed By","PDF"].map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>
-        {rows.map(row=><tr key={row.id}><td>{row.agreement_id||"-"}</td><td>{row.creator_name||"-"}</td><td>{row.platform||"-"}</td><td>{row.product_name||"-"}</td><td>{row.document_status||"-"}</td><td><span className="status-pill s-paid">Active</span></td><td><code>{row.e_stamp_id||"-"}</code></td><td>{row.signed_by_name||"-"}</td><td>{row.e_stamp_id?<a className="secondary compact" href={`/api/agreements/${row.id}/pdf?workspace_id=${encodeURIComponent(workspaceId)}`} target="_blank" rel="noreferrer">PDF</a>:"-"}</td></tr>)}
+        {rows.map(row=><tr key={row.id}><td>{row.agreement_id||"-"}</td><td>{row.creator_name||"-"}</td><td>{row.platform||"-"}</td><td>{row.product_name||"-"}</td><td>{row.document_status||"-"}</td><td><span className={"status-pill "+(row.document_status==="Approved"?"s-paid":"")}>{row.document_status==="Approved"?"Approved":"Perlu Review"}</span></td><td><code>{row.e_stamp_id||"-"}</code></td><td>{row.signed_by_name||"-"}</td><td>{row.e_stamp_id?<a className="secondary compact" href={`/api/agreements/${row.id}/pdf?workspace_id=${encodeURIComponent(workspaceId)}`} target="_blank" rel="noreferrer">PDF</a>:"-"}</td></tr>)}
         {!rows.length&&<tr><td colSpan={9}>Belum ada Agreement.</td></tr>}
       </tbody></table></div>
     </div>

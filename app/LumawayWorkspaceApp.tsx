@@ -30,6 +30,7 @@ import "./listing-followup-queue.css";
 import "./listing-followup-calendar.css";
 import "./listing-quick-message.css";
 import "./listing-contact-readiness.css";
+import "./lumaway-ops-pr87.css";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../lib/supabase-browser";
 import { APP_BASE, isAuthPath, navigateToSection, routeForSection, sectionFromPath } from "../lib/luma-navigation";
@@ -207,6 +208,9 @@ export default function LumawayWorkspaceApp() {
     if(initialParams.get("verified")==="1")setAuthMessage("Email berhasil diverifikasi. Silakan masuk ke Lumaway dengan email dan password Anda.");
     cleanAuthErrorQuery();
     captureReferralCode();
+    const requestedTeamWorkspace=new URLSearchParams(window.location.search).get("workspace");
+    if(requestedTeamWorkspace&&/^[0-9a-f-]{36}$/i.test(requestedTeamWorkspace))
+      window.localStorage.setItem("luma_pending_workspace",requestedTeamWorkspace);
 
     const initialAuthMode = new URLSearchParams(window.location.search).get("auth");
     if (initialAuthMode === "signup" || window.location.pathname === `${APP_BASE}/register`) setAuthMode("signup");
@@ -315,8 +319,12 @@ export default function LumawayWorkspaceApp() {
       return;
     }
 
+    // An invite link may select a workspace only if the account is already a member.
+    const requestedWorkspace = new URLSearchParams(window.location.search).get("workspace")
+      || window.localStorage.getItem("luma_pending_workspace");
     const preferred = window.localStorage.getItem("luma_active_workspace");
-    const selected = memberships.find((item: any) => item.workspace_id === preferred) || memberships[0];
+    const selected = memberships.find((item: any) => requestedWorkspace && item.workspace_id === requestedWorkspace)
+      || memberships.find((item: any) => item.workspace_id === preferred) || memberships[0];
     const { data: workspaceData, error: workspaceError } = await supabase
       .from("workspaces")
       .select("id,name,slug,status")
@@ -331,6 +339,7 @@ export default function LumawayWorkspaceApp() {
     setProfile(typedProfile);
     setWorkspace(workspaceData as Workspace);
     window.localStorage.setItem("luma_active_workspace", workspaceData.id);
+    window.localStorage.removeItem("luma_pending_workspace");
 
     const referralCode=captureReferralCode();
     if(referralCode&&/^[A-Z0-9]{12}$/.test(referralCode)){

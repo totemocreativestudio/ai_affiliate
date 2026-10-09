@@ -63,6 +63,18 @@ const GUIDES:Record<string,Guide>={
   {title:"Geser bila perlu",what:"Drag ke tanggal lain.",why:"Reschedule lebih cepat.",result:"Next run berubah."},
   {title:"Cek history",what:"Pantau Delivered atau Failed.",why:"Menjamin report benar-benar diproses.",result:"Status pengiriman terverifikasi."}
  ]},
+ "affiliate-support":{title:"Reward & Affiliate Challenge",description:"Buat program, hubungkan creator, lalu impor pencapaian untuk dihitung sebagai estimasi reward.",steps:[
+  {title:"Buat Program",what:"Klik Buat Program, pilih reward, Spark Ads, incentive atau challenge; isi tanggal & target.",why:"Program menentukan aturan eligibility dan batas waktu.",result:"Program tersimpan sebagai draft atau active."},
+  {title:"Atur Reward Tier",what:"Pilih target dan nominal reward tiap tier; misalnya 3, 5, atau 9 tingkat.",why:"Tier tertinggi yang tercapai menjadi reward dasar.",result:"Bonus tidak dihitung ganda."},
+  {title:"Tambahkan peserta",what:"Buka Tracker, pilih Master Creator dan klik Tambah Peserta.",why:"Hanya creator terdaftar masuk perhitungan.",result:"Creator muncul di leaderboard."},
+  {title:"Pantau leaderboard",what:"Periksa progress, masa berlaku dan estimasi bonus.",why:"Bonus belum sama dengan pembayaran yang sudah disetujui.",result:"Status kualifikasi lebih jelas."},
+  {title:"Upload laporan",what:"Pilih Excel/CSV, petakan header, tanggal, SKU dan creator lalu validasi.",why:"Menghindari duplikasi atau data di luar periode.",result:"Angka tracker masuk setelah diperiksa."}
+ ]},
+ "social-lumaway":{title:"Lumaway Social",description:"Semua postingan publik terlihat oleh pengguna Lumaway; pemilik postingan dapat menghapus kontennya.",steps:[
+  {title:"Buat post publik",what:"Isi teks dan unggah gambar sesuai aturan Community.",why:"Post bisa ditampilkan ke semua pengguna.",result:"Post muncul di feed."},
+  {title:"Baca feed",what:"Lihat postingan pengguna lain dan gunakan Like, Save, Share.",why:"Interaksi memperkaya discovery.",result:"Post dapat diakses seluruh member Lumaway."},
+  {title:"Trending & kata kunci",what:"Cek lima konten terpopuler dan kata kunci paling sering muncul.",why:"Ranking berdasarkan interaksi terukur.",result:"Ide konten terlihat lebih mudah."}
+ ]},
  shipping:{title:"Shipping",description:"Kelola pengiriman sample/produk dan biaya ongkir.",steps:[
   {title:"Lengkapi resi",what:"Isi courier dan tracking.",why:"Shipping tanpa resi akan masuk Action Center.",result:"Pengiriman dapat dilacak."},
   {title:"Isi biaya",what:"Masukkan shipping cost/ongkir.",why:"Biaya harus masuk Spending.",result:"Pengeluaran shipping terhitung."},
@@ -70,8 +82,58 @@ const GUIDES:Record<string,Guide>={
  ]}
 };
 
+
+/** Location-specific help points target the live UI, not generic illustration mockups. */
+const FOCUS_SELECTORS:Record<string,string[]>={
+  listings:[
+    "#listings .listing-v2-editor .listing-v2-form-grid",
+    "#listings .listing-v2-editor select",
+    "#listings .listing-calendar .lc-calendar-reminders-layout",
+    "#listings .listing-quick-message"
+  ],
+  shipping:[
+    "#shipping .shipping-v2-form-grid",
+    "#shipping .shipping-v2-editor",
+    "#shipping .shipping-v2-layout"
+  ],
+  "affiliate-support":[
+    "#affiliate-support .asp-hero",
+    "#affiliate-support .asp-program-grid",
+    "#affiliate-support .asp-participant",
+    "#affiliate-support .asp-leaderboard",
+    "#affiliate-support .asp-importer"
+  ],
+  "social-lumaway":[
+    "#social-lumaway .social-v3-composer",
+    "#social-lumaway .social-v3-feed",
+    "#social-lumaway .social-v3-popular-posts"
+  ],
+  dashboard:["#dashboard .kpis","#dashboard .card",".topbar"],
+  upload:["#upload select","#upload input[type=file]","#upload .card","#upload button.primary"],
+  "live-streaming":["#live-streaming .live-upload","#live-streaming .live-data-health","#live-streaming .live-product-intelligence"],
+  "product-master":["#product-master .card","#product-master input","#product-master .card"],
+  "campaign-tracker":["#campaign-tracker .card","#campaign-tracker .card","#campaign-tracker .card"]
+};
+function findFocus(section:string,step:number):HTMLElement|null{
+ const selector=FOCUS_SELECTORS[section]?.[step];
+ if(!selector)return null;
+ const element=document.querySelector<HTMLElement>(selector);
+ if(!element)return null;
+ const rect=element.getBoundingClientRect();
+ if(rect.width<2||rect.height<2)return null;
+ return element;
+}
 export default function ContextualTutorial(){
- const [open,setOpen]=useState(false),[section,setSection]=useState("dashboard"),[step,setStep]=useState(0);
+ const [open,setOpen]=useState(false),[section,setSection]=useState("dashboard"),[step,setStep]=useState(0),[focusFound,setFocusFound]=useState(false);
+ function showOnPage(){
+   const target=findFocus(section,step);
+   if(!target){setFocusFound(false);return}
+   setFocusFound(true);
+   setOpen(false);
+   target.classList.add("lumaway-help-target");
+   target.scrollIntoView({behavior:"smooth",block:"center"});
+   window.setTimeout(()=>target.classList.remove("lumaway-help-target"),6500);
+ }
 
  useEffect(()=>{
   const sync=()=>{setSection(sectionFromPath(window.location.pathname)||"dashboard");setStep(0)};
@@ -85,6 +147,9 @@ export default function ContextualTutorial(){
 
  const guide=useMemo(()=>GUIDES[section]||GUIDES.dashboard,[section]);
  const current=guide.steps[Math.min(step,guide.steps.length-1)];
+ useEffect(()=>{
+   if(open)setFocusFound(Boolean(findFocus(section,step)));
+ },[open,section,step]);
 
  return <>
   <button type="button" className="context-help-trigger" onClick={()=>setOpen(true)} aria-label="Panduan halaman ini"><LumaIcon name="support"/><span>Panduan</span></button>
@@ -95,6 +160,7 @@ export default function ContextualTutorial(){
     <article className="context-help-step">
       <span>LANGKAH {step+1} / {guide.steps.length}</span>
       <h3>{current.title}</h3>
+      {focusFound?<button className="context-help-show-on-page" onClick={showOnPage}>Lihat posisi pada fitur asli ↗</button>:<p className="context-help-not-visible">Bagian ini belum terbuka di layar. Buka fitur yang dijelaskan, lalu gunakan panduan sesuai halaman.</p>}
       <section><b>Apa yang dilakukan</b><p>{current.what}</p></section>
       <section><b>Kenapa</b><p>{current.why}</p></section>
       <section><b>Hasil</b><p>{current.result}</p></section>
