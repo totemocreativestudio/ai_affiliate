@@ -143,9 +143,9 @@ function Agreements({workspaceId}:{workspaceId:string}){
       {msg&&<p role="status" className="muted">{msg}</p>}
     </div>
     <div className="card"><h3>Agreement & Status Dokumen</h3>
-      <div className="scroll"><table><thead><tr>{["Agreement","Creator","Platform","Product","Status","Program","Digital Seal","Signed By","PDF"].map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>
-        {rows.map(row=><tr key={row.id}><td>{row.agreement_id||"-"}</td><td>{row.creator_name||"-"}</td><td>{row.platform||"-"}</td><td>{row.product_name||"-"}</td><td>{row.document_status||"-"}</td><td><span className={"status-pill "+(row.document_status==="Approved"?"s-paid":"")}>{row.document_status==="Approved"?"Approved":"Perlu Review"}</span></td><td><code>{row.e_stamp_id||"-"}</code></td><td>{row.signed_by_name||"-"}</td><td>{row.e_stamp_id?<a className="secondary compact" href={`/api/agreements/${row.id}/pdf?workspace_id=${encodeURIComponent(workspaceId)}`} target="_blank" rel="noreferrer">PDF</a>:"-"}</td></tr>)}
-        {!rows.length&&<tr><td colSpan={9}>Belum ada Agreement.</td></tr>}
+      <div className="scroll"><table><thead><tr>{["Agreement","Creator","Platform","Product","Status","Program","Term of Policy","Digital Seal","Signed By","PDF"].map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>
+        {rows.map(row=><tr key={row.id}><td>{row.agreement_id||"-"}</td><td>{row.creator_name||"-"}</td><td>{row.platform||"-"}</td><td>{row.product_name||"-"}</td><td><span className={"status-pill "+(row.document_status==="Approved"?"s-paid":"")}>{row.document_status==="Approved"?"Approved":"Perlu Review"}</span></td><td>{supportPrograms.find(p=>p.id===row.program_id)?.program_name||"—"}</td><td>{row.terms_accepted?<span title={row.terms_accepted_at||""}>Disetujui · {row.terms_version||"internal"}</span>:"Belum tercatat (legacy)"}</td><td><code>{row.e_stamp_id||"-"}</code></td><td>{row.signed_by_name||"-"}</td><td>{row.e_stamp_id?<a className="secondary compact" href={`/api/agreements/${row.id}/pdf?workspace_id=${encodeURIComponent(workspaceId)}`} target="_blank" rel="noreferrer">PDF</a>:"-"}</td></tr>)}
+        {!rows.length&&<tr><td colSpan={10}>Belum ada Agreement.</td></tr>}
       </tbody></table></div>
     </div>
   </section>
