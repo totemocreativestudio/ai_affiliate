@@ -27,9 +27,10 @@ export async function resolveOrCreateCreator(workspaceId:string,value:string,pla
 function useDebouncedSearch(endpoint:string,workspaceId:string,query:string,enabled:boolean){
   const [results,setResults]=useState<any[]>([]);
   const [loading,setLoading]=useState(false);
+  const [error,setError]=useState("");
   const requestRef=useRef(0);
   useEffect(()=>{
-    if(!enabled||!query.trim()){setResults([]);setLoading(false);return}
+    if(!enabled||!query.trim()){setResults([]);setError("");setLoading(false);return}
     const id=++requestRef.current;
     const timer=window.setTimeout(async()=>{
       setLoading(true);
@@ -38,18 +39,19 @@ function useDebouncedSearch(endpoint:string,workspaceId:string,query:string,enab
         const d=await r.json();
         if(id!==requestRef.current)return;
         setResults(r.ok&&d.ok?(d.results||[]):[]);
-      }catch{if(id===requestRef.current)setResults([])}
+        setError(r.ok&&d.ok?"":String(d?.error||"Pencarian Master Creator gagal. Coba lagi."));
+      }catch{if(id===requestRef.current){setResults([]);setError("Koneksi ke Master Creator terputus. Coba lagi.")}}
       finally{if(id===requestRef.current)setLoading(false)}
     },180);
     return()=>window.clearTimeout(timer);
   },[endpoint,workspaceId,query,enabled]);
-  return{results,loading,setResults};
+  return{results,loading,error,setResults};
 }
 
 export function CreatorAutocomplete({
-  workspaceId,value,selectedId,onTextChange,onSelect,onCreate,createPlatform,placeholder="Ketik username atau nama creator",disabled=false
-}:{workspaceId:string;value:string;selectedId?:string|number|null;onTextChange:(value:string)=>void;onSelect:(creator:CreatorSearchResult)=>void;onCreate?:(value:string)=>void;createPlatform?:string|null;placeholder?:string;disabled?:boolean}){
-  const {results,loading,setResults}=useDebouncedSearch("/api/search/creators",workspaceId,value,!disabled&&!selectedId);
+  workspaceId,value,selectedId,onTextChange,onSelect,onCreate,createPlatform,allowCreate=true,placeholder="Ketik username atau nama creator",disabled=false
+}:{workspaceId:string;value:string;selectedId?:string|number|null;onTextChange:(value:string)=>void;onSelect:(creator:CreatorSearchResult)=>void;onCreate?:(value:string)=>void;createPlatform?:string|null;allowCreate?:boolean;placeholder?:string;disabled?:boolean}){
+  const {results,loading,error,setResults}=useDebouncedSearch("/api/search/creators",workspaceId,value,!disabled&&!selectedId);
   const [creating,setCreating]=useState(false);
   const [createMessage,setCreateMessage]=useState("");
   const typed=value.trim();
@@ -60,6 +62,7 @@ export function CreatorAutocomplete({
 
   async function commitTyped(){
     if(!typed||disabled||selectedId||creating)return;
+    if(!allowCreate&&!exactMatch){setCreateMessage("Pilih nama creator dari hasil Master Creator. Untuk creator baru, tambahkan dahulu melalui Master Creator.");return}
     setCreateMessage("");
     if(exactMatch){
       onSelect(exactMatch);
@@ -95,17 +98,19 @@ export function CreatorAutocomplete({
       placeholder={placeholder}
       autoComplete="off"
     />
-    {!disabled&&!selectedId&&typed&&(loading||results.length>0)&&<div className="smart-autocomplete-menu" role="listbox">
-      {loading&&<div className="smart-autocomplete-empty">Mencari creator...</div>}
+    {!disabled&&!selectedId&&typed&&(loading||results.length>0||Boolean(error)||typed.length>=2)&&<div className="smart-autocomplete-menu" role="listbox">
+      {loading&&<div className="smart-autocomplete-empty">Mencari creator dari Master Data...</div>}
+      {!loading&&error&&<div className="smart-autocomplete-empty" role="alert">{error}</div>}
       {!loading&&results.map((creator:CreatorSearchResult)=>{
         const name=String(creator.name||"").trim();
         const username=String(creator.username||"").trim();
         const label=name&&username&&name.toLowerCase()!==username.toLowerCase()?name+" · @"+username:username?"@"+username:name||"-";
-        return <button type="button" key={creator.id} onMouseDown={e=>{e.preventDefault();onSelect(creator);setResults([]);setCreateMessage("")}}>
+        return <button type="button" key={creator.id} onPointerDown={e=>{e.preventDefault();onSelect(creator);setResults([]);setCreateMessage("")}}>
           <strong>{label}</strong>
           {creator.platform&&<span>{creator.platform}</span>}
         </button>
       })}
+      {!loading&&!error&&!results.length&&<div className="smart-autocomplete-empty">Creator tidak ditemukan. Periksa nama atau username.</div>}
     </div>}
     {creating&&<small className="field-note">Menyimpan creator baru...</small>}
     {!creating&&createMessage&&<small className="field-note">{createMessage}</small>}
