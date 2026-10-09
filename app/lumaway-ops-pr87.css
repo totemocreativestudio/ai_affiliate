@@ -188,3 +188,49 @@
 .asp-delete-import:disabled{opacity:.5}
 @media(max-width:970px){.asp-claim-create{grid-template-columns:repeat(2,minmax(0,1fr))}.asp-claims-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:590px){.asp-claims{padding:12px}.asp-claim-create{grid-template-columns:1fr}.asp-claims-kpis{gap:7px}.asp-claims-kpis b{font-size:15px}.asp-import-history>div>article{flex-wrap:wrap}}
+
+
+/* Creator 360 · Spark Ads authorization workflow */
+.spark-codes-card{min-width:0}
+.spark-codes-card>.section-head{align-items:flex-start;gap:10px}
+.spark-codes-card>.section-head p{max-width:660px;line-height:1.55;margin:5px 0 0;font-size:11px}
+.spark-count{flex-shrink:0;border-radius:30px;background:#eeeaff;color:#5e4dc7;padding:7px 11px;font-size:11px;font-weight:800}
+.spark-code-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;align-items:end;margin:15px 0}
+.spark-code-fields label{display:grid;gap:6px;font-size:11px;font-weight:700;color:#454d68;min-width:0}
+.spark-code-fields input{min-width:0;width:100%;border:1px solid #dddfea;border-radius:9px;padding:10px 12px;font-size:12px;background:#fff;color:#252a42}
+.spark-code-fields button{max-width:190px;padding:10px 16px;border-radius:9px}
+.spark-code-status{background:#f3efff;color:#5f4cbb;border:1px solid #dfd5fc;padding:9px 12px;border-radius:9px;font-size:12px}
+.spark-code-scroll{overflow:auto;max-height:440px;border:1px solid #e5e5f0;border-radius:11px}
+.spark-code-scroll table{border-collapse:collapse;width:100%;min-width:790px}
+.spark-code-scroll th{background:#f7f6fd;text-align:left;color:#67718b;font-size:10px;padding:11px;position:sticky;top:0}
+.spark-code-scroll td{font-size:11px;color:#35415c;padding:10px;border-top:1px solid #f0f0f6;vertical-align:top}
+.spark-code-scroll td code{max-width:250px;display:inline-block;overflow-wrap:anywhere;font-size:11px;color:#393269}
+.spark-code-scroll td small{display:block;color:#858ea3;max-width:180px;margin-top:5px;white-space:normal}
+.spark-copy{border:1px solid #dbd7ff;color:#6555d9;background:#f5f2ff;font-size:10px;border-radius:8px;padding:4px 7px;margin-left:7px;cursor:pointer}
+.spark-chip{display:inline-block;text-transform:capitalize;background:#edf5ff;color:#3861a5;border-radius:20px;padding:5px 9px;font-size:10px;font-weight:700}
+.spark-chip.active{background:#e3f6eb;color:#238353}
+.spark-chip.revoked,.spark-chip.expired{background:#ffebec;color:#af4555}
+.spark-actions{display:flex;gap:6px;flex-wrap:wrap}
+.spark-actions button{white-space:nowrap;background:#fff;border:1px solid #e0e1ed;padding:6px 8px;border-radius:7px;font-size:10px;color:#58617d;cursor:pointer}
+.spark-actions button:last-child{color:#a43854;border-color:#f4d7df}
+.spark-pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;color:#717c95;font-size:11px}
+.spark-pagination>div{display:flex;align-items:center;gap:8px}
+.spark-pagination button{border:1px solid #e0e2ee;background:#fff;color:#5b627f;padding:7px 10px;border-radius:8px;font-size:11px}
+.spark-pagination button:disabled{opacity:.4}
+/* Learning / Tutorial — actual logged-in page preview, no artificial illustration. */
+.tutorial-native-visual{border:1px solid #e5e3f0;border-radius:17px;background:#fff;overflow:hidden;margin:17px 0}
+.tutorial-native-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 17px;background:linear-gradient(110deg,#f7f5ff,#fff)}
+.tutorial-native-head span,.tutorial-external-guide>span{color:#6654e3;font-size:10px;font-weight:900;letter-spacing:.13em}
+.tutorial-native-head h3{font-size:15px!important;margin:5px 0 0!important;color:#262b4c}
+.tutorial-native-head button,.tutorial-native-placeholder button{border:1px solid #d6cffd;background:#ede9ff;color:#5543c8;font-size:11px;font-weight:800;border-radius:9px;padding:9px 13px;cursor:pointer;white-space:nowrap}
+.tutorial-native-placeholder{padding:28px 18px;min-height:190px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:repeating-linear-gradient(135deg,#faf9ff,#faf9ff 15px,#f8f7fc 15px,#f8f7fc 30px)}
+.tutorial-native-placeholder strong{font-size:15px;color:#303451}
+.tutorial-native-placeholder p{font-size:12px;line-height:1.6;max-width:520px;color:#717993;margin:9px 0 15px}
+.tutorial-native-viewport{height:490px;overflow:hidden;background:#f6f7fc;border-top:1px solid #e8e7f3}
+.tutorial-native-viewport iframe{border:0;width:100%;height:100%;background:white}
+.tutorial-native-note{font-size:11px;color:#737d95;line-height:1.55;padding:10px 14px;margin:0;background:#faf9ff}
+.tutorial-external-guide{padding:29px 24px}
+.tutorial-external-guide h3{margin:10px 0;color:#272e4c;font-size:19px}
+.tutorial-external-guide p{font-size:12px;line-height:1.7;max-width:700px;color:#63708c}
+.tutorial-external-guide small{font-size:11px;color:#8992a5}
+@media(max-width:760px){.spark-code-fields{grid-template-columns:1fr}.spark-pagination{align-items:flex-start;flex-direction:column}.tutorial-native-head{align-items:flex-start;flex-direction:column}.tutorial-native-viewport{height:560px}}

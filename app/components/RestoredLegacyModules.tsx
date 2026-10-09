@@ -61,11 +61,6 @@ function Agreements({workspaceId}:{workspaceId:string}){
   }
   useEffect(()=>{void load()},[workspaceId]);
 
-  function sealId(){
-    const chars="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
-    const bytes=new Uint8Array(22);crypto.getRandomValues(bytes);
-    return Array.from(bytes,b=>chars[b%chars.length]).join("");
-  }
   function chooseCreator(x:CreatorSearchResult){
     const label=x.name||x.username||x.creator_code||"";
     setCreatorSearch(label);
@@ -94,14 +89,18 @@ function Agreements({workspaceId}:{workspaceId:string}){
     if(!creatorId)return setMsg("Ketik username/nama creator atau pilih creator yang sudah ada.");
     if(!String(form.signed_by_name||"").trim())return setMsg("Nama tanda tangan wajib diisi.");
     const payload={
-      ...form,workspace_id:workspaceId,agreement_id:`AGR-${Date.now()}`,
-      creator_id:creatorId,creator_name:String(form.creator_name||manualCreator).trim(),product_master_id:form.product_master_id?Number(form.product_master_id):null,
+      ...form,workspace_id:workspaceId,agreement_id:`AGR-${Date.now()}-${crypto.randomUUID().slice(0,8).toUpperCase()}`,
+      creator_id:creatorId,creator_name:String(form.creator_name||manualCreator).trim(),
+      product_master_id:form.product_master_id?Number(form.product_master_id):null,
+      program_id:form.program_id||null,
+      start_date:form.start_date||null,end_date:form.end_date||null,
+      store_name:form.store_name||null,store_id:form.store_id||null,
       product_hpp:Number(form.product_hpp||0),ratecard:Number(form.ratecard||0),support_value:Number(form.support_value||0),
-      e_stamp_id:sealId(),signed_by_name:String(form.signed_by_name).trim(),signed_at:new Date().toISOString(),
+      signed_by_name:String(form.signed_by_name).trim(),signed_at:new Date().toISOString(),
       updated_at:new Date().toISOString()
     };
-    const {error}=await supabase.from("agreements").insert(payload);
-    setMsg(error?error.message:"Agreement tersimpan sebagai dokumen internal. Tinjau status dan tanda tangan sebelum mengaktifkan support; PDF bisa diunduh dari tabel.");
+    const {data,error}=await supabase.from("agreements").insert(payload).select("agreement_id,e_stamp_id").single();
+    setMsg(error?error.message:"Agreement "+data.agreement_id+" tersimpan. Digital Seal ID internal: "+data.e_stamp_id+". Status dokumen tetap perlu review dan tidak menggantikan e-Meterai resmi.");
     if(!error){await load();setForm({...empty});setCreatorSearch("");setProductSearch("")}
   }
   const f=(k:string,l:string,type="text")=><label>{l}<input type={type} value={form[k]||""} onChange={e=>setForm({...form,[k]:e.target.value})}/></label>;
@@ -130,7 +129,7 @@ function Agreements({workspaceId}:{workspaceId:string}){
         {f("signed_by_name","Nama Tanda Tangan")}
       </div>
       <label>Notes<textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></label>
-      <div className="owner-inline-note"><b>Digital Seal ID:</b> dibuat otomatis 22 karakter unik saat Agreement disimpan. PDF akan memuat nama tanda tangan sebagai watermark. Seal ini berupa identitas verifikasi internal Lumaway, bukan e-Meterai maupun tanda tangan elektronik tersertifikasi. Untuk dokumen yang memerlukan e-Meterai sah, gunakan penyedia resmi/berizin.</div>
+      <div className="owner-inline-note"><b>Digital Seal ID:</b> diterbitkan oleh database dengan 22 karakter unik secara global saat Agreement disimpan. PDF akan memuat nama tanda tangan sebagai watermark. Seal ini berupa identitas verifikasi internal Lumaway, bukan e-Meterai maupun tanda tangan elektronik tersertifikasi. Untuk dokumen yang memerlukan e-Meterai sah, gunakan penyedia resmi/berizin.</div>
       <button className="primary" onClick={()=>void save()}>Simpan Agreement</button>{msg&&<p className="muted">{msg}</p>}
     </div>
     <div className="card"><h3>Agreement & Status Dokumen</h3>
