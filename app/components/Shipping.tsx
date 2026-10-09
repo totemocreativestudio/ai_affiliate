@@ -88,6 +88,20 @@ export default function Shipping({workspaceId}:Props){
   setSaving(false);if(result.error){setError(result.error.message);return}setShowForm(false);setEditingId(null);await loadData();
  }
 
+ async function registerStore(){
+  if(!form.store_name.trim())return setError("Masukkan nama toko terlebih dahulu.");
+  setRegisteringStore(true);setError("");
+  const {data:{user}}=await supabase.auth.getUser();
+  if(!user){setError("Silakan login kembali.");setRegisteringStore(false);return}
+  const result=await supabase.from("luma_workspace_stores").insert({
+    workspace_id:workspaceId,platform:form.platform||"Other",store_name:form.store_name.trim(),
+    store_id:form.store_id.trim()||null,created_by:user.id
+  });
+  if(result.error)setError(result.code==="23505"?"Toko sudah terdaftar. Pilih dari daftar.":result.error.message);
+  else await loadData();
+  setRegisteringStore(false);
+ }
+
  async function remove(id:number){if(!window.confirm("Hapus data shipping ini?"))return;const res=await supabase.from("shipping").delete().eq("id",id).eq("workspace_id",workspaceId);if(res.error)setError(res.error.message);else await loadData()}
 
  const visibleRows=useMemo(()=>rows.filter(row=>{
