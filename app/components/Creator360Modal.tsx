@@ -42,6 +42,7 @@ export default function Creator360Modal({workspaceId,creatorId,startDate,endDate
   const [periodMode,setPeriodMode]=useState<PeriodMode>("month");const [anchorDate,setAnchorDate]=useState("");const [filterYear,setFilterYear]=useState(new Date().getUTCFullYear());const [filterMonth,setFilterMonth]=useState(new Date().getUTCMonth()+1);const [periodReady,setPeriodReady]=useState(false);
   const [targetRows,setTargetRows]=useState<Row[]>([]);const [showTargetEditor,setShowTargetEditor]=useState(false);const [targetType,setTargetType]=useState<"month"|"year">("month");const [targetForm,setTargetForm]=useState<Row>({target_year:new Date().getUTCFullYear(),target_month:new Date().getUTCMonth()+1,target_sales:"",target_live:"",target_video:"",notes:""});const [targetMessage,setTargetMessage]=useState("");
   const [timeline,setTimeline]=useState<Row[]>([]);const [timelineBusy,setTimelineBusy]=useState(false);const [timelineError,setTimelineError]=useState("");
+  const [creatorAttribution,setCreatorAttribution]=useState<Row[]>([]);const [attributionProducts,setAttributionProducts]=useState<Record<string,string>>({});const [attributionBusy,setAttributionBusy]=useState(false);const [attributionError,setAttributionError]=useState("");
 
   const range=useMemo(()=>rangeFor(periodMode,anchorDate,filterYear,filterMonth),[periodMode,anchorDate,filterYear,filterMonth]);
   const previous=useMemo(()=>previousFor(periodMode,range),[periodMode,range.start,range.end]);
@@ -50,6 +51,7 @@ export default function Creator360Modal({workspaceId,creatorId,startDate,endDate
   useEffect(()=>{if(!creatorId)return;setPeriodReady(false);void bootstrap()},[creatorId,workspaceId]);
   useEffect(()=>{if(periodReady&&creatorId)void loadMetrics()},[periodReady,creatorId,periodMode,filterYear,filterMonth,anchorDate]);
   useEffect(()=>{if(tab==="timeline"&&creatorId)void loadTimeline()},[tab,creatorId,workspaceId]);
+  useEffect(()=>{if(tab==="products"&&creatorId&&data?.creator?.username)void loadCreatorAttribution()},[tab,creatorId,workspaceId,data?.creator?.username]);
   useEffect(()=>{
     if(!creatorId)return;
     const previousOverflow=document.body.style.overflow;
@@ -117,6 +119,31 @@ export default function Creator360Modal({workspaceId,creatorId,startDate,endDate
       setData(row||null);setPrevData(old?{...old,comparison_label:previous.label}:null);setManualSaved(Boolean(profileRes.data?.id));setEditingManual(false);
       if(row?.manual_profile)setManual({...DEFAULT_MANUAL,...row.manual_profile,program_status:row.agreement?.status==="Active"?"Active":(row.manual_profile.program_status||"Not Joined"),video_links:Array.isArray(row.manual_profile.video_links)?row.manual_profile.video_links:["","",""]});
     }catch(e:any){setError(e?.message||"Gagal memuat Customer 360.")}finally{setBusy(false)}
+  }
+
+  async function loadCreatorAttribution(){
+   const username=String(data?.creator?.username||"").trim();
+   if(!username)return;
+   setAttributionBusy(true);setAttributionError("");
+   const {data:records,error}=await supabase.from("luma_creator_attribution_rows")
+    .select("id,platform,source_type,asset_id,asset_url,creator_username,product_code,gmv,qty,orders,commission,refund_gmv")
+    .eq("workspace_id",workspaceId).ilike("creator_username",username)
+    .in("source_type",["tiktok_video","shopee_creator"]).order("id",{ascending:false}).limit(150);
+   if(error)setAttributionError(error.message);
+   else{
+    setCreatorAttribution(records||[]);
+    const codes=[...new Set((records||[]).map((row:any)=>String(row.product_code||"")).filter(Boolean))];
+    if(codes.length){
+     const result=await supabase.from("luma_creator_attribution_rows")
+      .select("product_code,product_name").eq("workspace_id",workspaceId).eq("source_type","tiktok_product").in("product_code",codes).limit(250);
+     if(!result.error){
+      const names:Record<string,string>={};
+      for(const item of result.data||[])if(item.product_code&&item.product_name)names[item.product_code]=item.product_name;
+      setAttributionProducts(names);
+     }
+    }
+   }
+   setAttributionBusy(false);
   }
 
   async function saveManual(){
@@ -187,7 +214,16 @@ export default function Creator360Modal({workspaceId,creatorId,startDate,endDate
 
         {tab==="sales"&&<><div className="c360-kpis"><Metric label="GMV" value={money(k.gmv)} deltaValue={prevData?delta(k.gmv,pk.gmv):null}/><Metric label="Live GMV" value={money(k.live_gmv)} deltaValue={prevData?delta(k.live_gmv,pk.live_gmv):null}/><Metric label="Video GMV" value={money(k.video_gmv)} deltaValue={prevData?delta(k.video_gmv,pk.video_gmv):null}/><Metric label="Showcase GMV" value={money(k.showcase_gmv)} deltaValue={prevData?delta(k.showcase_gmv,pk.showcase_gmv):null}/><Metric label="Refund" value={money(k.refund)} deltaValue={prevData?delta(k.refund,pk.refund):null}/><Metric label="LIVE" value={num(k.live_count)} deltaValue={prevData?delta(k.live_count,pk.live_count):null}/><Metric label="Video" value={num(k.video_count)} deltaValue={prevData?delta(k.video_count,pk.video_count):null}/><Metric label="Buyers" value={num(k.buyers)} deltaValue={prevData?delta(k.buyers,pk.buyers):null}/></div><div className="card"><h3>Cost Composition</h3><CompareLine label="Value barang dikirim" current={Number(k.product_value_sent||0)} previous={prevData?Number(pk.product_value_sent||0):null}/><CompareLine label="Ongkir" current={Number(k.shipping_cost||0)} previous={prevData?Number(pk.shipping_cost||0):null}/><CompareLine label="Komisi" current={Number(k.commission||0)} previous={prevData?Number(pk.commission||0):null}/><p>Support Ads (manual): <b>{money(manual.ads_support)}</b></p><CompareLine label="Total Spend" current={spend} previous={prevData?prevSpend:null}/><p>ROI = GMV ÷ Spend: <b>{roi.toFixed(2)}x</b>{prevData&&<Delta value={delta(roi,prevRoi)}/>}</p></div></>}
 
-        {tab==="products"&&<div className="card"><h3>Top Products</h3><Table rows={data.top_products||[]} cols={["product_name","sku","qty","orders","gmv","commission","points"]}/></div>}
+        {tab==="products"&&<><div className="card"><h3>Top Products</h3><Table rows={data.top_products||[]} cols={["product_name","sku","qty","orders","gmv","commission","points"]}/></div>
+         <div className="card"><div className="section-head"><div><h3>Penjualan Atribusi Creator — Rincian Sumber</h3><p className="muted">TikTok: rincian video → creator → Product ID. Shopee AMSAffiliatePerformance: hanya rekap creator, tidak mempunyai SKU. Rekap Video dan Produk tidak dijumlahkan.</p></div><button className="secondary compact" disabled={attributionBusy} onClick={()=>void loadCreatorAttribution()}>Refresh</button></div>
+         {attributionError&&<div className="flash error">{attributionError}</div>}
+         {attributionBusy?<p className="muted">Memuat data sumber creator...</p>:
+          <Table rows={creatorAttribution.map(row=>({...row,
+            product_name:row.source_type==="shopee_creator"?"Belum teratribusi ke produk":attributionProducts[row.product_code]||"Product ID "+(row.product_code||"-"),
+            source:row.source_type==="shopee_creator"?"Shopee Creator Summary":"TikTok Video",
+            video_id:row.asset_id||"-"}))} cols={["source","video_id","product_code","product_name","qty","orders","gmv","commission","refund_gmv"]}/>}
+         <p className="muted">Untuk menampilkan barang yang dijual creator Shopee, diperlukan file tambahan berisi identitas creator + Order ID + SKU/Product ID. File agregat AMSAffiliatePerformance saja tidak menyediakannya.</p>
+         </div></>}
         {tab==="support"&&<><div className="card"><div className="section-head"><h3>Program Support & Agreement Creator</h3><button className="secondary compact" onClick={()=>{onClose();navigateToSection("affiliate-support")}}>Buka Tracker →</button></div>
         {data.agreement?<p><b>{data.agreement.agreement_id}</b> · {data.agreement.document_status} · {data.agreement.start_date||"—"} — {data.agreement.end_date||"—"}{data.agreement.store_name?" · "+data.agreement.store_name:""}</p>:<p>Belum ada Agreement terhubung ke creator ini.</p>}
         {(data.support_programs||[]).map((link:any)=><p key={link.program_id}><b>{link.luma_affiliate_programs?.program_name||"Program"}</b> · {link.luma_affiliate_programs?.kind||"support"} · {link.status} · Target {num(link.luma_affiliate_programs?.target_value)}</p>)}
