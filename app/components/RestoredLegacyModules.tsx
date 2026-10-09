@@ -43,11 +43,12 @@ function Table({rows,columns}:{rows:Row[];columns?:string[]}){
 
 function Agreements({workspaceId}:{workspaceId:string}){
   const supabase=createClient();
-  const empty:Row={creator_id:"",creator_name:"",platform:"TikTok",brand:"",category:"",product_master_id:"",product_name:"",product_hpp:0,deal_type:"",ratecard:"",support_type:"",support_value:"",store_name:"",store_id:"",program_id:"",start_date:"",end_date:"",document_status:"Pending",support_status:"Pending",bonus_eligible:"No",notes:"",signed_by_name:""};
+  const empty:Row={creator_id:"",creator_name:"",platform:"TikTok",brand:"",category:"",product_master_id:"",product_name:"",product_hpp:0,deal_type:"",ratecard:"",support_type:"",support_value:"",store_name:"",store_id:"",program_id:"",start_date:"",end_date:"",document_status:"Pending",support_status:"Pending",bonus_eligible:"No",notes:"",signed_by_name:"",terms_accepted:false};
   const [rows,setRows]=useState<Row[]>([]),[stores,setStores]=useState<Row[]>([]),[supportPrograms,setSupportPrograms]=useState<Row[]>([]),[msg,setMsg]=useState("");
   const [form,setForm]=useState<Row>(empty);
   const [creatorSearch,setCreatorSearch]=useState("");
   const [productSearch,setProductSearch]=useState("");
+  const [savingAgreement,setSavingAgreement]=useState(false);
 
   async function load(){
     const [agreementResult,storeResult,programResult]=await Promise.all([
@@ -71,26 +72,19 @@ function Agreements({workspaceId}:{workspaceId:string}){
     setForm(p=>({...p,product_master_id:String(x.id),product_name:x.product_name||x.sku,product_hpp:Number(x.cost_price||0)}));
   }
   async function save(){
-    let creatorId=form.creator_id?Number(form.creator_id):null;
-    const manualCreator=String(form.creator_name||creatorSearch||"").trim();
-    if(!creatorId&&manualCreator){
-      try{
-        const resolved=await resolveOrCreateCreator(workspaceId,manualCreator,String(form.platform||"TikTok"));
-        if(resolved){
-          creatorId=resolved.id;
-          const label=resolved.name||resolved.username||resolved.creator_code||manualCreator;
-          setForm(p=>({...p,creator_id:String(resolved.id),creator_name:label,platform:resolved.platform||p.platform}));
-          setCreatorSearch(label);
-        }
-      }catch(err){
-        return setMsg(err instanceof Error?err.message:"Creator baru belum dapat dibuat.");
-      }
-    }
-    if(!creatorId)return setMsg("Ketik username/nama creator atau pilih creator yang sudah ada.");
+    if(savingAgreement)return;
+    const creatorId=Number(form.creator_id||0);
+    if(!Number.isSafeInteger(creatorId)||creatorId<=0)
+      return setMsg("Pilih creator dari hasil pencarian Master Creator, bukan hanya mengetik namanya.");
     if(!String(form.signed_by_name||"").trim())return setMsg("Nama tanda tangan wajib diisi.");
+    if(!form.terms_accepted)return setMsg("Centang Term of Policy Agreement sebelum menyimpan.");
+    if(form.start_date&&form.end_date&&form.end_date<form.start_date)
+      return setMsg("Tanggal akhir tidak boleh sebelum tanggal mulai.");
+    setSavingAgreement(true);
+    setMsg("");
     const payload={
       ...form,workspace_id:workspaceId,agreement_id:`AGR-${Date.now()}-${crypto.randomUUID().slice(0,8).toUpperCase()}`,
-      creator_id:creatorId,creator_name:String(form.creator_name||manualCreator).trim(),
+      creator_id:creatorId,creator_name:String(form.creator_name||creatorSearch).trim(),
       product_master_id:form.product_master_id?Number(form.product_master_id):null,
       program_id:form.program_id||null,
       start_date:form.start_date||null,end_date:form.end_date||null,
@@ -99,9 +93,19 @@ function Agreements({workspaceId}:{workspaceId:string}){
       signed_by_name:String(form.signed_by_name).trim(),signed_at:new Date().toISOString(),
       updated_at:new Date().toISOString()
     };
-    const {data,error}=await supabase.from("agreements").insert(payload).select("agreement_id,e_stamp_id").single();
-    setMsg(error?error.message:"Agreement "+data.agreement_id+" tersimpan. Digital Seal ID internal: "+data.e_stamp_id+". Status dokumen tetap perlu review dan tidak menggantikan e-Meterai resmi.");
-    if(!error){await load();setForm({...empty});setCreatorSearch("");setProductSearch("")}
+    try{
+      const {data,error}=await supabase.from("agreements").insert(payload).select("agreement_id,e_stamp_id").single();
+      if(error){
+        setMsg(error.code==="42501"||error.code==="PGRST301"
+          ?"Akses menyimpan Agreement ditolak. Pastikan akun Anda owner, admin, atau manager pada workspace aktif."
+          :error.message);
+      }else{
+        setMsg("Agreement "+data.agreement_id+" tersimpan dengan Digital Seal ID "+data.e_stamp_id+". Status perlu review; bukan e-Meterai resmi.");
+        await load();setForm({...empty});setCreatorSearch("");setProductSearch("");
+      }
+    }catch(error){
+      setMsg(error instanceof Error?error.message:"Gagal menyimpan Agreement.");
+    }finally{setSavingAgreement(false)}
   }
   const f=(k:string,l:string,type="text")=><label>{l}<input type={type} value={form[k]||""} onChange={e=>setForm({...form,[k]:e.target.value})}/></label>;
 
@@ -110,7 +114,7 @@ function Agreements({workspaceId}:{workspaceId:string}){
     <div className="card">
       <div className="grid">
         <label>Creator Search<CreatorAutocomplete workspaceId={workspaceId} value={creatorSearch} selectedId={form.creator_id}
-                createPlatform={form.platform} onTextChange={value=>{setCreatorSearch(value);setForm(p=>({...p,creator_id:"",creator_name:value}))}} onSelect={chooseCreator} onCreate={value=>{setCreatorSearch(value);setForm(p=>({...p,creator_id:"",creator_name:value}))}}/><small className="field-note">Creator yang belum terdaftar akan otomatis dibuat di Master Creator saat Agreement disimpan.</small></label>
+                createPlatform={form.platform} allowCreate={false} onTextChange={value=>{setCreatorSearch(value);setForm(p=>({...p,creator_id:"",creator_name:value}))}} onSelect={chooseCreator} onCreate={value=>{setCreatorSearch(value);setForm(p=>({...p,creator_id:"",creator_name:value}))}}/><small className="field-note">Pilih creator dari dropdown Master Creator. Jika belum tersedia, buat creator dahulu di Master Data.</small></label>
         {f("platform","Platform")}
         {f("brand","Brand")}
         {f("category","Category")}
@@ -130,12 +134,18 @@ function Agreements({workspaceId}:{workspaceId:string}){
       </div>
       <label>Notes<textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></label>
       <div className="owner-inline-note"><b>Digital Seal ID:</b> diterbitkan oleh database dengan 22 karakter unik secara global saat Agreement disimpan. PDF akan memuat nama tanda tangan sebagai watermark. Seal ini berupa identitas verifikasi internal Lumaway, bukan e-Meterai maupun tanda tangan elektronik tersertifikasi. Untuk dokumen yang memerlukan e-Meterai sah, gunakan penyedia resmi/berizin.</div>
-      <button className="primary" onClick={()=>void save()}>Simpan Agreement</button>{msg&&<p className="muted">{msg}</p>}
+      <label className="agreement-terms-consent">
+        <input type="checkbox" checked={Boolean(form.terms_accepted)} onChange={e=>setForm(p=>({...p,terms_accepted:e.target.checked}))}/>
+        <span><strong>Saya menyetujui Term of Policy Agreement (wajib).</strong>
+          Saya memastikan data creator dan nilai support benar, memahami bahwa Digital Seal Lumaway hanya identitas dokumen internal (bukan e-Meterai resmi), dan persetujuan program/reward tetap mengikuti ketentuan workspace. Identitas akun serta waktu persetujuan dicatat untuk audit.</span>
+      </label>
+      <button className="primary" disabled={savingAgreement||!form.terms_accepted} onClick={()=>void save()}>{savingAgreement?"Menyimpan...":"Simpan Agreement"}</button>
+      {msg&&<p role="status" className="muted">{msg}</p>}
     </div>
     <div className="card"><h3>Agreement & Status Dokumen</h3>
-      <div className="scroll"><table><thead><tr>{["Agreement","Creator","Platform","Product","Status","Program","Digital Seal","Signed By","PDF"].map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>
-        {rows.map(row=><tr key={row.id}><td>{row.agreement_id||"-"}</td><td>{row.creator_name||"-"}</td><td>{row.platform||"-"}</td><td>{row.product_name||"-"}</td><td>{row.document_status||"-"}</td><td><span className={"status-pill "+(row.document_status==="Approved"?"s-paid":"")}>{row.document_status==="Approved"?"Approved":"Perlu Review"}</span></td><td><code>{row.e_stamp_id||"-"}</code></td><td>{row.signed_by_name||"-"}</td><td>{row.e_stamp_id?<a className="secondary compact" href={`/api/agreements/${row.id}/pdf?workspace_id=${encodeURIComponent(workspaceId)}`} target="_blank" rel="noreferrer">PDF</a>:"-"}</td></tr>)}
-        {!rows.length&&<tr><td colSpan={9}>Belum ada Agreement.</td></tr>}
+      <div className="scroll"><table><thead><tr>{["Agreement","Creator","Platform","Product","Status","Program","Term of Policy","Digital Seal","Signed By","PDF"].map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>
+        {rows.map(row=><tr key={row.id}><td>{row.agreement_id||"-"}</td><td>{row.creator_name||"-"}</td><td>{row.platform||"-"}</td><td>{row.product_name||"-"}</td><td><span className={"status-pill "+(row.document_status==="Approved"?"s-paid":"")}>{row.document_status==="Approved"?"Approved":"Perlu Review"}</span></td><td>{supportPrograms.find(p=>p.id===row.program_id)?.program_name||"—"}</td><td>{row.terms_accepted?<span title={row.terms_accepted_at||""}>Disetujui · {row.terms_version||"internal"}</span>:"Belum tercatat (legacy)"}</td><td><code>{row.e_stamp_id||"-"}</code></td><td>{row.signed_by_name||"-"}</td><td>{row.e_stamp_id?<a className="secondary compact" href={`/api/agreements/${row.id}/pdf?workspace_id=${encodeURIComponent(workspaceId)}`} target="_blank" rel="noreferrer">PDF</a>:"-"}</td></tr>)}
+        {!rows.length&&<tr><td colSpan={10}>Belum ada Agreement.</td></tr>}
       </tbody></table></div>
     </div>
   </section>
