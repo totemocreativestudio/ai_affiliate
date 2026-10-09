@@ -70,10 +70,31 @@ export default function SocialLumaway({workspaceId,userId}:{workspaceId:string;u
 
   useEffect(()=>{void load()},[workspaceId,userId,tab]);
   useEffect(()=>{
-    const refresh=()=>void load();
+    let disposed=false;
+    let refreshTimer:ReturnType<typeof setTimeout>|null=null;
+    const refresh=()=>{
+      if(disposed||refreshTimer)return;
+      refreshTimer=setTimeout(()=>{refreshTimer=null;if(!disposed)void load()},220);
+    };
+    const channel=supabase.channel("luma-social-interactions-"+userId+"-"+tab)
+      .on("postgres_changes",{event:"*",schema:"public",table:"luma_community_likes"},refresh)
+      .on("postgres_changes",{event:"*",schema:"public",table:"luma_community_subscriptions"},refresh)
+      .on("postgres_changes",{event:"*",schema:"public",table:"luma_community_posts"},refresh)
+      .subscribe();
+    const onFocus=()=>refresh();
+    const onVisible=()=>{if(document.visibilityState==="visible")refresh()};
     window.addEventListener("lumaway-social-profile-updated",refresh);
-    return()=>window.removeEventListener("lumaway-social-profile-updated",refresh);
-  },[workspaceId,userId,tab]);
+    window.addEventListener("focus",onFocus);
+    document.addEventListener("visibilitychange",onVisible);
+    return()=>{
+      disposed=true;
+      if(refreshTimer)clearTimeout(refreshTimer);
+      window.removeEventListener("lumaway-social-profile-updated",refresh);
+      window.removeEventListener("focus",onFocus);
+      document.removeEventListener("visibilitychange",onVisible);
+      void supabase.removeChannel(channel);
+    };
+  },[workspaceId,userId,tab,supabase]);
 
   useEffect(()=>{
     if(!profile&&!detail&&!shareRow)return;
@@ -130,26 +151,37 @@ export default function SocialLumaway({workspaceId,userId}:{workspaceId:string;u
   }
 
   async function toggleLike(row:FeedRow){
-    if(row.liked_by_me)await supabase.from("luma_community_likes").delete().eq("post_id",row.id).eq("user_id",userId);
-    else await supabase.from("luma_community_likes").insert({post_id:row.id,user_id:userId});
-    updateRow({...row,liked_by_me:!row.liked_by_me,like_count:Math.max(0,Number(row.like_count)+(row.liked_by_me?-1:1))});
+    const next={...row,liked_by_me:!row.liked_by_me,like_count:Math.max(0,Number(row.like_count)+(row.liked_by_me?-1:1))};
+    updateRow(next);
+    if(row.user_id===userId)setMyProfile(p=>p?{...p,like_count:Math.max(0,Number(p.like_count)+(row.liked_by_me?-1:1))}:p);
+    const result=row.liked_by_me
+      ?await supabase.from("luma_community_likes").delete().eq("post_id",row.id).eq("user_id",userId)
+      :await supabase.from("luma_community_likes").insert({post_id:row.id,user_id:userId});
+    if(result.error){updateRow(row);setStatus("Like belum tersimpan: "+result.error.message);
+      if(row.user_id===userId)setMyProfile(p=>p?{...p,like_count:Math.max(0,Number(p.like_count)+(row.liked_by_me?1:-1))}:p)}
   }
 
   async function toggleSave(row:FeedRow){
-    if(row.saved_by_me)await supabase.from("luma_community_saves").delete().eq("post_id",row.id).eq("user_id",userId);
-    else await supabase.from("luma_community_saves").insert({post_id:row.id,user_id:userId});
-    updateRow({...row,saved_by_me:!row.saved_by_me,save_count:Math.max(0,Number(row.save_count)+(row.saved_by_me?-1:1))});
+    const next={...row,saved_by_me:!row.saved_by_me,save_count:Math.max(0,Number(row.save_count)+(row.saved_by_me?-1:1))};
+    updateRow(next);
+    const result=row.saved_by_me
+      ?await supabase.from("luma_community_saves").delete().eq("post_id",row.id).eq("user_id",userId)
+      :await supabase.from("luma_community_saves").insert({post_id:row.id,user_id:userId});
+    if(result.error){updateRow(row);setStatus("Simpan belum berhasil: "+result.error.message)}
   }
 
   async function toggleSubscribe(row:FeedRow){
     if(row.user_id===userId)return;
-    if(row.subscribed_by_me)await supabase.from("luma_community_subscriptions").delete().eq("user_id",userId).eq("subscribed_user_id",row.user_id);
-    else await supabase.from("luma_community_subscriptions").insert({user_id:userId,subscribed_user_id:row.user_id});
     const subscribed=!row.subscribed_by_me;
     setFeed(rows=>rows.map(item=>item.user_id===row.user_id?{...item,subscribed_by_me:subscribed,subscriber_count:Math.max(0,Number(item.subscriber_count)+(row.subscribed_by_me?-1:1))}:item));
     setProfilePosts(rows=>rows.map(item=>item.user_id===row.user_id?{...item,subscribed_by_me:subscribed,subscriber_count:Math.max(0,Number(item.subscriber_count)+(row.subscribed_by_me?-1:1))}:item));
     if(profile?.user_id===row.user_id)setProfile({...profile,subscribed_by_me:subscribed,follower_count:Math.max(0,Number(profile.follower_count)+(row.subscribed_by_me?-1:1))});
     if(detail?.user_id===row.user_id)setDetail({...detail,subscribed_by_me:subscribed,subscriber_count:Math.max(0,Number(detail.subscriber_count)+(row.subscribed_by_me?-1:1))});
+    setMyProfile(p=>p?{...p,following_count:Math.max(0,Number(p.following_count)+(subscribed?1:-1))}:p);
+    const result=row.subscribed_by_me
+      ?await supabase.from("luma_community_subscriptions").delete().eq("user_id",userId).eq("subscribed_user_id",row.user_id)
+      :await supabase.from("luma_community_subscriptions").insert({user_id:userId,subscribed_user_id:row.user_id});
+    if(result.error){setStatus("Follow belum tersimpan: "+result.error.message);await load()}
   }
 
   async function openProfile(targetUserId:string){
