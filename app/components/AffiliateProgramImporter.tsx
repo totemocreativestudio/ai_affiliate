@@ -10,7 +10,7 @@ type MapState=Record<Fields,string>;
 const FIELDS:{id:Fields;label:string;aliases:string[]}[]=[
  {id:"creator",label:"Creator / Username",aliases:["nama kreator","nama creator","creator username","creator name","affiliate username","nama affiliate","username","kreator","creator","affiliate"]},
  {id:"date",label:"Tanggal transaksi",aliases:["created time","waktu pesanan","order date","transaction date","tanggal transaksi","tanggal pesanan","date","tanggal","waktu","created at"]},
- {id:"order_id",label:"Order ID",aliases:["order id","id pesanan","order no","nomor pesanan","order sn","id transaksi","transaction id"]},
+ {id:"order_id",label:"Order ID",aliases:["order id","id pesanan","order no","nomor pesanan","order sn","id transaksi","transaction id","video id","live id","content id"]},
  {id:"sku",label:"SKU / Kode Item",aliases:["seller sku","seller sku produk","kode item","sku id","item id","sku","kode produk","product sku"]},
  {id:"qty_gross",label:"Qty Gross",aliases:["qty gross pcs","qty gross","jumlah pesanan","qty awal","quantity gross","item sold"]},
  {id:"qty_net",label:"Qty Bersih",aliases:["qty bersih pcs","qty bersih","qty net","net qty","items sold","produk terjual","jumlah barang terjual","jumlah item","qty"]},
@@ -74,7 +74,10 @@ export default function AffiliateProgramImporter({workspaceId,program,onImported
  const [file,setFile]=useState<File|null>(null),[hash,setHash]=useState(""),[sheet,setSheet]=useState("");
  const [rows,setRows]=useState<Raw[]>([]),[headers,setHeaders]=useState<string[]>([]),[mapping,setMapping]=useState<MapState>(blank());
  const [reportDate,setReportDate]=useState(""),[msg,setMsg]=useState(""),[busy,setBusy]=useState(false);
- const metricMap=useMemo(()=>FIELDS.filter(f=>f.id!=="creator"&&f.id!=="date"),[]);
+ const [sourceChannel,setSourceChannel]=useState(program.channel==="all"?"product":program.channel);
+ const [dailySummaryConfirmed,setDailySummaryConfirmed]=useState(false);
+ const [storeConfirmed,setStoreConfirmed]=useState(false);
+ 
  async function choose(selected:File){
   setBusy(true);setMsg("Membaca format laporan...");setFile(selected);setRows([]);
   try{
@@ -93,14 +96,14 @@ export default function AffiliateProgramImporter({workspaceId,program,onImported
    }else throw new Error("Gunakan file Excel (.xlsx/.xls) atau CSV.");
    const candidates=matrices.map(x=>({...x,...parseMatrix(x.matrix)})).sort((a,b)=>b.score-a.score||b.rows.length-a.rows.length);
    const best=candidates[0];
-   if(!best||!best.rows.length)throw new Error("Tidak ditemukan tabel transaksi yang dapat dibaca.");
+   if(!best||!best.rows.length||best.score<2)throw new Error("Header laporan belum dikenali. Pastikan file memiliki kolom creator, tanggal, dan performa.");
    if(best.rows.length>5000)throw new Error("File berisi lebih dari 5.000 baris. Pisahkan menjadi beberapa file.");
    const auto=blank();
    for(const field of FIELDS){
     const match=field.aliases.map(a=>best.headers.find(h=>key(h)===key(a))).find(Boolean);
     if(match)auto[field.id]=match;
    }
-   setRows(best.rows);setHeaders(best.headers);setMapping(auto);setSheet(best.name);
+   setRows(best.rows);setHeaders(best.headers);setMapping(auto);setSheet(best.name);setDailySummaryConfirmed(false);setStoreConfirmed(false);
    setMsg(best.rows.length+" baris dari sheet "+best.name+". Periksa mapping dan tanggal laporan sebelum impor.");
   }catch(error){setMsg(error instanceof Error?error.message:"File belum dapat dibaca.");setFile(null)}
   finally{setBusy(false)}
@@ -116,33 +119,46 @@ export default function AffiliateProgramImporter({workspaceId,program,onImported
   try{
    const {data:{user},error:authError}=await supabase.auth.getUser();
    if(authError||!user)throw new Error("Silakan login kembali.");
-   const [creatorResponse,productsResponse]=await Promise.all([
-    supabase.from("creators").select("id,name,username,creator_code,affiliate_id").eq("workspace_id",workspaceId).limit(8000),
-    supabase.from("product_master").select("id,sku").eq("workspace_id",workspaceId).limit(8000)
-   ]);
-   if(creatorResponse.error||productsResponse.error)throw new Error("Master Creator atau Produk belum bisa dibaca.");
-   const creatorMap=new Map<string,number>();
-   for(const creator of creatorResponse.data||[])for(const value of [creator.name,creator.username,creator.creator_code,creator.affiliate_id]){
-    const token=key(value);if(token)creatorMap.set(token,creator.id);
-   }
-   const skuMap=new Map<string,number>();for(const p of productsResponse.data||[])if(p.sku)skuMap.set(key(p.sku),p.id);
-   const normalized:any[]=[];let rejected=0,outside=0,missingCreator=0,unmappedSku=0;
+   if(program.channel!=="all"&&program.channel!==sourceChannel)
+     throw new Error("Jenis laporan harus sesuai channel challenge: "+program.channel+".");
+   if(!mapping.order_id&&!dailySummaryConfirmed)
+     throw new Error("Laporan tanpa Order ID/Content ID perlu konfirmasi bahwa setiap baris merupakan agregasi harian unik per creator dan SKU.");
+   if(program.store_id&&!mapping.store_id&&!storeConfirmed)
+     throw new Error("Toko program memiliki Store ID. Petakan kolom Store ID atau konfirmasi laporan khusus toko ini.");
+   if(program.product_master_id&&!mapping.sku)
+     throw new Error("Program khusus satu SKU memerlukan mapping kolom SKU agar tidak memasukkan produk lain.");
+   const tokensCreators=[...new Set(rows.map(r=>key(r[mapping.creator])).filter(Boolean))];
+   const tokensSkus=[...new Set(rows.map(r=>key(r[mapping.sku])).filter(Boolean))];
+   const resolved=await supabase.rpc("luma_affiliate_resolve_import_master_v2",{
+     p_workspace_id:workspaceId,p_program_id:program.id,
+     p_creator_tokens:tokensCreators,p_sku_tokens:tokensSkus
+   });
+   if(resolved.error)throw new Error("Gagal mencocokkan Master Creator/SKU: "+resolved.error.message);
+   const creatorMap=new Map<string,number>(Object.entries(resolved.data?.creator_ids||{}).map(([k,v])=>[k,Number(v)]));
+   const skuMap=new Map<string,number>(Object.entries(resolved.data?.product_ids||{}).map(([k,v])=>[k,Number(v)]));
+   const normalized:any[]=[];const seenKeys=new Set<string>();
+   let rejected=0,outside=0,missingCreator=0,unmappedSku=0,storeRejected=0,duplicateInFile=0;
    for(let i=0;i<rows.length;i++){
     const row=rows[i],read=(f:Fields)=>mapping[f]?row[mapping[f]]:null;
-    const creatorId=creatorMap.get(key(read("creator")));const metricDate=dateValue(read("date"))||reportDate;
+    const creatorId=creatorMap.get(key(read("creator")));
+    const rawDate=read("date");
+    const metricDate=mapping.date && clean(rawDate)?dateValue(rawDate):reportDate;
     if(!creatorId){rejected++;missingCreator++;continue}
     if(!metricDate||metricDate<program.start_date||metricDate>program.end_date){rejected++;outside++;continue}
     const sku=clean(read("sku")),productId=sku?skuMap.get(key(sku))||null:null;
-    if(program.product_master_id&&productId!==Number(program.product_master_id)){rejected++;unmappedSku++;continue}
+    if((sku&&!productId)||(program.product_master_id&&productId!==Number(program.product_master_id))){rejected++;unmappedSku++;continue}
     const qtyGross=number(read("qty_gross")),refundQty=number(read("refund_qty"));
     const qtyNet=mapping.qty_net?number(read("qty_net")):Math.max(0,qtyGross-refundQty);
     const orderId=clean(read("order_id")),storeId=clean(read("store_id"));
-    if(program.store_id&&storeId&&storeId!==program.store_id){rejected++;continue}
-    const rowKey=orderId?"order:"+key(program.platform)+":"+key(orderId)+":"+creatorId+":"+key(sku):"file:"+hash+":"+i;
+    if(program.store_id&&storeId!==program.store_id&&!(storeConfirmed&&!storeId)){rejected++;storeRejected++;continue}
+    const idParts=[key(program.platform),key(sourceChannel),creatorId,key(metricDate),key(sku||"no-sku"),key(storeId||program.store_id||"no-store")].join(":");
+    const rowKey=orderId?"detail:"+idParts+":"+key(orderId):"daily:"+idParts;
+    if(seenKeys.has(rowKey)){rejected++;duplicateInFile++;continue}
+    seenKeys.add(rowKey);
     normalized.push({
      workspace_id:workspaceId,program_id:program.id,creator_id:creatorId,
-     platform:program.platform,row_key:rowKey,order_id:orderId||null,store_id:storeId||program.store_id||null,
-     product_master_id:productId||program.product_master_id||null,metric_date:metricDate,
+     platform:program.platform,source_channel:sourceChannel,row_key:rowKey,order_id:orderId||null,store_id:storeId||program.store_id||null,
+     product_master_id:productId||null,metric_date:metricDate,
      qty_gross:qtyGross||qtyNet,qty_net:Math.max(0,qtyNet),refund_qty:Math.max(0,refundQty),
      gmv_net:Math.max(0,number(read("gmv_net"))),orders:Math.max(0,number(read("orders"))),
      commission:Math.max(0,number(read("commission"))),videos:Math.max(0,number(read("videos"))),
@@ -166,9 +182,9 @@ export default function AffiliateProgramImporter({workspaceId,program,onImported
    }
    const totalRejected=rejected+fail+Math.max(0,normalized.length-fail-inserted);
    await supabase.from("luma_affiliate_program_imports")
-     .update({rows_imported:inserted,rows_rejected:totalRejected,status:fail?"partial":"completed"})
+     .update({rows_imported:inserted,rows_rejected:totalRejected,status:totalRejected>0?"partial":"completed"})
      .eq("id",importRow.id).eq("workspace_id",workspaceId);
-   setMsg("Import selesai: "+inserted+" baris baru, "+totalRejected+" ditolak/duplikat. Di luar periode "+outside+", creator belum match "+missingCreator+", SKU tidak match "+unmappedSku+". Angka harus dicek terhadap sumber.");
+   setMsg("Import "+(totalRejected>0?"PARTIAL":"SELESAI")+": "+inserted+" baris baru; "+totalRejected+" ditolak/duplikat. Periode salah "+outside+", creator tidak cocok/belum peserta "+missingCreator+", SKU tidak cocok "+unmappedSku+", toko tidak cocok "+storeRejected+", baris duplikat dalam file "+duplicateInFile+". Data partial tidak memenuhi syarat klaim hingga diperbaiki. Cocokkan angka dengan Excel.");
    onImported();
   }catch(error){setMsg(error instanceof Error?error.message:"Import gagal.")}
   finally{setBusy(false)}
@@ -177,10 +193,15 @@ export default function AffiliateProgramImporter({workspaceId,program,onImported
   <header><div><span>IMPORT TRACKER · {program.platform.toUpperCase()}</span><h3>Upload Performa Creator</h3><p>Excel/CSV dari TikTok, Shopee dan laporan lain dipetakan berdasarkan header, creator, SKU dan tanggal.</p></div><label className="asp-upload-btn">Pilih Excel/CSV<input type="file" accept=".xlsx,.xls,.csv,.tsv" onChange={e=>{const f=e.target.files?.[0];if(f)void choose(f)}}/></label></header>
   {file&&<p className="asp-import-file"><b>{file.name}</b> · {sheet} · {rows.length} baris</p>}
   {!!rows.length&&<><div className="asp-import-grid">{FIELDS.map(field=><label key={field.id}>{field.label}<select value={mapping[field.id]} onChange={e=>setMapping(p=>({...p,[field.id]:e.target.value}))}><option value="">Tidak ada di file</option>{headers.map((h,i)=><option key={h+"-"+i} value={h}>{h}</option>)}</select></label>)}
-   <label>Tanggal laporan (untuk file tanpa kolom tanggal)<input type="date" value={reportDate} onChange={e=>setReportDate(e.target.value)}/></label></div>
+   <label>Tanggal laporan (jika tidak ada kolom tanggal)<input type="date" value={reportDate} onChange={e=>setReportDate(e.target.value)}/></label>
+   <label>Jenis sumber data<select value={sourceChannel} onChange={e=>setSourceChannel(e.target.value)}><option value="product">Produk / Transaksi</option><option value="video">Video</option><option value="live">LIVE</option><option value="ads">Spark Ads</option><option value="all">Gabungan / Umum</option></select></label></div>
+   <div className="asp-import-confirmations">
+    {!mapping.order_id&&<label><input type="checkbox" checked={dailySummaryConfirmed} onChange={e=>setDailySummaryConfirmed(e.target.checked)}/> <span>Saya sudah memastikan data merupakan agregasi unik per creator, tanggal, SKU, toko dan channel. Laporan raw per transaksi wajib memiliki Order ID/Content ID agar tidak salah hitung.</span></label>}
+    {Boolean(program.store_id)&&!mapping.store_id&&<label><input type="checkbox" checked={storeConfirmed} onChange={e=>setStoreConfirmed(e.target.checked)}/> <span>Saya memastikan seluruh baris file hanya milik toko ID {program.store_id}. Jangan aktifkan untuk laporan gabungan beberapa toko.</span></label>}
+   </div>
    <div className="asp-import-preview"><b>Preview sumber, sebelum masuk database</b><div>{rows.slice(0,4).map((r,i)=><p key={i}>{clean(r[mapping.creator])||"Creator belum terbaca"} · {dateValue(r[mapping.date])||reportDate||"Tanggal belum ada"} · Qty {number(r[mapping.qty_net])||number(r[mapping.qty_gross])} · GMV Rp {number(r[mapping.gmv_net]).toLocaleString("id-ID")}</p>)}</div></div>
    <button className="asp-primary" disabled={busy} onClick={()=>void importFile()}>{busy?"Mengimpor...":"Validasi & Import ke Program"}</button></>}
   {msg&&<p role="status" className="asp-message">{msg}</p>}
-  <p className="asp-import-note">Hanya data pada periode program yang masuk. File sama tidak diimpor ulang; order ID dan SKU yang sama dijaga dari duplikasi. Angka reward adalah estimasi sampai disetujui pemilik workspace.</p>
+  <p className="asp-import-note">Hanya data pada periode program yang masuk. File sama tidak diimpor ulang. Creator wajib menjadi peserta program; SKU/toko/periode harus sesuai. Baris tanpa ID memakai identitas agregat harian dan harus diperiksa sebelum import. Angka reward hanya estimasi sampai disetujui pemilik workspace.</p>
  </section>;
 }
