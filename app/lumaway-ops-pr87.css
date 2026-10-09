@@ -1,0 +1,138 @@
+/* PR87 · Lumaway operations: clear hierarchy, responsive planning and community. */
+.lc-calendar-reminders-layout{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:16px;align-items:start;margin:16px 0}
+.lc-calendar-reminders-layout .lc-calendar-wrap{min-width:0;overflow:auto;margin:0}
+.lc-calendar-reminders-layout .lc-day.is-today{background:#f4f1ff;border:1px solid #a593ff}
+.lc-reminders{background:#fff;border:1px solid #e8e8f4;border-radius:16px;min-width:0;overflow:hidden;box-shadow:0 8px 25px rgba(32,29,75,.04)}
+.lc-reminders>header{display:block!important;padding:17px 17px 13px!important;border-bottom:1px solid #ecebfa}
+.lc-reminders>header span{display:block!important;color:#7569ca;font-size:10px;font-weight:800;letter-spacing:.11em}
+.lc-reminders>header h4{margin:6px 0!important;font-size:15px!important;color:#20203a}
+.lc-reminders>header small{display:block;font-size:11px;color:#697088}
+.lc-reminder-list{max-height:450px;overflow:auto;padding:10px;display:grid;gap:8px}
+.lc-reminder{display:grid;text-align:left;gap:5px;white-space:normal;border:1px solid #e8eaf2;background:#f9faff;color:#18233d;border-radius:11px;padding:11px;cursor:pointer;min-width:0}
+.lc-reminder:hover{border-color:#a391ff;background:#f6f2ff}
+.lc-reminder>span{font-weight:800;font-size:10px;color:#6658d8;letter-spacing:.03em}
+.lc-reminder.overdue>span{color:#c24152}
+.lc-reminder.today{border-color:#aca2f7}
+.lc-reminder b{font-size:12px;overflow-wrap:anywhere}
+.lc-reminder small{font-size:11px;color:#707991;overflow-wrap:anywhere}
+.lc-reminders-empty{padding:18px;font-size:12px;color:#6e778c}
+.lc-reminders-empty b{color:#252d48}
+.lc-workload>header p{font-size:12px;color:#6e7790;margin:6px 0 0}
+.lc-add-member{border-top:1px solid #ecebfa;margin-top:12px;padding:16px 12px;display:grid;grid-template-columns:minmax(180px,1fr) minmax(160px,220px) auto;gap:12px;align-items:center}
+.lc-add-member>div{display:grid;gap:4px}
+.lc-add-member b{font-size:12px;color:#242a41}
+.lc-add-member small{font-size:11px;color:#727a90;line-height:1.5}
+.lc-add-member input{width:100%;padding:10px 12px;border:1px solid #dadde9;border-radius:9px;font-size:12px;color:#1d243c;background:#fff}
+.lc-add-member button{border:0;background:#6554e8;color:#fff;border-radius:9px;padding:11px 13px;font-size:12px;font-weight:700;cursor:pointer}
+.lc-add-member button:disabled{opacity:.5;cursor:not-allowed}
+.lc-member-message{font-size:12px!important;margin:0 12px 12px!important;color:#5547bd!important}
+.social-v3-page .social-v3-community-note{background:linear-gradient(155deg,#1a2543,#283257);border:1px solid #323d65}
+.social-v3-page .social-v3-community-note h3{color:#fff!important;opacity:1!important;text-shadow:none!important}
+.social-v3-page .social-v3-community-note p{color:#d2d7ed!important}
+.social-v3-page .social-v3-community-note>span{color:#b9c8ff!important}
+.social-v3-delete-post{border:1px solid #f6d6db!important;background:#fff1f3!important;color:#ae344a!important;border-radius:9px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer}
+.social-v3-delete-post:hover{background:#fce0e5!important}
+.social-v3-discovery-ranking{display:grid;gap:8px;padding:12px}
+.social-v3-discovery-ranking button{border:1px solid #ecedf5;padding:10px;border-radius:10px;background:#f9faff;display:flex;align-items:start;gap:9px;text-align:left;width:100%;cursor:pointer;min-width:0}
+.social-v3-discovery-ranking button>b{background:#eee9ff;color:#6655e5;border-radius:8px;padding:5px 7px;font-size:12px}
+.social-v3-discovery-ranking button span{display:grid;gap:4px;min-width:0}
+.social-v3-discovery-ranking strong{font-size:12px;color:#242c43}
+.social-v3-discovery-ranking small{font-size:11px;color:#727a92;line-height:1.4;overflow-wrap:anywhere}
+.social-v3-keywords>div{display:grid;padding:10px 14px;gap:6px}
+.social-v3-keywords>div>div{display:flex;gap:9px;align-items:center;border-bottom:1px solid #eff0f6;padding:8px 0;color:#2c3351;font-size:12px}
+.social-v3-keywords>div>div>b{color:#6654e7;font-size:11px}
+.social-v3-keywords>div>div>small{margin-left:auto;color:#858da3}
+.social-v3-popular-posts,.social-v3-keywords{background:#fff;border-radius:14px;border:1px solid #e6e8f1;margin-bottom:12px}
+.social-v3-popular-posts>header,.social-v3-keywords>header{display:flex;justify-content:space-between;align-items:center;padding:13px 15px;border-bottom:1px solid #eff0f6}
+.social-v3-popular-posts header h3,.social-v3-keywords header h3{margin:0;font-size:13px!important;color:#24304a}
+.social-v3-popular-posts header span,.social-v3-keywords header span{font-size:10px;color:#7868ca;background:#f3efff;padding:5px 8px;border-radius:10px}
+.social-v3-popular-posts>p,.social-v3-keywords>p{padding:12px;font-size:12px;color:#6a7287}
+
+.asp-workspace{--asp-ink:#22243d;--asp-muted:#6b7490;--asp-violet:#6454e6;--asp-line:#e4e6f0;color:var(--asp-ink);max-width:100%;display:block}
+.asp-workspace button,.asp-workspace input,.asp-workspace select,.asp-workspace textarea{font-family:inherit}
+.asp-hero{display:flex;align-items:center;justify-content:space-between;gap:24px;border:1px solid #dcd8fa;border-radius:20px;padding:26px 28px;margin-bottom:17px;background:linear-gradient(115deg,#f4f0ff 0%,#fff 70%);box-shadow:0 12px 30px rgba(71,49,158,.04)}
+.asp-hero>div>span,.asp-builder>header span,.asp-tracker>header span,.asp-importer>header span{font-size:10px;font-weight:800;letter-spacing:.13em;color:#6859de}
+.asp-hero h2{font-size:26px!important;letter-spacing:-.025em;margin:9px 0 6px!important;color:#1d213c}
+.asp-hero p{color:#65708c;font-size:13px;line-height:1.6;max-width:650px;margin:0}
+.asp-primary{background:#6454e6!important;color:#fff!important;border:1px solid #6454e6!important;border-radius:11px;padding:10px 16px;font-size:12px;font-weight:800;cursor:pointer}
+.asp-primary:hover{background:#4f43be!important}
+.asp-primary:disabled{opacity:.6}
+.asp-top-stats,.asp-tracker-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:13px 0}
+.asp-top-stats article,.asp-tracker-stats article{display:flex;flex-direction:column;gap:8px;padding:16px;border:1px solid #e5e7f0;background:#fff;border-radius:14px;min-width:0}
+.asp-top-stats article>span,.asp-tracker-stats article>span{font-size:11px;color:#6e7790}
+.asp-top-stats b,.asp-tracker-stats b{font-size:22px;letter-spacing:-.03em;color:#21233c;overflow-wrap:anywhere}
+.asp-top-stats small,.asp-tracker-stats small{color:#8a90a3;font-size:10px;line-height:1.35}
+.asp-tabs{display:flex;flex-wrap:wrap;gap:7px;margin:20px 0 14px}
+.asp-tabs button{background:#f9faff;border:1px solid #e3e5f0;padding:9px 11px;border-radius:10px;font-size:11px;font-weight:700;color:#505b78;cursor:pointer}
+.asp-tabs button.active{background:#eeeaff;border-color:#8778e7;color:#5546cd}
+.asp-program-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:22px}
+.asp-program-card{background:#fff;border:1px solid #e4e6f1;border-radius:17px;padding:17px;min-width:0;box-shadow:0 6px 18px rgba(34,38,70,.03)}
+.asp-program-card.selected{border-color:#7666ed;box-shadow:0 0 0 2px #eee9ff}
+.asp-program-card>header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.asp-program-card>header>span:first-child{color:#6b5add;font-size:10px;font-weight:800;letter-spacing:.05em}
+.asp-program-card h3{font-size:17px!important;margin:11px 0 4px!important}
+.asp-program-card>p{font-size:11px;color:#737e94;line-height:1.5}
+.asp-program-facts{display:grid;gap:12px;margin:16px 0}
+.asp-program-facts>div{display:grid;gap:4px}
+.asp-program-facts small{font-size:10px;color:#8b93a6}
+.asp-program-facts b{font-size:12px;color:#313a57}
+.asp-program-card footer{display:flex;gap:8px}
+.asp-program-card footer button:not(.asp-primary){border:1px solid #e2e4ee;background:#fff;color:#5a627d;border-radius:10px;padding:9px 13px;font-size:12px;cursor:pointer}
+.asp-status{white-space:nowrap;background:#f2f0fb;color:#7368a0;font-size:10px;font-weight:800;padding:5px 8px;border-radius:30px}
+.asp-status.active,.asp-status.qualified{background:#dcf8ec;color:#178452}
+.asp-status.claim_expired,.asp-status.not_qualified{background:#ffe8e9;color:#b84a54}
+.asp-status.in_progress,.asp-status.draft{background:#f0edff;color:#6551bd}
+.asp-builder,.asp-tracker{background:#fff;border:1px solid #e4e5f0;border-radius:19px;padding:20px;margin:22px 0;box-shadow:0 12px 30px rgba(29,27,86,.04)}
+.asp-builder>header,.asp-tracker>header,.asp-importer>header{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:15px}
+.asp-builder>header h3,.asp-tracker>header h3,.asp-importer>header h3{font-size:20px!important;color:#232640;margin:5px 0!important}
+.asp-builder>header p,.asp-tracker>header p,.asp-importer>header p{font-size:12px;color:#7a8296;margin:0;line-height:1.6}
+.asp-builder>header>button,.asp-tracker>header>div button{background:#fff;border:1px solid #e4e5f0;border-radius:9px;color:#5e667c;padding:8px 12px;cursor:pointer}
+.asp-tracker>header>div{display:flex;gap:7px;flex-wrap:wrap}
+.asp-fields,.asp-import-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}
+.asp-fields label,.asp-import-grid label{display:flex;flex-direction:column;font-weight:700;font-size:11px;color:#38415d;gap:7px;min-width:0}
+.asp-fields label.wide{grid-column:1/-1}
+.asp-fields input,.asp-fields select,.asp-fields textarea,.asp-import-grid input,.asp-import-grid select{width:100%;border:1px solid #dfe2ee;border-radius:9px;padding:10px 12px;background:#fff;color:#202743;font-size:12px;outline:none;min-width:0}
+.asp-fields input:focus,.asp-fields select:focus,.asp-import-grid select:focus{border-color:#9b8df3;box-shadow:0 0 0 3px #f0edff}
+.asp-fields small{font-size:10px;color:#858da2;font-weight:400;line-height:1.45}
+.asp-builder>footer{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+.asp-builder>footer button:not(.asp-primary){padding:10px 14px;border:1px solid #e3e6f0;background:#fff;border-radius:10px;color:#616a80}
+.asp-tier-builder{background:#fafaff;border:1px solid #ecebf8;border-radius:14px;padding:16px;margin-top:20px}
+.asp-tier-builder>header{display:flex;justify-content:space-between;gap:15px;align-items:center}
+.asp-tier-builder h4,.asp-participant h4,.asp-leaderboard h4,.asp-import-history h4{font-size:15px;margin:0 0 4px;color:#2a2c47}
+.asp-tier-builder p,.asp-participant p{font-size:11px;color:#848a9c;margin:0;line-height:1.5}
+.asp-tier-builder>header button,.asp-participant>button{padding:10px 12px;border-radius:9px;background:#ede9ff;border:1px solid #d9d2ff;color:#5f4eca;font-size:11px;font-weight:700;cursor:pointer}
+.asp-tier-row{display:grid;grid-template-columns:26px 1fr 1fr 1fr auto;gap:10px;margin-top:12px;align-items:center}
+.asp-tier-row input{width:100%;min-width:0;padding:9px;border:1px solid #e3e5ef;border-radius:8px;color:#252a48}
+.asp-tier-row button{border:0;background:#ffe6eb;color:#aa3048;padding:10px;border-radius:9px;cursor:pointer}
+.asp-tier-row>span{font-weight:800;color:#6157aa}
+.asp-empty,.asp-empty-inline{font-size:12px;color:#788199;padding:24px;border-radius:12px;background:#f8f9fc}
+.asp-message{font-size:12px;border:1px solid #d9d1ff;background:#f6f3ff;color:#5749b9;padding:12px;border-radius:10px;margin:12px 0;line-height:1.6}
+.asp-message.error{background:#fff3f4;border-color:#f2c7ca;color:#ab2c44}
+.asp-participant{display:grid;grid-template-columns:minmax(200px,1fr) minmax(180px,260px) auto;gap:15px;align-items:center;padding:15px;border:1px solid #e5e6f1;border-radius:14px;margin:20px 0}
+.asp-participant>div:nth-child(2){min-width:0}
+.asp-leaderboard{border:1px solid #e5e6f1;border-radius:14px;margin:20px 0;overflow:hidden}
+.asp-leaderboard>header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:15px;border-bottom:1px solid #e8e9f2}
+.asp-leaderboard>header span{color:#788298;font-size:11px}
+.asp-table-scroll{max-width:100%;overflow:auto}
+.asp-table-scroll table{border-collapse:collapse;width:100%;min-width:1080px;font-size:11px}
+.asp-table-scroll th{text-align:left;background:#f9f9fd;color:#646b81;white-space:nowrap;font-size:10px;padding:11px}
+.asp-table-scroll td{padding:12px;border-bottom:1px solid #ececf3;color:#2e3650;white-space:nowrap}
+.asp-progress{min-width:160px;display:grid;gap:8px}
+.asp-progress>div{height:6px;background:#ececf5;border-radius:30px;overflow:hidden}
+.asp-progress i{display:block;height:100%;background:#6756ee;border-radius:30px}
+.asp-importer{background:#fdfcff;border:1px solid #e4e2f3;border-radius:14px;padding:17px;margin:22px 0}
+.asp-upload-btn{position:relative;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;background:#ede9ff;color:#5d4cbd;border:1px solid #dad3ff;border-radius:10px;font-size:12px;font-weight:800;padding:11px 14px;cursor:pointer;white-space:nowrap}
+.asp-upload-btn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.asp-import-file{font-size:12px;color:#333854;background:#f3f4fb;padding:12px;border-radius:9px}
+.asp-import-preview{padding:13px;border:1px solid #e8e9f4;background:#fff;border-radius:10px;margin:15px 0;font-size:12px}
+.asp-import-preview>div p{padding:8px 0;border-bottom:1px solid #f1f2f6;margin:0;color:#64718b}
+.asp-import-note{font-size:11px;color:#8290a1;line-height:1.6}
+.asp-import-history{border:1px solid #e6e7f1;border-radius:13px;padding:14px}
+.asp-import-history>header{display:flex;justify-content:space-between;gap:10px;color:#758198;font-size:11px}
+.asp-import-history>div>article{display:flex;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid #eff0f5;font-size:11px;color:#57617c}
+.asp-import-history>div>article>div:first-child{display:grid;gap:5px}
+.asp-import-history small{color:#858fa5}
+.asp-import-history p{font-size:12px;color:#778096}
+@media(max-width:1180px){.asp-program-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.asp-fields,.asp-import-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.lc-calendar-reminders-layout{grid-template-columns:minmax(0,1fr) 245px}}
+@media(max-width:830px){.lc-calendar-reminders-layout{grid-template-columns:1fr}.lc-add-member{grid-template-columns:1fr}.asp-program-grid{grid-template-columns:1fr}.asp-top-stats,.asp-tracker-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.asp-hero,.asp-builder>header,.asp-tracker>header,.asp-importer>header{flex-direction:column;align-items:stretch}.asp-participant{grid-template-columns:1fr}.asp-tier-row{grid-template-columns:25px 1fr 1fr;}.asp-tier-row button{grid-column:3}}
+@media(max-width:530px){.asp-fields,.asp-import-grid{grid-template-columns:1fr}.asp-hero{padding:18px}.asp-hero h2{font-size:22px!important}.asp-top-stats,.asp-tracker-stats{gap:7px}.asp-top-stats article,.asp-tracker-stats article{padding:12px}.asp-top-stats b,.asp-tracker-stats b{font-size:18px}.asp-builder,.asp-tracker{padding:12px}.asp-tier-row{grid-template-columns:22px 1fr;}.asp-tier-row button{grid-column:2}}
