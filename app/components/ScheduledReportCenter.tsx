@@ -14,6 +14,9 @@ export default function ScheduledReportCenter({workspaceId}:{workspaceId:string}
   const [runs,setRuns]=useState<any[]>([]);
   const [open,setOpen]=useState(false);
   const [message,setMessage]=useState("");
+  const [now,setNow]=useState(Date.now());
+  const [reminderOpen,setReminderOpen]=useState(false);
+  const [reminderDismissed,setReminderDismissed]=useState(false);
   const [draft,setDraft]=useState({name:"Weekly Growth Report",report_type:"goal_forecast",cadence:"weekly",date:new Date().toISOString().slice(0,10),time:"09:00",recipients:""});
 
   async function load(){
@@ -25,6 +28,7 @@ export default function ScheduledReportCenter({workspaceId}:{workspaceId:string}
     setItems((a.data||[]) as Schedule[]);setRuns(b.data||[]);
   }
   useEffect(()=>{void load()},[workspaceId]);
+  useEffect(()=>{const t=window.setInterval(()=>setNow(Date.now()),60000);return()=>window.clearInterval(t)},[]);
 
   async function createSchedule(){
     const recipients=draft.recipients.split(",").map(x=>x.trim()).filter(Boolean);
@@ -50,6 +54,9 @@ export default function ScheduledReportCenter({workspaceId}:{workspaceId:string}
     await supabase.from("luma_scheduled_reports").delete().eq("id",item.id).eq("workspace_id",workspaceId);await load();
   }
 
+  const pastDue=items.filter(x=>x.active&&Date.parse(x.next_run_at)<now-600000&&(!x.last_run_at||Date.parse(x.last_run_at)<Date.parse(x.next_run_at))&& !runs.some(r=>r.schedule_id===x.id&&r.status==="delivered"&&Date.parse(r.created_at)>=Date.parse(x.next_run_at)));
+  const upcoming=items.filter(x=>x.active&&Date.parse(x.next_run_at)>=now&&Date.parse(x.next_run_at)<=now+86400000);
+  useEffect(()=>{if(pastDue.length&&!reminderDismissed)setReminderOpen(true)},[pastDue.length,reminderDismissed]);
   const cells=monthCells(anchor);
   const inMonth=(d:Date)=>d.getMonth()===anchor.getMonth();
   const sameDay=(a:Date,b:Date)=>a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
@@ -57,6 +64,18 @@ export default function ScheduledReportCenter({workspaceId}:{workspaceId:string}
   return <section id="scheduled-reports" className="legacy-page-anchor scheduled-report-page">
     <div className="sr-head"><div><div className="eyebrow">GROWTH & WORKFLOW</div><h1>Scheduled Report</h1><p>Atur laporan berulang dan pindahkan jadwal langsung dari kalender.</p></div><button onClick={()=>setOpen(true)}>+ Jadwalkan Report</button></div>
     {message&&<div className="sr-message">{message}</div>}
+    {(pastDue.length>0||upcoming.length>0)&&<aside className="sr-reminder-banner" role="status">
+      <div><strong>{pastDue.length?"Periksa report yang sudah melewati jadwal":"Jadwal report mendatang"}</strong>
+        <p>{pastDue.length} perlu diperiksa · {upcoming.length} dalam 24 jam. Tidak otomatis berarti email telah terkirim.</p></div>
+      <button type="button" onClick={()=>setReminderOpen(true)}>Lihat Pengingat</button>
+    </aside>}
+    {reminderOpen&&pastDue.length>0&&<div className="sr-reminder-overlay">
+      <section className="sr-reminder-dialog" role="dialog" aria-modal="true" aria-label="Pengingat report">
+        <h3>Report melewati jadwal</h3><p>Belum terdapat bukti run baru yang terkirim pada daftar ini. Periksa riwayat pengiriman.</p>
+        {pastDue.slice(0,6).map(item=><article key={item.id}><b>{item.name}</b><small>{new Date(item.next_run_at).toLocaleString("id-ID",{timeZone:"Asia/Jakarta"})} WIB</small></article>)}
+        <button onClick={()=>{setReminderOpen(false);setReminderDismissed(true)}}>Mengerti, tutup</button>
+      </section>
+    </div>}
     <div className="sr-summary"><article><span>Jadwal aktif</span><strong>{items.filter(x=>x.active).length}</strong><small>Report yang akan berjalan otomatis.</small></article><article><span>Report terkirim</span><strong>{runs.filter(x=>x.status==="delivered").length}</strong><small>Dari histori terbaru.</small></article><article><span>Gagal</span><strong>{runs.filter(x=>x.status==="failed").length}</strong><small>Cek email/API jika ada kegagalan.</small></article></div>
 
     <div className="sr-grid">
