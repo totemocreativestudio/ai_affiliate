@@ -69,10 +69,10 @@ export default function ScheduledReportCenter({workspaceId}:{workspaceId:string}
         <p>{pastDue.length} perlu diperiksa · {upcoming.length} dalam 24 jam. Tidak otomatis berarti email telah terkirim.</p></div>
       <button type="button" onClick={()=>setReminderOpen(true)}>Lihat Pengingat</button>
     </aside>}
-    {reminderOpen&&pastDue.length>0&&<div className="sr-reminder-overlay">
+    {reminderOpen&&(pastDue.length>0||upcoming.length>0)&&<div className="sr-reminder-overlay">
       <section className="sr-reminder-dialog" role="dialog" aria-modal="true" aria-label="Pengingat report">
-        <h3>Report melewati jadwal</h3><p>Belum terdapat bukti run baru yang terkirim pada daftar ini. Periksa riwayat pengiriman.</p>
-        {pastDue.slice(0,6).map(item=><article key={item.id}><b>{item.name}</b><small>{new Date(item.next_run_at).toLocaleString("id-ID",{timeZone:"Asia/Jakarta"})} WIB</small></article>)}
+        <h3>{pastDue.length?"Report melewati jadwal":"Report segera dijadwalkan"}</h3><p>{pastDue.length?"Belum terdapat bukti run baru yang terkirim pada daftar ini. Periksa riwayat pengiriman.":"Laporan berikut dijadwalkan dalam 24 jam. Pastikan penerima email dan konfigurasi sesuai."}</p>
+        {[...pastDue,...upcoming].slice(0,6).map(item=><article key={item.id}><b>{item.name}</b><small>{new Date(item.next_run_at).toLocaleString("id-ID",{timeZone:"Asia/Jakarta"})} WIB</small></article>)}
         <button onClick={()=>{setReminderOpen(false);setReminderDismissed(true)}}>Mengerti, tutup</button>
       </section>
     </div>}
