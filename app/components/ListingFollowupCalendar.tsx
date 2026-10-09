@@ -88,6 +88,10 @@ export default function ListingFollowupCalendar({workspaceId}:{workspaceId:strin
   <div className="lc-workload"><header><span>TEAM WORKLOAD</span><h4>Follow-up per PIC bulan ini</h4><p>Berdasarkan anggota aktif dalam satu workspace.</p></header><div>{owners.map(x=><article key={x.user_id}><div><strong>{x.name||"Anggota Tim"}</strong><small>{x.scheduled} terjadwal · {x.completed} selesai</small></div><span>{x.overdue} terlambat</span><span>{x.today} hari ini</span><span>{x.high_priority} penting</span></article>)}</div>
    <div className="lc-add-member"><div><b>Tambah PIC ke workspace</b><small>Gunakan email akun Lumaway yang sudah terdaftar. Owner workspace dapat menambahkan anggota untuk mengelola Listing yang sama.</small></div><input type="email" value={newMemberEmail} onChange={e=>setNewMemberEmail(e.target.value)} placeholder="email@anggota.com" aria-label="Email anggota tim"/><button disabled={addingMember||!newMemberEmail.trim()} onClick={()=>void addMember()}>{addingMember?"Memeriksa...":"+ Tambah Anggota"}</button></div>
    {memberMessage&&<p className="lc-member-message" role="status">{memberMessage}</p>}
+   <button className="lc-team-invite-link" onClick={async()=>{
+      const url="https://app.lumaway.online/login?workspace="+encodeURIComponent(workspaceId);
+      try{await navigator.clipboard.writeText(url);setMemberMessage("Link akses workspace tersalin. Kirim hanya kepada anggota yang sudah Anda tambahkan.")}catch{setMemberMessage(url)}
+    }}>Salin link login workspace untuk anggota terdaftar</button>
   </div>
  </section>;
 }
