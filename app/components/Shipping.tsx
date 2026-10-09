@@ -97,7 +97,7 @@ export default function Shipping({workspaceId}:Props){
     workspace_id:workspaceId,platform:form.platform||"Other",store_name:form.store_name.trim(),
     store_id:form.store_id.trim()||null,created_by:user.id
   });
-  if(result.error)setError(result.code==="23505"?"Toko sudah terdaftar. Pilih dari daftar.":result.error.message);
+  if(result.error)setError(result.error.code==="23505"?"Toko sudah terdaftar. Pilih dari daftar.":result.error.message);
   else await loadData();
   setRegisteringStore(false);
  }
