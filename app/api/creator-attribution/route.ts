@@ -1,6 +1,5 @@
 import {NextRequest,NextResponse} from "next/server";
 import {getServerContext} from "../../../lib/server-auth";
-import {createHash} from "crypto";
 
 export const runtime="nodejs";
 type Source="shopee_creator"|"tiktok_video"|"tiktok_product"|"tiktok_live";
@@ -26,6 +25,17 @@ function money(v:unknown){
   else x=x.replace(separator,".");
  }
  const n=Number(x);return Number.isFinite(n)?(minus?-n:n):0;
+}
+// Shopee AMS values are numeric decimal-dot exports. A trailing .275 means
+// 275 thousandths of a rupiah, NOT an Indonesian thousands separator.
+function shopeeAmount(v:unknown){
+ if(typeof v==="number")return Number.isFinite(v)?v:0;
+ const text=clean(v).replace(/Rp|IDR|\s/gi,"");
+ if(/^[+-]?\d+(?:\.\d+)?$/.test(text)){const n=Number(text);return Number.isFinite(n)?n:0}
+ if(/^[+-]?\d{1,3}(?:,\d{3})+(?:\.\d+)?$/.test(text)){
+   const n=Number(text.replace(/,/g,""));return Number.isFinite(n)?n:0;
+ }
+ return money(v);
 }
 function int(v:unknown){return Math.round(money(v))}
 function date(v:unknown){
@@ -54,10 +64,10 @@ function parse(source:Source,row:Raw,index:number,workspace_id:string,import_id:
   return {...common,source_key:"creator:"+(affiliateId||username.toLowerCase()),
    creator_name:nonempty(get(row,"Nama Affiliate")),creator_username:username||null,affiliate_id:affiliateId||null,
    attribution_level:"creator_summary",
-   gmv:money(get(row,"Omzet Penjualan(Rp)")),qty:int(get(row,"Produk Terjual")),
-   orders:int(get(row,"Pesanan")),commission:money(get(row,"Estimasi Komisi(Rp)")),
+   gmv:shopeeAmount(get(row,"Omzet Penjualan(Rp)")),qty:int(get(row,"Produk Terjual")),
+   orders:int(get(row,"Pesanan")),commission:shopeeAmount(get(row,"Estimasi Komisi(Rp)")),
    clicks:int(get(row,"Clicks")),buyers:int(get(row,"Total Pembeli")),
-   source_metadata:{new_buyers:int(get(row,"Pembeli Baru")),reported_roi:money(get(row,"ROI")),
+   source_metadata:{new_buyers:int(get(row,"Pembeli Baru")),reported_roi:shopeeAmount(get(row,"ROI")),
     product_attribution:"unknown_without_order_or_product_source"}};
  }
  if(source==="tiktok_product"){
