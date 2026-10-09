@@ -37,6 +37,13 @@ function number(x:any){
  else if(dot>=0&&/\.\d{3}$/.test(v))v=v.replace(/\./g,"");
  const n=Number(v);return Number.isFinite(n)?(neg?-n:n):0;
 }
+function identifySourcePlatform(headers:string[]){
+ const joined=headers.map(x=>key(x));
+ const has=(...aliases:string[])=>aliases.some(alias=>joined.includes(key(alias)));
+ if(has("gmv dari kreator","pesanan teratribusi","perkiraan komisi","gmv dari live","tayangan video","refunded items sold"))return "TikTok";
+ if(has("est commission rp","est commission","affiliate username","sales rp","omzet penjualan","estimated commission"))return "Shopee";
+ return "Unknown";
+}
 function dateValue(x:any){
  if(x instanceof Date&&!Number.isNaN(x.getTime())){
   const y=x.getFullYear(),m=String(x.getMonth()+1).padStart(2,"0"),d=String(x.getDate()).padStart(2,"0");
@@ -71,7 +78,7 @@ function parseMatrix(matrix:any[][]){
 type Props={workspaceId:string;program:any;onImported:()=>void};
 export default function AffiliateProgramImporter({workspaceId,program,onImported}:Props){
  const supabase=useMemo(()=>createClient(),[]);
- const [file,setFile]=useState<File|null>(null),[hash,setHash]=useState(""),[sheet,setSheet]=useState("");
+ const [file,setFile]=useState<File|null>(null),[hash,setHash]=useState(""),[sheet,setSheet]=useState(""),[detectedPlatform,setDetectedPlatform]=useState("Unknown");
  const [rows,setRows]=useState<Raw[]>([]),[headers,setHeaders]=useState<string[]>([]),[mapping,setMapping]=useState<MapState>(blank());
  const [reportDate,setReportDate]=useState(""),[msg,setMsg]=useState(""),[busy,setBusy]=useState(false);
  const [sourceChannel,setSourceChannel]=useState(program.channel==="all"?"product":program.channel);
@@ -103,7 +110,7 @@ export default function AffiliateProgramImporter({workspaceId,program,onImported
     const match=field.aliases.map(a=>best.headers.find(h=>key(h)===key(a))).find(Boolean);
     if(match)auto[field.id]=match;
    }
-   setRows(best.rows);setHeaders(best.headers);setMapping(auto);setSheet(best.name);setDailySummaryConfirmed(false);setStoreConfirmed(false);
+   setRows(best.rows);setHeaders(best.headers);setMapping(auto);setSheet(best.name);setDetectedPlatform(identifySourcePlatform(best.headers));setDailySummaryConfirmed(false);setStoreConfirmed(false);
    setMsg(best.rows.length+" baris dari sheet "+best.name+". Periksa mapping dan tanggal laporan sebelum impor.");
   }catch(error){setMsg(error instanceof Error?error.message:"File belum dapat dibaca.");setFile(null)}
   finally{setBusy(false)}
@@ -119,6 +126,8 @@ export default function AffiliateProgramImporter({workspaceId,program,onImported
   try{
    const {data:{user},error:authError}=await supabase.auth.getUser();
    if(authError||!user)throw new Error("Silakan login kembali.");
+   if(detectedPlatform!=="Unknown"&&detectedPlatform.toLowerCase()!==String(program.platform||"").toLowerCase())
+     throw new Error("Format file terdeteksi "+detectedPlatform+", tetapi program terdaftar di "+program.platform+". Periksa file atau pilih program yang sesuai.");
    if(program.channel!=="all"&&program.channel!==sourceChannel)
      throw new Error("Jenis laporan harus sesuai channel challenge: "+program.channel+".");
    const requiredMetric=String(program.metric||"qty_net");
@@ -163,15 +172,15 @@ export default function AffiliateProgramImporter({workspaceId,program,onImported
     if(seenKeys.has(rowKey)){rejected++;duplicateInFile++;continue}
     seenKeys.add(rowKey);
     const orderUniqKey=creatorId+":"+key(orderId);
-    const orderCount=orderId?(orderCountKeys.has(orderUniqKey)?0:Math.max(1,number(read("orders")))):number(read("orders"));
+    const orderCount=orderId?(orderCountKeys.has(orderUniqKey)?0:(mapping.orders?number(read("orders")):1)):number(read("orders"));
     if(orderId)orderCountKeys.add(orderUniqKey);
     normalized.push({
      workspace_id:workspaceId,program_id:program.id,creator_id:creatorId,
      platform:program.platform,source_channel:sourceChannel,row_key:rowKey,order_id:orderId||null,store_id:storeId||program.store_id||null,
      product_master_id:productId||null,metric_date:metricDate,
-     qty_gross:qtyGross||qtyNet,qty_net:Math.max(0,qtyNet),refund_qty:Math.max(0,refundQty),
-     gmv_net:Math.max(0,number(read("gmv_net"))),orders:Math.max(0,orderCount),
-     commission:Math.max(0,number(read("commission"))),videos:Math.max(0,number(read("videos"))),
+     qty_gross:qtyGross||qtyNet,qty_net:qtyNet,refund_qty:Math.max(0,refundQty),
+     gmv_net:number(read("gmv_net")),orders:orderCount,
+     commission:number(read("commission")),videos:Math.max(0,number(read("videos"))),
      live_count:Math.max(0,number(read("live_count"))),views:Math.max(0,number(read("views"))),
      ads_spend:Math.max(0,number(read("ads_spend")))
     });
@@ -201,7 +210,7 @@ export default function AffiliateProgramImporter({workspaceId,program,onImported
  }
  return <section className="asp-importer">
   <header><div><span>IMPORT TRACKER · {program.platform.toUpperCase()}</span><h3>Upload Performa Creator</h3><p>Excel/CSV dari TikTok, Shopee dan laporan lain dipetakan berdasarkan header, creator, SKU dan tanggal.</p></div><label className="asp-upload-btn">Pilih Excel/CSV<input type="file" accept=".xlsx,.xls,.csv,.tsv" onChange={e=>{const f=e.target.files?.[0];if(f)void choose(f)}}/></label></header>
-  {file&&<p className="asp-import-file"><b>{file.name}</b> · {sheet} · {rows.length} baris</p>}
+  {file&&<p className="asp-import-file"><b>{file.name}</b> · {sheet} · {rows.length} baris · Sumber {detectedPlatform==="Unknown"?"tidak terdeteksi (perlu validasi manual)":detectedPlatform}</p>}
   {!!rows.length&&<><div className="asp-import-grid">{FIELDS.map(field=><label key={field.id}>{field.label}<select value={mapping[field.id]} onChange={e=>setMapping(p=>({...p,[field.id]:e.target.value}))}><option value="">Tidak ada di file</option>{headers.map((h,i)=><option key={h+"-"+i} value={h}>{h}</option>)}</select></label>)}
    <label>Tanggal laporan (jika tidak ada kolom tanggal)<input type="date" value={reportDate} onChange={e=>setReportDate(e.target.value)}/></label>
    <label>Jenis sumber data<select value={sourceChannel} onChange={e=>setSourceChannel(e.target.value)}><option value="product">Produk / Transaksi</option><option value="video">Video</option><option value="live">LIVE</option><option value="ads">Spark Ads</option><option value="all">Gabungan / Umum</option></select></label></div>
