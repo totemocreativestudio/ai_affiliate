@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { createClient } from "../../lib/supabase-browser";
 import { navigateToSection } from "../../lib/luma-navigation";
 import ImportMappingWizard from "./ImportMappingWizard";
+import CreatorAttributionCenter from "./CreatorAttributionCenter";
 declare global { interface Window { XLSX?: any; } }
 type Props = { workspaceId: string };const NEUTRAL_DATE = "2000-01-01";
 function delimiterScore(line:string,delimiter:string){let quoted=false,count=0;for(let i=0;i<line.length;i++){const ch=line[i];if(ch==='"'){if(quoted&&line[i+1]==='"')i++;else quoted=!quoted}else if(ch===delimiter&&!quoted)count++}return count}
@@ -129,5 +130,6 @@ export default function UploadCenter({ workspaceId }: Props) {
    {dataType==="creators"&&<div className="owner-inline-note">Master Creator akan tersedia pada <b>Master Data → Listings</b> sebagai referensi creator untuk pengelolaan listing.</div>}
    {dataType==="creator_samples"&&<div className="owner-inline-note">Creator Samples akan langsung tersedia pada <b>Master Data → Creator Samples</b>.</div>}
   </div>}
+  <CreatorAttributionCenter workspaceId={workspaceId}/>
  </section>
 }
