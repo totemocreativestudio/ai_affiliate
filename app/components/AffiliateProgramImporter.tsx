@@ -121,6 +121,13 @@ export default function AffiliateProgramImporter({workspaceId,program,onImported
    if(authError||!user)throw new Error("Silakan login kembali.");
    if(program.channel!=="all"&&program.channel!==sourceChannel)
      throw new Error("Jenis laporan harus sesuai channel challenge: "+program.channel+".");
+   const requiredMetric=String(program.metric||"qty_net");
+   if(requiredMetric==="qty_net"&&!mapping.qty_net&&!mapping.qty_gross)
+      throw new Error("Program Qty Bersih membutuhkan kolom Qty Bersih atau Qty Gross + Qty Refund.");
+   if(requiredMetric==="orders"&&!mapping.orders&&!mapping.order_id)
+      throw new Error("Program Order membutuhkan kolom Orders atau Order ID.");
+   if(!["qty_net","orders"].includes(requiredMetric)&&!mapping[requiredMetric as Fields])
+      throw new Error("Kolom untuk metrik program "+requiredMetric+" wajib dipetakan sebelum import.");
    if(!mapping.order_id&&!dailySummaryConfirmed)
      throw new Error("Laporan tanpa Order ID/Content ID perlu konfirmasi bahwa setiap baris merupakan agregasi harian unik per creator dan SKU.");
    if(program.store_id&&!mapping.store_id&&!storeConfirmed)
@@ -136,7 +143,7 @@ export default function AffiliateProgramImporter({workspaceId,program,onImported
    if(resolved.error)throw new Error("Gagal mencocokkan Master Creator/SKU: "+resolved.error.message);
    const creatorMap=new Map<string,number>(Object.entries(resolved.data?.creator_ids||{}).map(([k,v])=>[k,Number(v)]));
    const skuMap=new Map<string,number>(Object.entries(resolved.data?.product_ids||{}).map(([k,v])=>[k,Number(v)]));
-   const normalized:any[]=[];const seenKeys=new Set<string>();
+   const normalized:any[]=[];const seenKeys=new Set<string>();const orderCountKeys=new Set<string>();
    let rejected=0,outside=0,missingCreator=0,unmappedSku=0,storeRejected=0,duplicateInFile=0;
    for(let i=0;i<rows.length;i++){
     const row=rows[i],read=(f:Fields)=>mapping[f]?row[mapping[f]]:null;
@@ -155,12 +162,15 @@ export default function AffiliateProgramImporter({workspaceId,program,onImported
     const rowKey=orderId?"detail:"+idParts+":"+key(orderId):"daily:"+idParts;
     if(seenKeys.has(rowKey)){rejected++;duplicateInFile++;continue}
     seenKeys.add(rowKey);
+    const orderUniqKey=creatorId+":"+key(orderId);
+    const orderCount=orderId?(orderCountKeys.has(orderUniqKey)?0:Math.max(1,number(read("orders")))):number(read("orders"));
+    if(orderId)orderCountKeys.add(orderUniqKey);
     normalized.push({
      workspace_id:workspaceId,program_id:program.id,creator_id:creatorId,
      platform:program.platform,source_channel:sourceChannel,row_key:rowKey,order_id:orderId||null,store_id:storeId||program.store_id||null,
      product_master_id:productId||null,metric_date:metricDate,
      qty_gross:qtyGross||qtyNet,qty_net:Math.max(0,qtyNet),refund_qty:Math.max(0,refundQty),
-     gmv_net:Math.max(0,number(read("gmv_net"))),orders:Math.max(0,number(read("orders"))),
+     gmv_net:Math.max(0,number(read("gmv_net"))),orders:Math.max(0,orderCount),
      commission:Math.max(0,number(read("commission"))),videos:Math.max(0,number(read("videos"))),
      live_count:Math.max(0,number(read("live_count"))),views:Math.max(0,number(read("views"))),
      ads_spend:Math.max(0,number(read("ads_spend")))
