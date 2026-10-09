@@ -7,8 +7,16 @@ type Props={workspaceId:string;program:Row;entries:Row[];onChanged:()=>void};
 const money=(v:any)=>"Rp "+Number(v||0).toLocaleString("id-ID",{maximumFractionDigits:0});
 const stat=(value:string)=>value==="pending"?"Menunggu Review":value==="approved"?"Disetujui":value==="paid"?"Tercatat Tersalurkan":value==="rejected"?"Ditolak":value==="expired"?"Kedaluwarsa":value;
 function monthsBetween(a:string,b:string){
- const from=a.split("-").map(Number),to=b.split("-").map(Number);
- return Math.max(1,(to[0]-from[0])*12+to[1]-from[1]+1);
+ const [year,month,day]=a.split("-").map(Number);
+ let count=0;
+ for(let i=0;i<24;i++){
+   const targetYear=year+Math.floor((month-1+i)/12);
+   const targetMonth=(month-1+i)%12;
+   const lastDay=new Date(Date.UTC(targetYear,targetMonth+1,0)).getUTCDate();
+   const date=new Date(Date.UTC(targetYear,targetMonth,Math.min(day,lastDay))).toISOString().slice(0,10);
+   if(date<=b)count++;else break;
+ }
+ return Math.max(1,count);
 }
 
 export default function AffiliateRewardClaims({workspaceId,program,entries,onChanged}:Props){
@@ -66,16 +74,16 @@ export default function AffiliateRewardClaims({workspaceId,program,entries,onCha
   if(c.status==="paid")a.fulfilled+=Number(c.bonus_amount||0);return a;
  },{total:0,pending:0,approved:0,fulfilled:0}),[claims]);
  return <section className="asp-claims">
-  <header><div><span>REWARD CONTROL & APPROVAL</span><h4>Klaim, Approval, dan Penyaluran</h4><p>Klaim dihitung ulang dari laporan yang selesai direkonsiliasi. Satu periode bulanan hanya dapat diklaim sekali per creator; pembayaran tidak diproses oleh Lumaway.</p></div></header>
+  <header><div><span>REWARD CONTROL & APPROVAL</span><h4>Klaim, Approval, dan Penyaluran</h4><p>Klaim dihitung ulang dari laporan yang selesai direkonsiliasi. Program dibagi menjadi maksimal sejumlah tahap klaim yang ditetapkan (1× = keseluruhan periode program). Setiap tahap dinilai mandiri; pembayaran tidak diproses oleh Lumaway.</p></div></header>
   <div className="asp-claims-kpis"><article><small>Total klaim</small><b>{totals.total}</b></article><article><small>Menunggu review</small><b>{money(totals.pending)}</b></article><article><small>Disetujui</small><b>{money(totals.approved)}</b></article><article><small>Tercatat tersalurkan</small><b>{money(totals.fulfilled)}</b></article></div>
   {isManager?<div className="asp-claim-create"><div><b>Ajukan Klaim Reward</b><small>Hanya owner/admin workspace yang dapat meninjau dan menyetujui reward.</small></div>
    <select value={creatorId} onChange={e=>setCreatorId(e.target.value)} aria-label="Creator untuk klaim"><option value="">Pilih creator peserta</option>{qualifying.map(c=><option key={c.creator_id} value={c.creator_id}>{c.creator_name}</option>)}</select>
-   <select value={period} onChange={e=>setPeriod(Number(e.target.value))} aria-label="Periode klaim">{Array.from({length:periods},(_,i)=><option key={i+1} value={i+1}>Periode {i+1} (bulan ke-{i+1})</option>)}</select>
+   <select value={period} onChange={e=>setPeriod(Number(e.target.value))} aria-label="Periode klaim">{Array.from({length:periods},(_,i)=><option key={i+1} value={i+1}>Tahap {i+1} dari {periods}</option>)}</select>
    <button className="asp-primary" disabled={busy||!creatorId} onClick={()=>void submit()}>Ajukan</button>
   </div>:<p className="asp-claim-access">Daftar klaim dapat dilihat oleh anggota workspace. Pengajuan dan approval hanya tersedia bagi owner/admin.</p>}
   {msg&&<p role="status" className="asp-message">{msg}</p>}
   {loading?<p className="asp-claim-access">Memuat riwayat klaim...</p>:<div className="asp-table-scroll"><table className="asp-claims-table"><thead><tr>{["Creator","Periode","Pencapaian","Tier","Reward","Status","Audit & Bukti","Tindakan"].map(s=><th key={s}>{s}</th>)}</tr></thead><tbody>
-   {claims.map(c=><tr key={c.id}><td><b>{authorNames.get(Number(c.creator_id))||"Creator #"+c.creator_id}</b></td><td>{c.period_start} — {c.period_end}<small>Bulan {c.claim_no}</small></td><td>{Number(c.achievement||0).toLocaleString("id-ID")}<small>{c.source_rows} baris</small></td><td>{c.tier_name||"-"}</td><td>{money(c.bonus_amount)}<small>{c.reward_type}</small></td><td><span className={"asp-status "+c.status}>{stat(c.status)}</span></td><td>{c.approver_note||"—"}<small>{c.payment_reference?"Ref: "+c.payment_reference:""}</small></td><td>{isManager?<div className="asp-claim-buttons">
+   {claims.map(c=><tr key={c.id}><td><b>{authorNames.get(Number(c.creator_id))||"Creator #"+c.creator_id}</b></td><td>{c.period_start} — {c.period_end}<small>Tahap {c.claim_no}</small></td><td>{Number(c.achievement||0).toLocaleString("id-ID")}<small>{c.source_rows} baris</small></td><td>{c.tier_name||"-"}</td><td>{money(c.bonus_amount)}<small>{c.reward_type}</small></td><td><span className={"asp-status "+c.status}>{stat(c.status)}</span></td><td>{c.approver_note||"—"}<small>{c.payment_reference?"Ref: "+c.payment_reference:""}</small></td><td>{isManager?<div className="asp-claim-buttons">
     {c.status==="pending"&&<><button onClick={()=>{setAction({id:c.id,mode:"approve"});setNote("");setPaymentReference("")}}>Setujui</button><button onClick={()=>{setAction({id:c.id,mode:"reject"});setNote("");setPaymentReference("")}}>Tolak</button></>}
     {c.status==="approved"&&<button onClick={()=>{setAction({id:c.id,mode:"fulfill"});setNote("");setPaymentReference("")}}>Catat Penyaluran</button>}
    </div>:"—"}</td></tr>)}
