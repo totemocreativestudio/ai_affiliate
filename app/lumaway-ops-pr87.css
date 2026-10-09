@@ -321,3 +321,67 @@
 .agreement-terms-consent input{flex-shrink:0;width:18px;height:18px;margin:4px 0 0;accent-color:#6654e4}
 .agreement-terms-consent span{flex:1}.agreement-terms-consent strong{display:block;margin-bottom:4px;color:#443c8b}
 @media(max-width:650px){.tutorial-instructions-head{align-items:flex-start;flex-direction:column;padding:14px}.tutorial-instruction-trigger{padding:12px;gap:8px}.tutorial-instruction-detail{padding:3px 10px 14px 10px}.tutorial-instruction-toggle{display:none}.tutorial-instruction-location,.tutorial-instruction-action,.tutorial-instruction-result{padding:11px}.agreement-terms-consent{padding:12px}}
+
+/* PR91: Batch creator reports - multi file import with staged drilldown */
+.asp-batch-panel{margin:20px 0;padding:22px;border:1px solid #e4e0fa;border-radius:18px;background:linear-gradient(160deg,#fff,#fdfcff)}
+.asp-batch-panel>header,.asp-batch-explore>header{display:flex;justify-content:space-between;align-items:center;gap:16px}
+.asp-batch-panel>header>div>span{color:#7057d9;font-size:10px;font-weight:900;letter-spacing:.13em}
+.asp-batch-panel h4{font-size:17px!important;margin:5px 0 7px!important;color:#272942}
+.asp-batch-panel p{color:#6c758d;font-size:12px;line-height:1.55;margin:0 0 10px}
+.asp-batch-select{background:#6653e5;padding:12px 16px;color:#fff;cursor:pointer;font-size:12px;font-weight:800;border-radius:11px;white-space:nowrap;position:relative}
+.asp-batch-select input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+.asp-batch-select:has(input:disabled){opacity:.5;cursor:wait}
+.asp-batch-files{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:9px;margin:15px 0}
+.asp-batch-files article{display:grid;gap:6px;padding:13px 15px;border:1px solid #e4e5f0;background:#fff;border-radius:11px;min-width:0}
+.asp-batch-files b{font-size:11px;color:#29344f;overflow-wrap:anywhere}
+.asp-batch-files span{font-size:11px;color:#6252bb}
+.asp-batch-files small{font-size:10px;color:#778095}
+.asp-batch-message{background:#f0edff;color:#5e50a8;font-size:12px;padding:11px 14px;border-radius:11px;margin:12px 0!important;overflow-wrap:anywhere}
+.asp-batch-disclaimer{border:1px solid #ecdfb8;border-radius:11px;background:#fffaf0;padding:12px 14px;color:#6b5833!important;margin:16px 0!important}
+.asp-batch-linked{border-top:1px solid #e9e7f4;padding:14px 0;display:grid;gap:8px}
+.asp-batch-linked>div{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.asp-batch-linked strong{font-size:12px;color:#373f59}
+.asp-batch-linked button,.asp-batch-explore header button{border:1px solid #d9d4f8;border-radius:9px;color:#5d4dbe;padding:8px 11px;font-size:11px;font-weight:800;background:#f5f2ff;cursor:pointer}
+.asp-batch-linked small{font-size:11px;color:#788097;line-height:1.5}
+.asp-batch-explore{background:#fff;border:1px solid #ebe9f3;border-radius:13px;padding:14px}
+.asp-batch-explore>header h4{font-size:14px!important}
+.asp-batch-explore .asp-table-scroll{margin-top:15px;max-height:400px;overflow:auto}
+.asp-batch-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:14px 0}
+.asp-batch-filters label{display:grid;gap:8px;font-size:11px;color:#646d84;font-weight:800}
+.asp-batch-filters select{min-width:0;width:100%;border:1px solid #dcddeb;border-radius:9px;padding:10px;font-size:12px;background:#fff}
+.asp-manual-import-details{margin:18px 0;border:1px solid #e2e1ee;border-radius:12px;padding:14px;background:#fafaff}
+.asp-manual-import-details summary{cursor:pointer;color:#5e4bb4;font-size:12px;font-weight:800;line-height:1.5}
+/* Scheduled-report reminder requires checking actual run evidence. */
+.sr-reminder-banner{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 17px;border:1px solid #fed7aa;background:#fffbef;border-radius:12px;margin:12px 0}
+.sr-reminder-banner strong{color:#8f4f22;font-size:13px}
+.sr-reminder-banner p{font-size:11px;color:#8d7460;margin:5px 0 0;line-height:1.5}
+.sr-reminder-banner button{border-radius:9px;padding:10px 13px;border:1px solid #f2c58b;background:#fff;color:#9e581f;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}
+.sr-reminder-overlay{position:fixed;inset:0;background:rgba(20,25,52,.44);display:grid;place-items:center;z-index:1500;padding:16px}
+.sr-reminder-dialog{background:#fff;padding:25px;width:min(510px,100%);max-height:80vh;overflow:auto;border-radius:17px;box-shadow:0 28px 65px rgba(20,25,52,.22)}
+.sr-reminder-dialog h3{color:#31283f;font-size:21px;margin:0 0 9px}
+.sr-reminder-dialog p{color:#68738a;font-size:12px;line-height:1.65}
+.sr-reminder-dialog article{border:1px solid #efe5df;background:#fff8f4;padding:12px;border-radius:10px;margin:8px 0;display:grid;gap:5px}
+.sr-reminder-dialog article b{font-size:12px}.sr-reminder-dialog article small{color:#8b6b60;font-size:11px}
+.sr-reminder-dialog button{background:#6653e5;color:#fff;border:0;padding:11px 15px;border-radius:10px;margin-top:15px;font-weight:800;cursor:pointer}
+/* Team visual workload: glanceable and clickable daily agenda. */
+.lc-team-overview{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin:16px 0}
+.lc-team-overview button{display:grid;text-align:left;gap:7px;border-radius:13px;border:1px solid #e6e4f0;padding:15px;background:#fff;cursor:pointer;min-width:0;transition:box-shadow .18s,border-color .18s,transform .18s}
+.lc-team-overview button:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(73,67,130,.08)}
+.lc-team-overview button.active{border-color:#8471ef;box-shadow:0 0 0 2px #ece8ff}
+.lc-team-overview small{font-size:10px;font-weight:900;letter-spacing:.04em;color:#8a88a1}
+.lc-team-overview strong{font-size:25px;color:#232944}
+.lc-team-overview span{font-size:11px;color:#7c859a}
+.lc-progress-track{display:block;height:5px;border-radius:10px;background:#eeeafa;overflow:hidden}
+.lc-progress-track em{display:block;height:100%;background:#6550dd;border-radius:10px}
+.lc-day.is-selected{background:#f2efff!important;box-shadow:inset 0 0 0 2px #8978e5}
+.lc-date{width:100%;display:flex;align-items:center;justify-content:space-between;background:transparent;border:0;cursor:pointer;text-align:left}
+.lc-date:hover{color:#5b4bc2}
+.lc-selected-agenda{margin:0 0 13px;border:1px solid #e6e3fa;border-radius:12px;background:#f9f8ff;padding:12px}
+.lc-selected-agenda header span{font-size:10px;color:#7061ba;font-weight:900;letter-spacing:.08em}
+.lc-selected-agenda h4{font-size:13px;color:#2d3451;margin:6px 0 10px}
+.lc-selected-agenda>div{display:grid;gap:7px;max-height:200px;overflow:auto}
+.lc-selected-agenda button{display:grid;gap:4px;padding:9px;background:#fff;border:1px solid #e7e5f4;text-align:left;border-radius:9px;cursor:pointer}
+.lc-selected-agenda button b{font-size:11px;color:#30324c}.lc-selected-agenda button small{font-size:10px;color:#7b8299}
+.lc-selected-agenda p{font-size:11px;color:#7b8299;line-height:1.5;margin:0}
+@media(max-width:980px){.lc-team-overview{grid-template-columns:repeat(2,minmax(0,1fr))}.asp-batch-filters{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){.lc-team-overview{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.lc-team-overview button{padding:11px}.asp-batch-panel{padding:14px}.asp-batch-panel>header,.asp-batch-explore>header,.sr-reminder-banner{align-items:flex-start;flex-direction:column}.asp-batch-filters{grid-template-columns:1fr}}

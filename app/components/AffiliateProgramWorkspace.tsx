@@ -4,6 +4,7 @@ import {useEffect,useMemo,useState} from "react";
 import {createClient} from "../../lib/supabase-browser";
 import {CreatorAutocomplete,CreatorSearchResult,ProductAutocomplete,ProductSearchResult} from "./SmartAutocomplete";
 import AffiliateProgramImporter from "./AffiliateProgramImporter";
+import AffiliateBatchEvidencePanel from "./AffiliateBatchEvidencePanel";
 import AffiliateRewardClaims from "./AffiliateRewardClaims";
 
 type Row=Record<string,any>;
@@ -34,7 +35,7 @@ export default function AffiliateProgramWorkspace({workspaceId}:{workspaceId:str
  const [participants,setParticipants]=useState<Row[]>([]),[imports,setImports]=useState<Row[]>([]);
  const [form,setForm]=useState<Form>({...INITIAL}),[tiers,setTiers]=useState<Tier[]>([]);
  const [formOpen,setFormOpen]=useState(false),[editingId,setEditingId]=useState(""),[mode,setMode]=useState("all");
- const [creatorName,setCreatorName]=useState(""),[creatorId,setCreatorId]=useState(""),[productLabel,setProductLabel]=useState(""),[rewardProductLabel,setRewardProductLabel]=useState("");
+ const [creatorName,setCreatorName]=useState(""),[creatorId,setCreatorId]=useState(""),[creatorUsername,setCreatorUsername]=useState(""),[productLabel,setProductLabel]=useState(""),[rewardProductLabel,setRewardProductLabel]=useState("");
  const [saving,setSaving]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState(""),[detailBusy,setDetailBusy]=useState(false);
  async function load(){
   const [pr,st]=await Promise.all([
@@ -59,7 +60,7 @@ export default function AffiliateProgramWorkspace({workspaceId}:{workspaceId:str
   setParticipants(part.data||[]);setImports(history.data||[]);
   setDetailBusy(false);
  }
- useEffect(()=>{void load()},[workspaceId]);
+ useEffect(()=>{setCreatorName("");setCreatorId("");setCreatorUsername("");setSelected(null);setError("");void load()},[workspaceId]);
  useEffect(()=>{if(selected?.id)void loadDetail(selected.id)},[selected?.id,workspaceId]);
  function newProgram(){
   setForm({...INITIAL});setTiers([]);setEditingId("");setProductLabel("");setRewardProductLabel("");setError("");setNotice("");setFormOpen(true);
@@ -101,14 +102,23 @@ export default function AffiliateProgramWorkspace({workspaceId}:{workspaceId:str
   setFormOpen(false);await load();
  }
  async function enroll(){
-  if(!selected||!creatorId)return setError("Pilih creator dari Master Creator.");
-  setSaving(true);setError("");
-  const {data:{user}}=await supabase.auth.getUser();
-  const {error:insertError}=await supabase.from("luma_affiliate_program_participants")
-   .upsert({workspace_id:workspaceId,program_id:selected.id,creator_id:Number(creatorId),status:"active",created_by:user?.id||null},{onConflict:"program_id,creator_id"});
-  if(insertError)setError(insertError.message);else{setCreatorName("");setCreatorId("");setNotice("Creator terhubung ke program.");await loadDetail(selected.id)}
-  setSaving(false);
+  if(!selected||!creatorId)return setError("Pilih creator dari Master Creator workspace aktif.");
+  if(selected.workspace_id!==workspaceId)return setError("Program dan workspace aktif berbeda. Muat ulang halaman.");
+  setSaving(true);setError("");setNotice("");
+  try{
+   const response=await supabase.rpc("luma_affiliate_enroll_master_creator_v3",{
+    p_workspace_id:workspaceId,p_program_id:selected.id,p_creator_id:Number(creatorId),
+    p_username:creatorUsername||null
+   });
+   if(response.error)throw response.error;
+   setCreatorName("");setCreatorId("");setCreatorUsername("");
+   setNotice("Creator terhubung dengan program dan Master Creator workspace aktif.");
+   await loadDetail(selected.id);
+  }catch(e:any){
+   setError(e?.message||"Gagal mendaftarkan creator. Pilih ulang dari Master Creator.");
+  }finally{setSaving(false)}
  }
+
  const filtered=programs.filter(p=>mode==="all"||p.kind===mode);
  const totals=programs.reduce((a,p)=>({total:a.total+1,active:a.active+(p.status==="active"?1:0),challenge:a.challenge+(p.kind==="challenge"?1:0)}),{total:0,active:0,challenge:0});
  const entries=(leaderboard.leaderboard||[]) as Row[];
@@ -163,13 +173,16 @@ export default function AffiliateProgramWorkspace({workspaceId}:{workspaceId:str
   </section>}
   {selected&&<section className="asp-tracker"><header><div><span>PROGRAM TRACKER · {selected.platform.toUpperCase()}</span><h3>{selected.program_name}</h3><p>{selected.start_date} — {selected.end_date} · {selected.theme} · {metricTitle}</p></div><div><button onClick={()=>void loadDetail(selected.id)}>{detailBusy?"Menghitung...":"Refresh"}</button><button onClick={()=>editProgram(selected)}>Edit Program</button><button onClick={()=>setSelected(null)}>Tutup</button></div></header>
    <div className="asp-tracker-stats"><article><span>Peserta Aktif</span><b>{num(summary.participants)}</b></article><article><span>Memenuhi Target</span><b>{num(summary.qualified)}</b></article><article><span>Klaim Hangus</span><b>{num(summary.expired)}</b></article><article><span>Estimasi Bonus</span><b>{rupiah(summary.estimated_bonus)}</b><small>Belum termasuk komisi marketplace</small></article></div>
-   <section className="asp-participant"><div><h4>Tambahkan Creator dari Master Data</h4><p>Cari dan pilih creator yang sudah terdaftar di Master Creator. Daftar menggunakan database workspace yang sama dengan Agreement dan Creator 360.</p></div><CreatorAutocomplete workspaceId={workspaceId} value={creatorName} selectedId={creatorId} createPlatform={selected.platform} allowCreate={false} onTextChange={value=>{setCreatorName(value);setCreatorId("")}} onSelect={(x:CreatorSearchResult)=>{setCreatorId(String(x.id));setCreatorName(label(x))}}/><button disabled={saving||!creatorId} onClick={()=>void enroll()}>+ Tambah Peserta</button></section>
+   <section className="asp-participant"><div><h4>Tambahkan Creator dari Master Data</h4><p>Cari dan pilih creator yang sudah terdaftar di Master Creator. Daftar menggunakan database workspace yang sama dengan Agreement dan Creator 360.</p></div><CreatorAutocomplete workspaceId={workspaceId} value={creatorName} selectedId={creatorId} createPlatform={selected.platform} allowCreate={false} onTextChange={value=>{setCreatorName(value);setCreatorId("");setCreatorUsername("")}} onSelect={(x:CreatorSearchResult)=>{setCreatorId(String(x.id));setCreatorUsername(x.username||"");setCreatorName(label(x))}}/><button disabled={saving||!creatorId} onClick={()=>void enroll()}>+ Tambah Peserta</button></section>
    <div className="asp-leaderboard"><header><h4>Leaderboard Creator</h4><span>Hanya data yang berada dalam periode. Status estimasi, bukan persetujuan pembayaran.</span></header><div className="asp-table-scroll"><table><thead><tr>{["Rank","Creator","Target & Achievement","Qty Bersih","Sales Bersih","Komisi Platform","Tier","Bonus Estimasi","Status"].map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>
     {entries.map((row,index)=><tr key={row.creator_id}><td><b>#{index+1}</b></td><td><strong>{row.creator_name}</strong></td><td><div className="asp-progress"><span>{detailCurrency?rupiah(row.actual):num(row.actual)} / {detailCurrency?rupiah(selected.target_value):num(selected.target_value)}</span><div><i style={{width:clamp(Number(row.actual)/Math.max(Number(selected.target_value),1)*100)+"%"}}/></div></div></td><td>{num(row.qty_net)} pcs</td><td>{rupiah(row.gmv_net)}</td><td>{rupiah(row.platform_commission)}</td><td>{row.tier_name||"—"}</td><td>{rupiah(row.estimated_reward)}</td><td><Status value={row.qualification}/></td></tr>)}
     {!entries.length&&<tr><td colSpan={9}>Belum ada peserta. Tambahkan creator, lalu upload laporan.</td></tr>}
    </tbody></table></div></div>
    <AffiliateRewardClaims key={"claim-"+selected.id} workspaceId={workspaceId} program={selected} entries={entries} onChanged={()=>void loadDetail(selected.id)}/>
-   <AffiliateProgramImporter key={"import-"+selected.id} workspaceId={workspaceId} program={selected} onImported={()=>void loadDetail(selected.id)}/>
+   <AffiliateBatchEvidencePanel key={"batch-"+selected.id} workspaceId={workspaceId} program={selected} onImported={()=>void loadDetail(selected.id)}/>
+    <details className="asp-manual-import-details"><summary>Mapping Manual Laporan Harian (untuk perhitungan reward berdasarkan tanggal transaksi)</summary>
+      <AffiliateProgramImporter key={"import-"+selected.id} workspaceId={workspaceId} program={selected} onImported={()=>void loadDetail(selected.id)}/>
+    </details>
    <section className="asp-import-history"><header><h4>Riwayat Import Program</h4><span>{imports.length} berkas</span></header><div>{imports.map(item=><article key={item.id}><div><b>{item.filename}</b><small>{item.created_at?.slice(0,10)} · {item.platform} · {item.status}</small></div><div>{item.rows_imported} baris masuk · {item.rows_rejected} ditolak <button className="asp-delete-import" disabled={saving} onClick={()=>void deleteImport(item.id)}>Hapus & Reset</button></div></article>)}{!imports.length&&<p>Belum ada file performa program.</p>}</div></section>
   </section>}
  </section>;
