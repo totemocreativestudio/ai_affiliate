@@ -136,3 +136,16 @@
 @media(max-width:1180px){.asp-program-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.asp-fields,.asp-import-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.lc-calendar-reminders-layout{grid-template-columns:minmax(0,1fr) 245px}}
 @media(max-width:830px){.lc-calendar-reminders-layout{grid-template-columns:1fr}.lc-add-member{grid-template-columns:1fr}.asp-program-grid{grid-template-columns:1fr}.asp-top-stats,.asp-tracker-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.asp-hero,.asp-builder>header,.asp-tracker>header,.asp-importer>header{flex-direction:column;align-items:stretch}.asp-participant{grid-template-columns:1fr}.asp-tier-row{grid-template-columns:25px 1fr 1fr;}.asp-tier-row button{grid-column:3}}
 @media(max-width:530px){.asp-fields,.asp-import-grid{grid-template-columns:1fr}.asp-hero{padding:18px}.asp-hero h2{font-size:22px!important}.asp-top-stats,.asp-tracker-stats{gap:7px}.asp-top-stats article,.asp-tracker-stats article{padding:12px}.asp-top-stats b,.asp-tracker-stats b{font-size:18px}.asp-builder,.asp-tracker{padding:12px}.asp-tier-row{grid-template-columns:22px 1fr;}.asp-tier-row button{grid-column:2}}
+
+/* Tutorial focuses true UI locations instead of frozen fake screenshots. */
+.context-help-show-on-page{margin-top:10px;border:1px solid #8a7ced;background:#efedff;color:#5143b9;font-size:11px;font-weight:800;padding:9px 11px;border-radius:9px;cursor:pointer}
+.context-help-not-visible{font-size:11px;color:#898fa2;line-height:1.55;margin:10px 0 0}
+.lumaway-help-target{outline:4px solid #7158f0!important;outline-offset:6px!important;box-shadow:0 0 0 12px rgba(113,88,240,.15),0 14px 45px rgba(113,88,240,.21)!important;border-radius:12px;animation:lumaway-help-pulse 1s ease-in-out 3 alternate}
+@keyframes lumaway-help-pulse{from{outline-color:#a99cf8}to{outline-color:#6252e8}}
+.asp-agreements .asp-agreement-description{font-size:13px;line-height:1.55;color:#68728b;margin-bottom:16px;max-width:720px}
+.asp-agreements>h1{font-size:30px;letter-spacing:-.035em;color:#242741}
+.asp-agreements>.card{border:1px solid #e6e5f2;border-radius:17px;padding:19px;background:#fff;box-shadow:0 7px 23px rgba(34,26,102,.035);margin:14px 0}
+.asp-agreements .grid{gap:12px}
+.asp-agreements .grid label{font-size:12px;color:#384360;display:flex;flex-direction:column;gap:7px}
+.asp-agreements select,.asp-agreements input,.asp-agreements textarea{border:1px solid #dfe2ee;border-radius:10px;padding:10px;color:#2d3453;background:#fff;max-width:100%}
+.asp-agreements .owner-inline-note{background:#f8f6ff;border:1px solid #e2ddfb;border-radius:10px;padding:12px;font-size:12px;color:#5f567c;line-height:1.55}
