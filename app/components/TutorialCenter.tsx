@@ -1,5 +1,5 @@
 "use client";
-import {useEffect,useMemo,useRef,useState} from "react";
+import {useEffect,useMemo,useState} from "react";
 import {createClient} from "../../lib/supabase-browser";
 import {navigateToSection} from "../../lib/luma-navigation";
 import SmartEmptyState from "./SmartEmptyState";
@@ -67,55 +67,73 @@ const builtIn:Topic[]=[
 
 function TutorialFlowRail({topic}:{topic:Topic}){return <div className="tutorial-flow-rail">{topic.steps.map((x,i)=><div key={i}><span>{i+1}</span><strong>{x.title}</strong>{i<topic.steps.length-1&&<i>→</i>}</div>)}</div>}
 
-const TUTORIAL_FOCUS:Record<string,string>={
- upload:"input[type=file]",file:"input[type=file]",period:"input[type=date]",mapping:"select",preview:".card",dashboard:".kpis",
- goal:".card",target:"input[type=number]",forecast:".card",automation:".card",template:"select",condition:"input",run:"button",
- calendar:".card",schedule:"button",drag:".card",history:"table",search:"input[type=search]",metrics:".c360-kpis",timeline:".c360-timeline-panel",
- "live-overview":".card",host360:".host-master",session:".card",gimmick:".card","target-live":"input[type=number]",
- "live-upload":"input[type=file]","live-file":"input[type=file]","live-mapping":"select","live-preview":"table","live-import":"button",
- "live-analytics":".card","line-chart":"svg","host-chart":"svg",histogram:"svg","gimmick-chart":"svg","session-table":"table"
+const STEP_LOCATION:Record<string,string>={
+ export:"Shopee Seller Centre / TikTok Seller Center → Unduh Laporan",
+ upload:"Data & Upload → Upload Center → Affiliate Performance",
+ period:"Upload Center → Platform dan Periode",
+ file:"Upload Center → Pilih File CSV/XLSX",
+ mapping:"Upload Center → Mapping Wizard",
+ preview:"Upload Center → Preview & Import",
+ dashboard:"Dashboard → Ranking Creator / Database",
+ goal:"Growth & Workflow → Goal & Forecast",
+ target:"Goal & Forecast → Atur Target",
+ forecast:"Goal & Forecast → Scorecard & Chart",
+ automation:"Growth & Workflow → Automation Rules",
+ template:"Automation Rules → Pilih Template",
+ condition:"Automation Rules → Atur Kondisi",
+ run:"Automation Rules → Run Now",
+ calendar:"Growth & Workflow → Scheduled Report",
+ schedule:"Scheduled Report → Jadwalkan",
+ drag:"Scheduled Report → Kalender",
+ history:"Scheduled Report → Riwayat",
+ search:"Creator 360 → Pencarian Creator",
+ metrics:"Creator 360 → Performance",
+ timeline:"Creator 360 → Activity Timeline",
+ "live-overview":"Live Streaming → Live Intelligence",
+ host360:"Live Streaming → Host 360 → Tambah Host",
+ session:"Live Streaming → Session Planner",
+ gimmick:"Live Streaming → Gimmick",
+ "target-live":"Live Streaming → Target & Budget",
+ "live-export":"Shopee/TikTok Seller Center → Laporan LIVE",
+ "live-upload":"Live Streaming → Upload Center",
+ "live-file":"Live Streaming → Pilih Berkas",
+ "live-mapping":"Live Streaming → Mapping",
+ "live-preview":"Live Streaming → Preview",
+ "live-import":"Live Streaming → Import",
+ "live-analytics":"Live Streaming → Analytics",
+ "line-chart":"Live Streaming → Tren",
+ "host-chart":"Live Streaming → Host Comparison",
+ histogram:"Live Streaming → Jam Performa",
+ "gimmick-chart":"Live Streaming → Gimmick Comparison",
+ "session-table":"Live Streaming → Session Comparison"
 };
-function Visual({kind,index,route}:{kind:string;index:number;route:string}){
- const [live,setLive]=useState(false),[loaded,setLoaded]=useState(false),[targetFound,setTargetFound]=useState(false);
- const frame=useRef<HTMLIFrameElement|null>(null);
- const external=kind==="export"||kind==="live-export";
- useEffect(()=>{setLive(false);setLoaded(false);setTargetFound(false)},[route]);
- useEffect(()=>{
-   if(!live||!loaded)return;
-   let attempts=0;
-   let timer:ReturnType<typeof setTimeout>;
-   const highlight=()=>{
-     try{
-       const doc=frame.current?.contentDocument;
-       if(!doc)return;
-       doc.querySelectorAll(".lumaway-tutorial-focus-live").forEach(el=>el.classList.remove("lumaway-tutorial-focus-live"));
-       const selector=TUTORIAL_FOCUS[kind]||"main";
-       const element=doc.querySelector<HTMLElement>(selector);
-       if(element&&element.getBoundingClientRect().width>0){
-         element.classList.add("lumaway-tutorial-focus-live");
-         element.style.outline="4px solid #715cff";
-         element.style.outlineOffset="5px";
-         element.scrollIntoView({behavior:"smooth",block:"center"});
-         setTargetFound(true);
-       }else if(attempts++<10){timer=setTimeout(highlight,800)}
-       else setTargetFound(false);
-     }catch{setTargetFound(false)}
-   };
-   timer=setTimeout(highlight,700);
-   return()=>{clearTimeout(timer);try{frame.current?.contentDocument?.querySelectorAll<HTMLElement>(".lumaway-tutorial-focus-live").forEach(el=>{el.classList.remove("lumaway-tutorial-focus-live");el.style.outline="";el.style.outlineOffset=""})}catch{}};
- },[live,loaded,kind,index,route]);
- if(external)return <div className="tutorial-native-visual tutorial-external-guide">
-   <span>LANGKAH DI LUAR LUMAWAY</span><h3>Export laporan dari marketplace Anda</h3>
-   <p>Langkah ini dilakukan langsung di TikTok Seller Center atau Shopee Affiliate. Tutorial tidak menampilkan screenshot palsu dari website eksternal.</p>
-   <small>Sesudah file siap, lanjut ke langkah Upload Center Lumaway.</small>
- </div>;
- return <div className="tutorial-native-visual">
-   <div className="tutorial-native-head"><div><span>UI ASLI LUMAWAY · LANGKAH {index+1}</span><h3>Tampilan fitur: {route.replaceAll("-"," ")}</h3></div>
-   {!live?<button onClick={()=>setLive(true)}>Tampilkan fitur asli ↗</button>:<button onClick={()=>setLive(false)}>Tutup pratinjau</button>}</div>
-   {live?<><div className="tutorial-native-viewport"><iframe ref={frame} title={"Pratinjau langsung "+route} src={"/"+encodeURIComponent(route)} loading="lazy" onLoad={()=>setLoaded(true)}/></div>
-     <p className="tutorial-native-note">{targetFound?"Area terkait langkah ini disorot pada antarmuka asli.":"Ini merupakan halaman aplikasi asli, bukan gambar mockup. Jika elemen belum terlihat, pilih langkah berikutnya atau buka fitur dalam layar penuh."}</p></>:
-     <div className="tutorial-native-placeholder"><strong>Pratinjau dashboard asli tersedia</strong><p>Klik “Tampilkan fitur asli” untuk memuat halaman yang digunakan user. Setiap langkah akan mencoba menyorot elemen terkait, bukan kotak ilustrasi yang tidak berubah.</p><button onClick={()=>navigateToSection(route)}>Buka fitur sekarang →</button></div>}
-  </div>;
+function StepGuide({topic,activeStep,onChoose}:{topic:Topic;activeStep:number;onChoose:(index:number)=>void}){
+ return <section className="tutorial-instructions" aria-label={"Panduan langkah demi langkah "+topic.title}>
+  <header className="tutorial-instructions-head">
+    <div><span>PANDUAN PRAKTIS</span><h3>Ikuti langkah berikut secara berurutan</h3>
+      <p>Baca bagian yang harus diklik, lakukan tindakannya, lalu periksa hasil sebelum melanjutkan. Tidak perlu membuka pratinjau.</p>
+    </div><span className="tutorial-instructions-progress">Langkah {activeStep+1} dari {topic.steps.length}</span>
+  </header>
+  <div className="tutorial-instructions-list">
+    {topic.steps.map((item,i)=><article key={i} className={"tutorial-instruction-item "+(i===activeStep?"is-current":i<activeStep?"is-done":"")}>
+      <button type="button" className="tutorial-instruction-trigger" onClick={()=>onChoose(i)}
+       aria-current={i===activeStep?"step":undefined} aria-expanded={i===activeStep}>
+       <span className="tutorial-instruction-marker">{i<activeStep?"✓":i+1}</span>
+       <span><small>LANGKAH {String(i+1).padStart(2,"0")}</small><strong>{item.title}</strong></span>
+       <span className="tutorial-instruction-toggle">{i===activeStep?"Sedang dibaca":"Lihat langkah"}</span>
+      </button>
+      {i===activeStep&&<div className="tutorial-instruction-detail">
+       <div className="tutorial-instruction-location"><span className="tutorial-instruction-pointer">1</span><div><small>MENU / AREA YANG DIBUKA</small><b>{STEP_LOCATION[item.visual]||topic.route.replaceAll("-"," ")}</b></div></div>
+       <div className="tutorial-instruction-action"><span className="tutorial-instruction-pointer">2</span><div><small>APA YANG HARUS DILAKUKAN</small><p>{item.what}</p></div></div>
+       <div className="tutorial-instruction-result"><span className="tutorial-instruction-pointer">3</span><div><small>PASTIKAN HASILNYA</small><p>{item.result}</p></div></div>
+       <p className="tutorial-instruction-why"><strong>Kenapa ini penting?</strong> {item.why}</p>
+       {i<topic.steps.length-1
+          ?<button type="button" className="tutorial-instruction-next" onClick={()=>onChoose(i+1)}>Saya sudah selesai — lanjut langkah {i+2} →</button>
+          :<button type="button" className="tutorial-instruction-next" onClick={()=>navigateToSection(topic.route)}>Selesai — praktikkan di fitur Lumaway →</button>}
+      </div>}
+    </article>)}
+  </div>
+ </section>;
 }
 
 export default function TutorialCenter({workspaceId}:{workspaceId:string}){
@@ -128,23 +146,15 @@ export default function TutorialCenter({workspaceId}:{workspaceId:string}){
  useEffect(()=>{supabase.from("tutorials").select("*").or("workspace_id.eq."+workspaceId+",is_global.eq.true").eq("status","published").order("sort_order",{ascending:true}).limit(100).then(({data})=>setDbRows(data||[]))},[workspaceId]);
  const cats=["Semua",...Array.from(new Set(builtIn.map(x=>x.category)))];
  const topics=useMemo(()=>builtIn.filter(x=>(category==="Semua"||x.category===category)&&((x.title+" "+x.description).toLowerCase().includes(query.toLowerCase()))),[query,category]);
- const s=active.steps[step];
 
  return <section id="tutorial" className="legacy-page-anchor tutorial-center-page">
-  <div className="tutorial-head"><div><div className="eyebrow">LEARNING</div><h1>Tutorial Lumaway</h1><p>Panduan dengan pratinjau halaman aplikasi asli dan sorotan elemen sesuai langkah. Tidak memakai mockup kosong.</p></div><div className="tutorial-progress-box"><b>{builtIn.length}</b><span>Panduan utama</span><small>{dbRows.length} materi tambahan dari Admin</small></div></div>
+  <div className="tutorial-head"><div><div className="eyebrow">LEARNING</div><h1>Tutorial Lumaway</h1><p>Panduan langkah demi langkah seperti tutorial praktik: menu yang dibuka, tombol yang dipilih, dan hasil yang harus diperiksa. Tanpa pratinjau atau ilustrasi kosong.</p></div><div className="tutorial-progress-box"><b>{builtIn.length}</b><span>Panduan utama</span><small>{dbRows.length} materi tambahan dari Admin</small></div></div>
   <div className="tutorial-toolbar"><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Cari: upload, target, automation..."/><div>{cats.map(c=><button className={category===c?"active":""} onClick={()=>setCategory(c)} key={c}>{c}</button>)}</div></div>
   <div className="tutorial-layout">
    <aside className="tutorial-list">{topics.length?topics.map(t=><button key={t.id} className={active.id===t.id?"active":""} onClick={()=>{setActive(t);setStep(0)}}><div><strong>{t.title}</strong><span>{t.description}</span></div><small>± {t.minutes} menit</small></button>):<SmartEmptyState compact eyebrow="TUTORIAL" title="Panduan tidak ditemukan" description="Tidak ada tutorial yang cocok dengan pencarian atau kategori ini." primaryLabel="Tampilkan Semua" onPrimary={()=>{setQuery("");setCategory("Semua")}} secondaryLabel="Buka Helpdesk" onSecondary={()=>navigateToSection("support")} icon="content"/>}</aside>
    <article className="tutorial-reader">
     <header><div><span>{active.category}</span><h2>{active.title}</h2></div><button onClick={()=>navigateToSection(active.route)}>Buka fitur</button></header>
-    <TutorialFlowRail topic={active}/>
-    <div className="tutorial-step-tabs">{active.steps.map((_,i)=><button key={i} onClick={()=>setStep(i)} className={step===i?"active":step>i?"done":""}>{step>i?"✓":i+1}</button>)}</div>
-    <Visual kind={s.visual} index={step} route={active.route}/>
-    <div className="tutorial-copy-grid">
-      <section><span>APA YANG DILAKUKAN</span><h3>{s.title}</h3><p>{s.what}</p></section>
-      <section><span>KENAPA</span><p>{s.why}</p></section>
-      <section><span>HASIL YANG DIHARAPKAN</span><p>{s.result}</p></section>
-    </div>
+    <StepGuide topic={active} activeStep={step} onChoose={setStep}/>
     <footer><button disabled={step===0} onClick={()=>setStep(x=>Math.max(0,x-1))}>← Sebelumnya</button><div><b>{step+1}</b> / {active.steps.length}</div>{step<active.steps.length-1?<button className="primary" onClick={()=>setStep(x=>Math.min(active.steps.length-1,x+1))}>Berikutnya →</button>:<button className="primary" onClick={()=>navigateToSection(active.route)}>Praktikkan sekarang →</button>}</footer>
    </article>
   </div>
