@@ -12,6 +12,7 @@ import UserProfile from "./UserProfile";
 const AdminDashboard=dynamic(()=>import("./AdminDashboard"),{ssr:false});
 import {CreatorAutocomplete,ProductAutocomplete,CreatorSearchResult,ProductSearchResult,resolveOrCreateCreator} from "./SmartAutocomplete";
 import TutorialCenter from "./TutorialCenter";
+import AffiliateProgramWorkspace from "./AffiliateProgramWorkspace";
 import { readNumber, sortByValue } from "../../lib/numeric";
 
 type Row=Record<string,any>;
@@ -22,7 +23,7 @@ export default function RestoredLegacyModules({workspaceId,userId,isAdmin}:{work
   return <>
     <InternalExcelGrid workspaceId={workspaceId}/>
     <Agreements workspaceId={workspaceId}/>
-    <AffiliateSupport workspaceId={workspaceId}/>
+    <AffiliateProgramWorkspace workspaceId={workspaceId}/>
     <LumaAffiliateCenter workspaceId={workspaceId} userId={userId}/>
     <PromoStudioV2 workspaceId={workspaceId} userId={userId}/>
     <KanbanBoard workspaceId={workspaceId} userId={userId}/>
