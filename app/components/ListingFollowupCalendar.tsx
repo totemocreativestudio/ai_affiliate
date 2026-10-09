@@ -66,7 +66,7 @@ export default function ListingFollowupCalendar({workspaceId}:{workspaceId:strin
  const upcoming=items.filter(x=>x.next_follow_up_at&&idDate(new Date(x.next_follow_up_at))>=today&&
    new Date(x.next_follow_up_at).getTime()<Date.now()+7*86400000 &&
    (!x.follow_up_completed_at||new Date(x.follow_up_completed_at)<new Date(x.next_follow_up_at)));
- const reminders=[...overdue.map(x=>({...x,reminder_state:"overdue"})),...upcoming.map(x=>({...x,reminder_state:idDate(new Date(x.next_follow_up_at))===today?"today":"upcoming"}))]
+ const reminders=([...overdue.map(x=>({...x,reminder_state:"overdue"})),...upcoming.map(x=>({...x,reminder_state:idDate(new Date(x.next_follow_up_at))===today?"today":"upcoming"}))] as Row[])
    .sort((a,b)=>String(a.next_follow_up_at).localeCompare(String(b.next_follow_up_at))).slice(0,12);
  return <section className="listing-calendar">
   <header><div><span>FOLLOW-UP PLANNER</span><h3>Kalender & Team Workload</h3><p>Jadwal dari Listing otomatis masuk ke kalender dan pengingat PIC. Tarik kartu untuk menjadwal ulang.</p></div><div className="lc-month"><button onClick={()=>shiftMonth(-1)}>‹</button><strong>{new Date(month+"T12:00:00").toLocaleDateString("id-ID",{month:"long",year:"numeric"})}</strong><button onClick={()=>shiftMonth(1)}>›</button></div></header>
