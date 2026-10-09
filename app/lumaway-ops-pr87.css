@@ -149,3 +149,6 @@
 .asp-agreements .grid label{font-size:12px;color:#384360;display:flex;flex-direction:column;gap:7px}
 .asp-agreements select,.asp-agreements input,.asp-agreements textarea{border:1px solid #dfe2ee;border-radius:10px;padding:10px;color:#2d3453;background:#fff;max-width:100%}
 .asp-agreements .owner-inline-note{background:#f8f6ff;border:1px solid #e2ddfb;border-radius:10px;padding:12px;font-size:12px;color:#5f567c;line-height:1.55}
+
+.lc-team-invite-link{border:1px solid #d8d3ff;background:#f7f4ff;color:#5c4dbc;font-size:11px;font-weight:700;padding:10px 13px;border-radius:9px;margin:0 12px 14px;cursor:pointer;text-align:left}
+.lc-team-invite-link:hover{background:#ede8ff}
