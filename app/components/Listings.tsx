@@ -8,6 +8,7 @@ import ListingFollowupQueue from "./ListingFollowupQueue";
 import ListingFollowupCalendar from "./ListingFollowupCalendar";
 import ListingQuickMessage from "./ListingQuickMessage";
 import ListingContactReadiness from "./ListingContactReadiness";
+import "../listing-contacts.css";
 
 type Creator={
   id:number;creator_code:string|null;name:string|null;username:string|null;platform:string|null;
@@ -16,6 +17,7 @@ type Creator={
 };
 type Product={id:number;sku:string;product_name:string|null;category:string|null;cost_price:number|null};
 type FollowupOwner={id:string;safe_label:string;is_self:boolean};
+type ChannelContact={id:number;creator_id:number;channel:string;phone:string|null;handle:string|null;url:string|null;note:string|null;is_primary:boolean};
 type Listing={
   id:number;data_date:string|null;creator_id:number|null;creator_name:string|null;platform:string|null;
   product_master_id:number|null;product_name:string|null;sku:string|null;product_hpp:number|null;stage:string|null;
@@ -39,7 +41,7 @@ const ACTIVITY_STAGE:Record<string,string>={
   "Sample Received":"Content In Progress","Take Video":"Content In Progress","Video Upload":"Uploaded","Live":"Live",
   "Deal":"Won / Active","Rejected":"Lost / Inactive","No Response":"Follow Up",
 };
-const EMPTY_FORM:FormState={data_date:"",creator_id:"",creator_name:"",platform:"",product_master_id:"",product_hpp:"0",stage:"New Lead",payment_type:"",ratecard:"",posting_date:"",post_link:"",next_action:"",agreement_id:"",program_id:"",follow_up_channel:"",next_follow_up_at:"",follow_up_priority:"normal",follow_up_owner_user_id:"",notes:""};
+const EMPTY_FORM:FormState={data_date:"",creator_id:"",creator_name:"",platform:"",product_master_id:"",product_hpp:"0",stage:"Sample Sent",payment_type:"",ratecard:"",posting_date:"",post_link:"",next_action:"",agreement_id:"",program_id:"",follow_up_channel:"",next_follow_up_at:"",follow_up_priority:"normal",follow_up_owner_user_id:"",notes:""};
 const toLocalInput=(value:string|null)=>{if(!value)return"";const d=new Date(value);const off=d.getTimezoneOffset();return new Date(d.getTime()-off*60000).toISOString().slice(0,16)};
 const money=(value:any)=>"Rp "+new Intl.NumberFormat("id-ID",{maximumFractionDigits:0}).format(Number(value||0));
 const dateLabel=(value:string|null)=>value?new Date(value+"T00:00:00").toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"}):"-";
@@ -85,6 +87,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
   const [followupOwners,setFollowupOwners]=useState<FollowupOwner[]>([]);
   const [agreements,setAgreements]=useState<{id:number;agreement_id:string|null;creator_id:number|null;document_status:string|null;program_id:string|null}[]>([]);
   const [supportPrograms,setSupportPrograms]=useState<{id:string;program_name:string;status:string}[]>([]);
+  const [channelContacts,setChannelContacts]=useState<ChannelContact[]>([]);
   const [channelChoices,setChannelChoices]=useState<string[]>(FOLLOW_UP_CHANNELS);
   const [selfName,setSelfName]=useState("");
   const [masterCreators,setMasterCreators]=useState<Creator[]>([]);
@@ -123,6 +126,9 @@ export default function Listings({workspaceId}:{workspaceId:string}){
   const [socialSaving,setSocialSaving]=useState(false);
   const [socialForm,setSocialForm]=useState<Record<string,string>>(emptySocial());
   const [avatarInput,setAvatarInput]=useState("");
+  const [contactEditingId,setContactEditingId]=useState<number|null>(null);
+  const [contactFormOpen,setContactFormOpen]=useState(false);
+  const [contactDraft,setContactDraft]=useState({channel:"WhatsApp",phone:"",handle:"",url:"",note:"",is_primary:true});
 
   async function loadData(){
     setLoading(true);setError("");
@@ -131,7 +137,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
       supabase.from("creators").select("id,creator_code,name,username,platform,affiliate_id,phone,payment_type,ratecard,status,profile_url,avatar_url,social_links,social_profile_updated_at").eq("workspace_id",workspaceId).order("name").limit(7770),
       supabase.from("product_master").select("id,sku,product_name,category,cost_price").eq("workspace_id",workspaceId).order("sku").limit(1000),
       supabase.rpc("luma_safe_workspace_assignees_v1",{p_workspace_id:workspaceId}),
-      supabase.from("luma_channel_contacts").select("channel").eq("workspace_id",workspaceId),
+      supabase.from("luma_channel_contacts").select("id,creator_id,channel,phone,handle,url,note,is_primary").eq("workspace_id",workspaceId).order("is_primary",{ascending:false}).order("channel"),
       supabase.from("agreements").select("id,agreement_id,creator_id,document_status,program_id").eq("workspace_id",workspaceId).order("id",{ascending:false}).limit(500),
       supabase.from("luma_affiliate_programs").select("id,program_name,status").eq("workspace_id",workspaceId).limit(150),
     ]);
@@ -144,6 +150,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
     if(!productResult.error)setProducts((productResult.data||[]) as Product[]);
     if(!agreementsResult.error)setAgreements((agreementsResult.data||[]) as typeof agreements);
     if(!programsResult.error)setSupportPrograms((programsResult.data||[]) as typeof supportPrograms);
+    if(!channelContactResult.error)setChannelContacts((channelContactResult.data||[]) as ChannelContact[]);
     if(!safeOwnerResult.error)setFollowupOwners((safeOwnerResult.data||[]).map((x:any)=>({id:String(x.user_id),safe_label:String(x.safe_label||"PIC"),is_self:Boolean(x.is_self)})));
     // Daftar kanal follow-up berasal dari database (luma_channel_contacts). Bila tabel belum ada, pakai daftar bawaan.
     if(!channelContactResult.error){
@@ -205,6 +212,45 @@ export default function Listings({workspaceId}:{workspaceId:string}){
     setDetailLoading(false);
   }
 
+  const contactsForCreator=useCallback((creatorId:number|null|undefined)=>
+    creatorId?channelContacts.filter(contact=>contact.creator_id===creatorId):[],[channelContacts]);
+
+  function primaryContact(creator:Creator|null|undefined, channel="WhatsApp"){
+    const contact=contactsForCreator(creator?.id).find(item=>item.channel===channel&&item.is_primary)
+      ||contactsForCreator(creator?.id).find(item=>item.channel===channel);
+    return contact||null;
+  }
+
+  async function saveChannelContact(input:{id?:number;channel:string;phone:string;handle:string;url:string;note:string;is_primary:boolean}){
+    if(!selectedCreator){setError("Hubungkan listing ke Master Creator sebelum menambah kontak.");return}
+    if(!input.channel.trim()){setError("Channel kontak wajib dipilih.");return}
+    setSaving(true);setError("");setMessage("");
+    const now=new Date().toISOString();
+    const payload={workspace_id:workspaceId,creator_id:selectedCreator.id,channel:input.channel.trim(),phone:input.phone.trim()||null,handle:input.handle.trim()||null,url:input.url.trim()||null,note:input.note.trim()||null,is_primary:input.is_primary,updated_at:now};
+    if(input.is_primary){
+      const clearPrimary=await supabase.from("luma_channel_contacts").update({is_primary:false,updated_at:now}).eq("workspace_id",workspaceId).eq("creator_id",selectedCreator.id).eq("channel",input.channel.trim()).neq("id",input.id||0);
+      if(clearPrimary.error){setSaving(false);setError(clearPrimary.error.message);return}
+    }
+    const result=input.id
+      ?await supabase.from("luma_channel_contacts").update(payload).eq("id",input.id).eq("workspace_id",workspaceId).select("id,creator_id,channel,phone,handle,url,note,is_primary").single()
+      :await supabase.from("luma_channel_contacts").insert({...payload,created_by:(await supabase.auth.getUser()).data.user?.id||null}).select("id,creator_id,channel,phone,handle,url,note,is_primary").single();
+    if(result.error){setSaving(false);setError(result.error.message);return}
+    const saved=result.data as ChannelContact;
+    setChannelContacts(prev=>{
+      const next=input.id?prev.map(item=>item.id===input.id?(input.is_primary?{...saved}:saved):item):[saved,...prev];
+      return input.is_primary?next.map(item=>item.id===saved.id?item:item.channel===saved.channel&&item.creator_id===saved.creator_id?{...item,is_primary:false}:item):next;
+    });
+    setContactEditingId(null);setContactFormOpen(false);setContactDraft({channel:"WhatsApp",phone:"",handle:"",url:"",note:"",is_primary:true});
+    setSaving(false);setMessage("Kontak channel tersimpan.");
+  }
+
+  async function deleteChannelContact(id:number){
+    if(!window.confirm("Hapus kontak channel ini?"))return;
+    const result=await supabase.from("luma_channel_contacts").delete().eq("id",id).eq("workspace_id",workspaceId);
+    if(result.error){setError(result.error.message);return}
+    setChannelContacts(prev=>prev.filter(item=>item.id!==id));setMessage("Kontak channel dihapus.");
+  }
+
   useEffect(()=>{void loadData();void loadMasterCreators(1,"")},[workspaceId]);
   useEffect(()=>{void loadSelectedDetail(selected)},[selected?.id,workspaceId]);
   useEffect(()=>{
@@ -261,12 +307,13 @@ export default function Listings({workspaceId}:{workspaceId:string}){
       }catch(err){setSaving(false);return setError(err instanceof Error?err.message:"Gagal membuat creator baru.")}
     }
     const product=products.find(item=>item.id===Number(form.product_master_id));
+    const editingRow=editingId===null?null:rows.find(item=>item.id===editingId);
     const payload={
       workspace_id:workspaceId,data_date:form.data_date||null,creator_id:creator?.id??(form.creator_id?Number(form.creator_id):null),
       creator_name:form.creator_name.trim()||creator?.name||creator?.username||creator?.creator_code||null,
       platform:form.platform||creator?.platform||null,product_master_id:form.product_master_id?Number(form.product_master_id):null,
-      product_name:product?.product_name||null,sku:product?.sku||null,product_hpp:product?.cost_price!=null?Number(product.cost_price):Number(form.product_hpp||0),
-      stage:form.stage||"New Lead",payment_type:form.payment_type||null,ratecard:form.ratecard?Number(form.ratecard):0,
+      product_name:product?.product_name??editingRow?.product_name??null,sku:product?.sku??editingRow?.sku??null,product_hpp:product?.cost_price!=null?Number(product.cost_price):Number(form.product_hpp||editingRow?.product_hpp||0),
+      stage:form.stage||editingRow?.stage||"Sample Sent",payment_type:form.payment_type||null,ratecard:form.ratecard?Number(form.ratecard):Number(creator?.ratecard??editingRow?.ratecard??0),
       posting_date:form.posting_date||null,post_link:normalizePostLinksInput(form.post_link)||null,next_action:form.next_action||null,agreement_id:form.agreement_id||null,program_id:form.program_id||null,follow_up_channel:form.follow_up_channel||null,next_follow_up_at:form.next_follow_up_at?new Date(form.next_follow_up_at).toISOString():null,follow_up_priority:form.follow_up_priority||"normal",follow_up_owner_user_id:form.follow_up_owner_user_id||null,follow_up_completed_at:form.next_follow_up_at?null:null,notes:form.notes||null,
     };
 
@@ -393,13 +440,16 @@ export default function Listings({workspaceId}:{workspaceId:string}){
     if(dateEnd&&String(row.data_date||"")>dateEnd)return false;
     if(!q)return true;
     const rowCreator=resolveCreator(row);
-    const textMatch=[row.creator_name,row.product_name,row.sku,row.platform,row.stage,row.payment_type,row.next_action,row.follow_up_channel,rowCreator?.phone,rowCreator?.affiliate_id,rowCreator?.username].filter(Boolean).some(value=>String(value).toLowerCase().includes(q));
+    const rowContact=contactsForCreator(rowCreator?.id).find(item=>item.channel==="WhatsApp"&&item.is_primary)
+      ||contactsForCreator(rowCreator?.id).find(item=>item.channel==="WhatsApp");
+    const rowPhone=rowContact?.phone||rowCreator?.phone||null;
+    const textMatch=[row.creator_name,row.product_name,row.sku,row.platform,row.stage,row.payment_type,row.next_action,row.follow_up_channel,rowPhone,rowCreator?.affiliate_id,rowCreator?.username].filter(Boolean).some(value=>String(value).toLowerCase().includes(q));
     if(textMatch)return true;
     // Cari berdasarkan nomor WA walau formatnya beda (spasi, +, 0 vs 62).
     const qDigits=q.replace(/\D/g,"");
-    const rowPhoneDigits=phoneDigits(rowCreator?.phone);
+    const rowPhoneDigits=phoneDigits(rowPhone);
     return qDigits.length>=3&&rowPhoneDigits.includes(qDigits);
-  }),[rows,search,platformFilter,stageFilter,channelFilter,dateStart,dateEnd,resolveCreator]);
+  }),[rows,search,platformFilter,stageFilter,channelFilter,dateStart,dateEnd,resolveCreator,channelContacts]);
 
   // Defensive contact enrichment (PR87): lengkapi kontak creator untuk listing tanpa creator_id.
   // Bila RPC belum tersedia (migrasi belum diterapkan), error diabaikan tanpa efek samping.
@@ -469,6 +519,16 @@ export default function Listings({workspaceId}:{workspaceId:string}){
     const intl=intlPhone(phone);
     return intl?"https://wa.me/"+intl:null;
   };
+  const contactForRow=(row:Listing)=>{
+    const creator=resolveCreator(row);const contact=primaryContact(creator);
+    return {creator,phone:contact?.phone||creator?.phone||null};
+  };
+  const selectedContacts=contactsForCreator(selectedCreator?.id);
+  function startContactEdit(contact?:ChannelContact){
+    setContactEditingId(contact?.id||null);
+    setContactFormOpen(true);
+    setContactDraft({channel:contact?.channel||"WhatsApp",phone:contact?.phone||"",handle:contact?.handle||"",url:contact?.url||"",note:contact?.note||"",is_primary:contact?.is_primary??true});
+  }
 
   return <section id="listings" className="legacy-page-anchor listing-v2-page">
     <header className="listing-v2-header">
@@ -543,17 +603,17 @@ export default function Listings({workspaceId}:{workspaceId:string}){
         <div className="listing-v2-section-head"><div><h3>Hasil Listing</h3><p>Aktivitas terbaru creator dan progres listing.</p></div><span>{visibleRows.length.toLocaleString("id-ID")} hasil</span></div>
         {loading?<div className="listing-v2-empty">Memuat Listings...</div>:visibleRows.length===0?<div className="listing-v2-empty"><b>Belum ada hasil listing.</b><span>Tambahkan listing atau ubah filter pencarian.</span></div>:
         <div className="listing-v2-table-wrap"><table><thead><tr><th>Creator</th><th>Platform</th><th>Contact</th><th>No. WhatsApp</th><th>Follow Up Via</th><th>Product / SKU</th><th>Stage</th><th>Ratecard</th><th>Latest / Next</th><th>Action</th></tr></thead><tbody>
-          {visibleRows.map(row=>{const rowCreator=resolveCreator(row);const links=splitPostLinks(row.post_link);return <tr key={row.id} className={selected?.id===row.id?"selected":""} onClick={()=>setSelected(row)}>
+          {visibleRows.map(row=>{const rowContact=contactForRow(row);const rowCreator=rowContact.creator;const links=splitPostLinks(row.post_link);return <tr key={row.id} className={selected?.id===row.id?"selected":""} onClick={()=>setSelected(row)}>
             <td><div className="listing-v2-creator-cell"><span className={rowCreator?.avatar_url?"has-photo":""}>{rowCreator?.avatar_url?<img src={rowCreator.avatar_url} alt="" referrerPolicy="no-referrer"/>:String(row.creator_name||"C").slice(0,1).toUpperCase()}</span><div><b>{row.creator_name||"-"}</b><small>{dateLabel(row.data_date)}</small></div></div></td>
             <td><span className="listing-v2-platform">{row.platform||"-"}</span></td>
             <td><div className="listing-contact-mini">{rowCreator?.username?<small>@{rowCreator.username}</small>:<small>Belum ada social</small>}{rowCreator?.affiliate_id?<small>ID: {rowCreator.affiliate_id}</small>:null}</div></td>
-            <td>{rowCreator?.phone&&waHref(rowCreator.phone)?<a className="listing-wa-direct" href={waHref(rowCreator.phone)||undefined} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}><span className="wa-mark">WA</span><b>{rowCreator.phone}</b></a>:<small className="listing-wa-empty">Belum ada nomor</small>}</td>
+            <td>{rowContact.phone&&waHref(rowContact.phone)?<a className="listing-wa-direct" href={waHref(rowContact.phone)||undefined} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}><span className="wa-mark">WA</span><b>{rowContact.phone}</b></a>:<small className="listing-wa-empty">Belum ada nomor</small>}</td>
             <td><div className="listing-followup-cell">{row.follow_up_channel?<span className="listing-channel-badge">{row.follow_up_channel}</span>:<small>Belum ditentukan</small>}</div></td>
             <td><b>{row.product_name||"-"}</b><small>{row.sku||"Tanpa SKU"}</small></td>
             <td><span className={"listing-v2-stage "+stageTone(row.stage)}>{row.stage||"New Lead"}</span></td>
             <td>{money(row.ratecard)}</td>
             <td><b>{row.next_action||"Belum ada next action"}</b><small>{row.posting_date?`Posting ${dateLabel(row.posting_date)}`:""}{links.length?` · ${links.length} link konten`:""}</small>{links.length>0&&<span className="listing-channel-badge">{links.length>1?`${links.length} link`:`1 link`}</span>}{row.follow_up_channel&&<span className="listing-channel-badge">{row.follow_up_channel}</span>}</td>
-            <td><div className="listing-v2-actions" onClick={e=>e.stopPropagation()}>{rowCreator?.phone&&waHref(rowCreator.phone)?<button className="wa-action" onClick={()=>openWaComposer(row)}><span className="wa-mark">WA</span>Chat WA</button>:null}<button onClick={()=>setSelected(row)}>Detail</button><button onClick={()=>openActivity(row,"Follow Up")}>+ Follow Up</button><button onClick={()=>openEdit(row)}>Edit</button><button className="danger" onClick={()=>void deleteListing(row.id)}>Hapus</button></div></td>
+            <td><div className="listing-v2-actions" onClick={e=>e.stopPropagation()}>{rowContact.phone&&waHref(rowContact.phone)?<button className="wa-action" onClick={()=>openWaComposer(row)}><span className="wa-mark">WA</span>Chat WA</button>:null}<button onClick={()=>setSelected(row)}>Detail</button><button onClick={()=>openActivity(row,"Follow Up")}>+ Follow Up</button><button onClick={()=>openEdit(row)}>Edit</button><button className="danger" onClick={()=>void deleteListing(row.id)}>Hapus</button></div></td>
           </tr>})}
         </tbody></table></div>}
       </section>
@@ -568,7 +628,7 @@ export default function Listings({workspaceId}:{workspaceId:string}){
           <div className="listing-v2-profile-grid">
             <div><span>Affiliate ID</span><b>{selectedCreator?.affiliate_id||"-"}</b></div>
             <div><span>Ratecard</span><b>{money(selectedCreator?.ratecard??selected.ratecard)}</b></div>
-            <div><span>WhatsApp</span>{waHref(selectedCreator?.phone)?<a className="listing-wa-direct" href={waHref(selectedCreator?.phone)||undefined} target="_blank" rel="noreferrer"><span className="wa-mark">WA</span><b>{selectedCreator?.phone}</b></a>:<b>-</b>}</div>
+            <div><span>WhatsApp</span>{waHref(primaryContact(selectedCreator)?.phone||selectedCreator?.phone)?<a className="listing-wa-direct" href={waHref(primaryContact(selectedCreator)?.phone||selectedCreator?.phone)||undefined} target="_blank" rel="noreferrer"><span className="wa-mark">WA</span><b>{primaryContact(selectedCreator)?.phone||selectedCreator?.phone}</b></a>:<b>-</b>}</div>
             <div><span>Payment</span><b>{selectedCreator?.payment_type||selected.payment_type||"-"}</b></div>
             <div><span>Follow Up Via</span><b>{selected.follow_up_channel||"-"}</b></div>
             <div><span>Next Follow Up</span><b>{selected.next_follow_up_at?new Date(selected.next_follow_up_at).toLocaleString("id-ID"):"-"}</b></div>
@@ -579,12 +639,17 @@ export default function Listings({workspaceId}:{workspaceId:string}){
              <div><span>Agreement</span><b>{selected.agreement_id||"Belum ada"}</b></div>
              <div><span>Program Support</span><b>{supportPrograms.find(p=>p.id===selected.program_id)?.program_name||"Belum terhubung"}</b></div>
           </div>
+          <section className="listing-v2-contacts">
+            <div className="listing-v2-social-head"><div><span>FOLLOW-UP CONTACTS</span><h4>Kontak channel creator</h4><p>Simpan nomor WhatsApp, username Instagram, TikTok, atau channel lain untuk dipakai saat follow-up.</p></div><button type="button" className="secondary" disabled={!selectedCreator} onClick={()=>startContactEdit()}>+ Tambah Kontak</button></div>
+            {!selectedCreator?<p className="listing-v2-social-empty">Creator belum terhubung ke Master Creator.</p>:selectedContacts.length===0&&!contactFormOpen?<p className="listing-v2-social-empty">Belum ada kontak. Klik “Tambah Kontak” untuk mengisi nomor atau username.</p>:<div className="listing-v2-contact-list">{selectedContacts.map(contact=><article key={contact.id}><div><b>{contact.channel}{contact.is_primary?" · Utama":""}</b><small>{contact.phone||contact.handle||contact.url||"Kontak belum diisi"}</small>{contact.note&&<small>{contact.note}</small>}</div><div className="button-row"><button type="button" onClick={()=>startContactEdit(contact)}>Edit</button><button type="button" className="danger" onClick={()=>void deleteChannelContact(contact.id)}>Hapus</button></div></article>)}</div>}
+            {selectedCreator&&contactFormOpen&&<div className="listing-v2-contact-form"><label><span>Channel</span><select value={contactDraft.channel} onChange={e=>setContactDraft({...contactDraft,channel:e.target.value})}>{channelChoices.map(channel=><option key={channel}>{channel}</option>)}</select></label><label><span>No. WhatsApp / Phone</span><input type="tel" inputMode="tel" autoComplete="tel" value={contactDraft.phone} onChange={e=>setContactDraft({...contactDraft,phone:e.target.value})} placeholder="08… atau +62…"/></label><label><span>Username / Handle</span><input autoComplete="off" spellCheck={false} value={contactDraft.handle} onChange={e=>setContactDraft({...contactDraft,handle:e.target.value})} placeholder="@username…"/></label><label><span>URL</span><input type="url" value={contactDraft.url} onChange={e=>setContactDraft({...contactDraft,url:e.target.value})} placeholder="https://…"/></label><label className="wide"><span>Catatan</span><input value={contactDraft.note} onChange={e=>setContactDraft({...contactDraft,note:e.target.value})} placeholder="Keterangan kontak…"/></label><label className="listing-checkbox"><input type="checkbox" checked={contactDraft.is_primary} onChange={e=>setContactDraft({...contactDraft,is_primary:e.target.checked})}/><span>Jadikan kontak utama untuk channel ini</span></label><div className="button-row"><button type="button" className="secondary" onClick={()=>setContactFormOpen(false)}>Batal</button><button type="button" className="primary" disabled={saving} onClick={()=>void saveChannelContact({...contactDraft,id:contactEditingId||undefined})}>{saving?"Menyimpan…":"Simpan Kontak"}</button></div></div>}
+          </section>
           <section className="listing-v2-social">
             <div className="listing-v2-social-head"><div><span>SOCIAL PROFILE</span><h4>Link medsos creator</h4></div><button type="button" className="secondary" disabled={!selectedCreator} onClick={openSocialProfile}>{selectedSocialLinks.length?"Edit":"Tambah"}</button></div>
             {selectedSocialLinks.length?<div className="listing-v2-social-links">{selectedSocialLinks.map(([key,url])=><a key={key} href={String(url)} target="_blank" rel="noreferrer"><span>{key==="x"?"X":key.charAt(0).toUpperCase()+key.slice(1)}</span><b>↗</b></a>)}</div>:<p className="listing-v2-social-empty">{selectedCreator?"Belum ada link sosial. Tambahkan Instagram, TikTok, Facebook, Lemon8, YouTube, atau platform lainnya.":"Hubungkan listing ke Master Creator untuk menyimpan profil sosial."}</p>}
             {selectedCreator?.social_profile_updated_at&&<small>Profil diperbarui {new Date(selectedCreator.social_profile_updated_at).toLocaleString("id-ID")}</small>}
           </section>
-          <ListingQuickMessage workspaceId={workspaceId} listing={selected} creatorUsername={selectedCreator?.username||null} picName={picLabel(selected.follow_up_owner_user_id)} creatorPhone={selectedCreator?.phone||null}/>
+          <ListingQuickMessage workspaceId={workspaceId} listing={selected} creatorUsername={selectedCreator?.username||null} picName={picLabel(selected.follow_up_owner_user_id)} creatorPhone={primaryContact(selectedCreator)?.phone||selectedCreator?.phone||null}/>
           {splitPostLinks(selected.post_link).length>0&&<div className="listing-v2-social"><div className="listing-v2-social-head"><div><span>KONTEN / POST LINK</span><h4>{splitPostLinks(selected.post_link).length} link konten</h4></div></div><div className="listing-v2-social-links">{splitPostLinks(selected.post_link).map((url,i)=><a key={i} href={url} target="_blank" rel="noreferrer"><span>Link {i+1}</span><b>↗</b></a>)}</div></div>}
           <div className="listing-v2-detail-actions"><button className="primary" onClick={()=>openActivity(selected,"Follow Up")}>+ Tambah Follow Up</button><button className="secondary" onClick={()=>openEdit(selected)}>Edit Listing</button>{splitPostLinks(selected.post_link).slice(0,1).map((url,i)=><a key={i} href={url} target="_blank" rel="noreferrer">Buka Konten{splitPostLinks(selected.post_link).length>1?` (1/${splitPostLinks(selected.post_link).length})`:""}</a>)}</div>
           <div className="listing-v2-timeline-head"><div><h4>Activity Timeline</h4><p>Riwayat listing, follow up, sample, konten, dan hasil creator.</p></div></div>
