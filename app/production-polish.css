@@ -50,4 +50,4 @@ body:has(.owner-sidebar) .notification-bell{background:#fff;border:1px solid #e4
 .owner-console .card,.owner-console .integration-panel,.owner-console .integration-status-card{border-radius:11px!important;box-shadow:none!important}
 .owner-console .admin-tabs{border-bottom:1px solid #e4e7ec;background:transparent;padding:0;gap:3px}
 .owner-console .admin-tabs button{background:transparent!important;border:0!important;border-radius:0!important;border-bottom:2px solid transparent!important;color:#667085!important;min-height:38px!important}
-.owner-console .admin-tabs button.active{color:#182230!important;border-bottom-color:#6258e8!important}
+.owner-console .admin-tabs button.active{color:#182230!important;border-bottom-color:oklch(65% 0.18 48)!important}

@@ -1,32 +1,34 @@
-/* Hallmark · genre: modern-minimal · macrostructure: Workbench · theme: Cobalt (brand-violet anchor)
+/* Hallmark · genre: modern-minimal · macrostructure: Bento Grid · theme: Coral (brand-coral anchor)
  * pre-emit critique: P4 H5 E5 S5 R5 V4
- * tone: utilitarian-professional · accent-hue: cool (violet 270°)
+ * tone: utilitarian-professional · accent-hue: warm (coral ~48°)
  * designed-as-app · design-system: design.md
  */
 
 /* ──────────────────────────────────────────────
-   DESIGN TOKENS — Lumaway Hallmark Cobalt
+   DESIGN TOKENS — Lumaway Hallmark Coral
    Paper band: light (>85% L)
    Display style: grotesk-sans (DM Sans)
-   Accent hue: cool (violet ~270°)
+   Accent hue: warm (coral ~48°)
    ────────────────────────────────────────────── */
 
 :root {
-  /* Paper */
-  --lh-paper:       oklch(98.5% 0.003 270);
-  --lh-paper-2:     oklch(96.5% 0.006 270);
-  --lh-paper-3:     oklch(94% 0.008 270);
+  /* Paper — light, warm-neutral */
+  --lh-paper:       oklch(98.5% 0.003 48);
+  --lh-paper-2:     oklch(96.5% 0.006 48);
+  --lh-paper-3:     oklch(94% 0.008 48);
 
-  /* Ink */
-  --lh-ink:         oklch(18% 0.02 270);
-  --lh-ink-2:       oklch(42% 0.016 270);
-  --lh-ink-3:       oklch(60% 0.01 270);
+  /* Ink — warm dark neutral */
+  --lh-ink:         oklch(18% 0.012 48);
+  --lh-ink-2:       oklch(42% 0.01 48);
+  --lh-ink-3:       oklch(60% 0.008 48);
 
-  /* Accent — brand violet */
-  --lh-accent:      oklch(55% 0.22 275);
-  --lh-accent-2:    oklch(62% 0.18 275);
+  /* Accent — brand coral / warm orange (warm ~48°) */
+  --lh-accent:      oklch(65% 0.18 48);
+  --lh-accent-2:    oklch(71% 0.14 48);
   --lh-accent-ink:  oklch(99% 0 0);
-  --lh-accent-soft: oklch(95% 0.04 275);
+  --lh-accent-soft: oklch(96% 0.05 48);
+  --lh-accent-glow: oklch(65% 0.18 48 / 0.12);
+  --lh-accent-border: oklch(65% 0.18 48 / 0.15);
 
   /* Signal colors */
   --lh-success:     oklch(50% 0.14 155);
@@ -39,11 +41,11 @@
   --lh-info-bg:     oklch(96% 0.04 230);
 
   /* Rule / border */
-  --lh-rule:        oklch(89% 0.01 270);
-  --lh-rule-2:      oklch(85% 0.015 270);
+  --lh-rule:        oklch(89% 0.01 48);
+  --lh-rule-2:      oklch(85% 0.015 48);
 
   /* Focus ring */
-  --lh-focus:       oklch(55% 0.22 275);
+  --lh-focus:       oklch(65% 0.18 48);
 
   /* Typography */
   --lh-font-display: "DM Sans", "Inter", ui-sans-serif, system-ui;
@@ -344,7 +346,7 @@
 .listing-v2-form-grid textarea:focus {
   outline: none;
   border-color: var(--lh-accent);
-  box-shadow: 0 0 0 3px oklch(55% 0.22 275 / 0.12);
+  box-shadow: 0 0 0 3px var(--lh-accent-glow);
 }
 
 .listing-v2-form-grid input::placeholder,
@@ -390,7 +392,7 @@
 .listing-v2-toolbar input:not([type]):focus {
   outline: none;
   border-color: var(--lh-accent);
-  box-shadow: 0 0 0 3px oklch(55% 0.22 275 / 0.12);
+  box-shadow: 0 0 0 3px var(--lh-accent-glow);
   background: var(--lh-paper);
 }
 
@@ -410,7 +412,7 @@
 .listing-v2-toolbar input[type="date"]:focus {
   outline: none;
   border-color: var(--lh-accent);
-  box-shadow: 0 0 0 3px oklch(55% 0.22 275 / 0.12);
+  box-shadow: 0 0 0 3px var(--lh-accent-glow);
 }
 
 /* ── Section head ── */
@@ -933,7 +935,7 @@
   font-size: var(--lh-text-xs);
   font-weight: 700;
   text-decoration: none;
-  border: 1px solid oklch(55% 0.22 275 / 0.15);
+  border: 1px solid var(--lh-accent-border);
   transition: background var(--lh-dur-short) var(--lh-ease-out),
               box-shadow var(--lh-dur-short) var(--lh-ease-out);
 }
@@ -1170,7 +1172,7 @@
 .listing-v2-master-search input:focus {
   outline: none;
   border-color: var(--lh-accent);
-  box-shadow: 0 0 0 3px oklch(55% 0.22 275 / 0.12);
+  box-shadow: 0 0 0 3px var(--lh-accent-glow);
 }
 
 .listing-master-creator {
@@ -1315,7 +1317,7 @@
 .listing-v2-activity-form textarea:focus {
   outline: none;
   border-color: var(--lh-accent);
-  box-shadow: 0 0 0 3px oklch(55% 0.22 275 / 0.12);
+  box-shadow: 0 0 0 3px var(--lh-accent-glow);
 }
 
 .listing-v2-activity-form small {
@@ -1365,7 +1367,7 @@
 .listing-social-form input:focus {
   outline: none;
   border-color: var(--lh-accent);
-  box-shadow: 0 0 0 3px oklch(55% 0.22 275 / 0.12);
+  box-shadow: 0 0 0 3px var(--lh-accent-glow);
 }
 
 .listing-social-preview {
