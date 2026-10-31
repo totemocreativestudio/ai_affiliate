@@ -9,8 +9,8 @@ body:has(.owner-sidebar) .content:not(:has(> #administration:target)) > #adminis
 .lumaway-route-card p{margin:0;color:#667085;font-size:13px;line-height:1.6}
 .lumaway-route-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:4px}
 .lumaway-route-actions button,.lumaway-route-actions a{min-height:40px;padding:9px 14px;border-radius:10px;border:1px solid #d0d5dd;background:#fff;color:#344054;text-decoration:none;font:inherit;font-weight:700;cursor:pointer}
-.lumaway-route-actions .primary{background:#635bff!important;border-color:#635bff!important;color:#fff!important}
-.lumaway-route-spinner{width:36px;height:36px;border-radius:50%;border:3px solid #e8e7ff;border-top-color:#635bff;animation:lumawaySpin .8s linear infinite}
+.lumaway-route-actions .primary{background:oklch(65% 0.18 48)!important;border-color:oklch(65% 0.18 48)!important;color:#fff!important}
+.lumaway-route-spinner{width:36px;height:36px;border-radius:50%;border:3px solid oklch(93% 0.06 48);border-top-color:oklch(65% 0.18 48);animation:lumawaySpin .8s linear infinite}
 @keyframes lumawaySpin{to{transform:rotate(360deg)}}
 
 html[data-theme="dark"] .lumaway-route-state{background:#0b1020;color:#f5f7ff}
@@ -28,7 +28,7 @@ html[data-theme="dark"] .lumaway-route-actions button,html[data-theme="dark"] .l
 .runtime-error-page{
   min-height:100dvh;display:grid;place-items:center;padding:28px;
   background:
-    radial-gradient(circle at 50% 18%,rgba(102,88,244,.08),transparent 31%),
+    radial-gradient(circle at 50% 18%,oklch(65% 0.18 48 / 0.08),transparent 31%),
     linear-gradient(180deg,#f8f9fc,#f3f5f9);
   color:#101828;
 }
@@ -39,7 +39,7 @@ html[data-theme="dark"] .lumaway-route-actions button,html[data-theme="dark"] .l
 }
 .runtime-error-page .luma-error-visual{
   position:relative;min-height:180px;border-radius:18px;display:grid;place-items:center;overflow:hidden;
-  background:radial-gradient(circle at 48% 45%,rgba(102,88,244,.12),transparent 52%),#fafaff;
+  background:radial-gradient(circle at 48% 45%,oklch(65% 0.18 48 / 0.12),transparent 52%),#fafaff;
 }
 .runtime-error-page .luma-error-visual:before{
   content:"";position:absolute;width:112px;height:112px;border:1px solid #dcd9ff;border-radius:30px;transform:rotate(12deg)
@@ -48,11 +48,11 @@ html[data-theme="dark"] .lumaway-route-actions button,html[data-theme="dark"] .l
   content:"";position:absolute;width:70px;height:70px;border:1px solid #ebe9ff;border-radius:22px;transform:rotate(-17deg)
 }
 .runtime-error-page .error-code{position:relative;z-index:2;font-size:46px;font-weight:850;letter-spacing:-.06em;color:#101828}
-.runtime-error-page .error-ring{position:absolute;border-radius:50%;border:1px solid rgba(102,88,244,.18)}
+.runtime-error-page .error-ring{position:absolute;border-radius:50%;border:1px solid oklch(65% 0.18 48 / 0.18)}
 .runtime-error-page .ring-one{width:136px;height:136px}.runtime-error-page .ring-two{width:92px;height:92px}
 .runtime-error-page .error-dot{position:absolute;width:7px;height:7px;border-radius:50%;background:#7568ff;box-shadow:0 0 0 5px rgba(117,104,255,.08)}
 .runtime-error-page .dot-one{left:24px;top:28px}.runtime-error-page .dot-two{right:28px;top:52px}.runtime-error-page .dot-three{right:45px;bottom:30px}
-.runtime-error-page .luma-error-copy .eyebrow{font-size:8px;font-weight:850;letter-spacing:.16em;color:#6658f4}
+.runtime-error-page .luma-error-copy .eyebrow{font-size:8px;font-weight:850;letter-spacing:.16em;color:oklch(65% 0.18 48)}
 .runtime-error-page .luma-error-copy h2{margin:7px 0;font-size:24px;letter-spacing:-.035em}
 .runtime-error-page .luma-error-copy p{margin:0;color:#667085;font-size:11px;line-height:1.65}
 .runtime-error-page .luma-error-copy small{display:block;margin-top:9px;padding:7px 9px;border-radius:8px;background:#f8f9fc;color:#7c8799;font-size:8.5px;word-break:break-word}
@@ -73,7 +73,7 @@ html[data-theme="dark"] .lumaway-route-actions button,html[data-theme="dark"] .l
 
 /* Web Interface Guidelines: global a11y foundation */
 .skip-link{position:absolute;left:12px;top:-56px;z-index:10000;padding:10px 14px;border-radius:10px;background:#101828;color:#fff!important;font-size:12px;font-weight:800;text-decoration:none;transition:top .15s ease}
-.skip-link:focus-visible{top:12px;outline:2px solid #635bff;outline-offset:2px}
+.skip-link:focus-visible{top:12px;outline:2px solid oklch(65% 0.18 48);outline-offset:2px}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 section[id],article[id],h2[id],h3[id]{scroll-margin-top:88px}
 .runtime-error-page .luma-error-copy h1{margin:7px 0;font-size:24px;letter-spacing:-.035em;text-wrap:balance}

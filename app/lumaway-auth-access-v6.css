@@ -22,7 +22,7 @@
   box-shadow:0 8px 24px rgba(71,55,170,.08);
 }
 .google-oauth-button:focus-visible{
-  outline:3px solid rgba(102,88,244,.18);
+  outline:3px solid oklch(65% 0.18 48 / 0.18);
   outline-offset:2px;
 }
 .google-oauth-button:disabled{

@@ -26,7 +26,7 @@
 .notification-bell{width:40px!important;height:40px!important;min-width:40px!important;padding:0!important;display:grid!important;place-items:center!important;border-radius:10px!important;background:#fff!important;border:1px solid #d7dde8!important;color:#25324a!important;position:relative!important;overflow:visible!important}
 .notification-bell svg{display:block!important;width:20px!important;height:20px!important;visibility:visible!important;opacity:1!important;fill:none!important;stroke:#25324a!important;stroke-width:2!important}
 .notification-bell svg path{stroke:#25324a!important}
-.notification-bell b{position:absolute!important;right:-5px!important;top:-5px!important;display:grid!important;place-items:center!important;min-width:18px!important;height:18px!important;padding:0 4px!important;border-radius:999px!important;background:#635bff!important;color:#fff!important;font-size:9px!important;border:2px solid #fff!important}
+.notification-bell b{position:absolute!important;right:-5px!important;top:-5px!important;display:grid!important;place-items:center!important;min-width:18px!important;height:18px!important;padding:0 4px!important;border-radius:999px!important;background:oklch(65% 0.18 48)!important;color:#fff!important;font-size:9px!important;border:2px solid #fff!important}
 
 /* History action: actual dropdown affordance, no ellipsis visible and no table scroll side effect. */
 .ai-history-card{overflow:visible!important}
