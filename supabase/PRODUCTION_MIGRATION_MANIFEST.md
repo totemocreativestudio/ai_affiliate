@@ -1,6 +1,7 @@
 # Lumaway Production Migration Manifest
 
 Captured and reconciled in PR #42 on 2026-09-25.
+Reconciliation checkpoint for the batch September–Oktober 2026 ditambahkan pada **2026-11-01** — lihat bagian [Checkpoint 2026-11-01](#checkpoint-2026-11-01-batch-oktober-2026) di bawah.
 
 This manifest is the source-of-truth map between **Supabase production migration history** and **GitHub migration files**. It does not contain customer/business row data.
 
@@ -111,6 +112,55 @@ The 51 `production_legacy` entries are historical migrations that already exist 
 | `20260928073232` | `pr47_auth_community_weekly_mayar_only` | repository_migration | `supabase/migrations/20260928143000_pr47_auth_community_weekly_mayar_only.sql` | Yes |
 | `20260928081233` | `pr48_resend_transport_defaults` | repository_migration | `supabase/migrations/20260928160000_pr48_resend_transport_defaults.sql` | Yes |
 | `repo-only-pr37` | `pr37_payment_priority` | repository_manual_state | `supabase/migrations/20260923195500_pr37_payment_priority.sql` | Yes |
+
+## Checkpoint 2026-11-01 (batch Oktober 2026)
+
+Manifest lama berhenti di status migrasi sampai **PR48 (2026-09-28)**. Batch
+migrasi di bawah ini sudah ada di repo tapi **belum direkonsiliasi** dengan
+Supabase migration history produksi. Status per file *belum diverifikasi satu
+per satu* — pengecualian ditandai.
+
+Fakta terverifikasi dari probe read-only produksi **2026-10-11**:
+
+| Objek | State produksi | Kesimpulan |
+| --- | --- | --- |
+| `luma_resolve_listing_creator_v1`, `luma_listing_creator_link_report_v1` | EXISTS | Inti PR87 ✅ sudah applied di prod |
+| `luma_safe_workspace_assignees_v1` | EXISTS, versi lama (label "Saya") | PR88b PIC realname fix ⏳ pending |
+| `public.luma_channel_contacts` | **MISSING (PGRST205)** | PR88 ⏳ pending — jalankan `supabase/PR88_CHANNEL_CONTACTS_APPLY_READY.sql` |
+
+Prosedur rekonsiliasi: jalankan `select * from supabase.list_migrations();` di
+SQL Editor, cocokkan versinya dengan tabel di bawah, lalu perbarui tabel ini.
+Langkah apply lihat `docs/operations/PR87_PR88_PRODUCTION_APPLY_RUNBOOK.md`.
+
+Batch migrasi repo pasca-PR48 (semua di `supabase/migrations/`, status default
+`pending_prod_verification` kecuali dicatat lain):
+
+| PR | File migrasi | Status |
+| --- | --- | --- |
+| PR57 | `20260929103000_pr57_daily_trend_v2.sql`, `20260929104000_pr57_daily_trend_permissions.sql` | pending_prod_verification |
+| PR58 | `20260929110500_pr58_user_access_isolation.sql` | pending_prod_verification |
+| PR69 | `20260929133000_pr69_dashboard_data_recovery.sql`, `20260929133500_pr69_dashboard_platform_mix.sql` | pending_prod_verification |
+| PR70 | `20260929140500_pr70_daily_trend_v2.sql`, `20260929141000_pr70_platform_mix_v2.sql` | pending_prod_verification |
+| PR75 | `20260930121500` … `20260930152000_pr75f_social_profile_v3.sql` (a–f) | pending_prod_verification |
+| PR76 | `20260930152400` … `20260930193000_pr76f_identity_confidence_social_profiles.sql` (a–f) | pending_prod_verification |
+| PR77 | `20260930202000_pr77_learning_promotion_engine.sql`, `20260930204500_pr77_content_seed.sql`, `20260930211500_pr77b_content_promo_hardening.sql` | pending_prod_verification |
+| PR78 | `20260930213000_pr78a_security_rls_hardening.sql`, `20260930214500_pr78c_payment_promo_guardrails.sql`, `20260930215000_pr78c_webhook_updated_at.sql`, `20260930220500_pr78d_observability_system_health.sql`, `20260930222500_pr78e_performance_load_readiness.sql` | pending_prod_verification |
+| PR79 | `20260930231500_pr79a_daily_brief_action_center.sql` … `20261001002500_pr79d_scheduled_reports_calendar.sql` | pending_prod_verification |
+| PR80 | `20261001010000_pr80a_live_streaming_foundation.sql` … `20261001034500_pr80k_live_data_health.sql` | pending_prod_verification |
+| PR81 | `20261001041000_pr81a_security_definer_hardening.sql` … `20261001084500_pr81j_release_gate.sql` | pending_prod_verification |
+| PR82 | `20261001093000_pr82a_auth_recovery_reliability.sql` … `20261001191000_pr82q_contact_readiness.sql`, termasuk `20261001161000_host_crud_database_latest_indexes.sql`, `20261001170000_pr86h_fix_production_qa_harness.sql` | pending_prod_verification |
+| PR84 | `20261001201500_pr84b_unified_live_import_engine.sql` … `20261001223000_pr84h_live_product_intelligence.sql` | pending_prod_verification |
+| PR85 | `20261002020000_pr85c_command_center_v2.sql` … `20261002013000_pr85m_product_experience_qa.sql` | pending_prod_verification |
+| PR86 | `20261002024500_pr86a_production_validation.sql` … `20261002093000_pr86i2_production_readiness_snapshots.sql`, `20261003110000_fix_signup_trigger_auth_guard.sql` | pending_prod_verification |
+| PR87 | `20261004090000_pr87_listing_creator_link_flow.sql` + batch `20261009130000` … `20261009162000_pr87l_canonical_channel_metrics.sql` (a–l) | inti applied ✅ (probe 10-11); batch a–l pending_prod_verification |
+| PR88 | `20261004103000_pr88_followup_channel_contacts.sql` (backfill: `20261010090000_pr89_channel_contact_backfill.sql`; fix: `20261011140000_pr88b_pic_realname_fix.sql`; readiness: `20261011190000_pr88c_readiness_channel_contacts.sql`) | **pending — tabel MISSING**, jalankan apply-ready |
+| PR88a/88b realtime & spark | `20261009170000_pr88a_agreement_seal_spark_codes.sql`, `20261009171000_pr88b_social_realtime.sql` | pending_prod_verification |
+| PR89 | `20261009183000_pr89_creator_attribution_sources.sql`, `20261009184500_pr89b_creator_matching.sql` | pending_prod_verification |
+| PR90 | `20261009193000_pr90a_workspace_creator_agreement_terms.sql` | pending_prod_verification |
+| PR91 | `20261009195000_pr91_affiliate_participant_enroll.sql`, `20261009200000_pr91b_affiliate_source_evidence.sql` | pending_prod_verification |
+
+Aturan tidak berubah: setiap perubahan produksi tetap wajib punya file migrasi
+di `supabase/migrations/` dan file "apply-ready" hanya konsolidasi temporer.
 
 ## Rule from PR42 onward
 

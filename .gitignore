@@ -20,3 +20,6 @@ tsconfig.tsbuildinfo
 
 # Screenshot hasil audit UI
 .screenshots/
+
+# Arsip besar lokal (jangan commit)
+masalah/*.zip
