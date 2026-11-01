@@ -53,3 +53,28 @@ Referensi: DashStack UI Kit (`references/figma-link.md`)
 Ganti nilai token di `:root` file restyle untuk seluruh dampaknya. Contoh:
 owner minta primary lebih tunggal → ubah `--ds-primary`. Bukan edit-belak-file
 CSS lama.
+
+## 5. Migrasi penuh warna legacy (2026-11-01)
+
+Setelah owner meminta "ganti semua desain lama", seluruh warna aksen legacy di
+`app/*.css` dipetakan ke DashStack lewat sweep berbasis HSL (skrip one-off,
+tidak di-commit):
+
+| Kelompok legacy | Kriteria (HSL) | Tujuan DashStack |
+| --- | --- | --- |
+| Violet/indigo terang | h 228–320, chroma ≥ 12 | l ≥ 91 → `#ecf2ff`, l ≥ 70 → `#6e9aff`, l ≥ 58 → `#4880ff`, l ≥ 40 → `#3a6ef0` |
+| Indigo-biru legacy (link/navy-blue) | h 205–228, s ≥ 55, l 36–78 | `#4880ff` |
+| Tint near-white keunguan | h 235–320, chroma 4–12, l ≥ 88 | `#ecf2ff` |
+| Teks ungu gelap | h 240–320, chroma ≥ 35, l 15–40 | ink `#141b2d` |
+| oklch coral (hue 48, chroma ≥ 0.05) | per lightness | `rgba(72,128,255,α)` / tier sesuai l |
+| Brand gradient `--lwv5-orange` / stop oranye | `#ff9f43` | `#6e9aff` |
+
+**Dipertahankan (tidak dipetakan):** warna netral abu (chroma kecil),
+`#fff/f8fafc/e4e7ec` dll., status semantik hijau/merah/amber/teal, background &
+teks gelap navy non-ungu (h < 228), aturan `html[data-theme="dark"]`
+(dormant — app light-only), dan aksen pink magenta (h > 320, scope terpisah).
+
+Total: ±1.275 penggantian di 42 file CSS + perbaikan token root
+(`--luma-deep` → `#3a6ef0`, `--ui-accent`, `--lw4-violet`, `--lwv5-violet`,
+`--lwv5-purple`, `--lh-accent`, `--lh-focus`). Verifikasi: scan HSL akhir tanpa
+sisa violet saturasi; `npm run verify` + `npm run build` hijau.

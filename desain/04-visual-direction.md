@@ -8,6 +8,9 @@ Dashboard UI Kit (Figma Community, oleh Seju).
 ## FACT
 
 - Referensi yang dipilih owner adalah DashStack UI Kit (file Figma di `figma-link.md`).
+- 2026-11-01: owner meminta **migrasi penuh** ("ganti semua desain lama") —
+  bukan hanya layer timpa, tapi semua warna legacy di `app/*.css` ikut
+  dipetakan ke token DashStack (lihat `design-spec.md` § 5).
 - Karakter DashStack yang terverifikasi dari port publiknya (FilamentYahoo/HTML):
   primary `#4880FF`, font `Nunito Sans`, halaman abu muda + kartu putih,
   grid 4px, tersedia light & dark (light dipakai Lumaway).
