@@ -4,13 +4,17 @@
    Link referensi: desain/references/figma-link.md (owner, 2026-11-01)
 
    ATURAN FILE INI:
-   - Additive: file baru, TIDAK mengedit/menghapus CSS lama. Layer ini
-     di-import paling akhir di app/layout.tsx dan app/LumawayWorkspaceApp.tsx
-     sehingga menang cascade (menimpa rule `!important` lama secara sehat).
+   - Additive: file baru, TIDAK mengedit/menghapus CSS lama.
    - Token sumber: --ds-*. Warna & font mengikuti DashStack:
        primary #4880FF, font Nunito Sans, 4px grid, kartu putih radius besar
      di atas background abu muda.
-   - Cukup ganti nilai token di :root di bawah untuk kalibrasi lanjutan.
+   - STRATEGI CASCade: CSS legacy lama banyak memakai `!important` dengan
+     specificity (0,1,0). Turbopack TIDAK menjamin urutan chunk CSS sama
+     dengan urutan import, jadi layer ini TIDAK hanya mengandalkan urutan —
+     semua selector diberi prefix `body`/`html body` (specificity lebih
+     tinggi, contoh: body .sidebar = (0,1,1)) sehingga selalu menang atas
+     rule lama ber-`!important` satu kelas, apa pun urutan bundel.
+   - Cukup ganti nilai token di :root untuk kalibrasi lanjutan.
    ===================================================================== */
 
 /* ---------------------------------------------------------------------
@@ -62,58 +66,60 @@
 /* ---------------------------------------------------------------------
    1. Fondasi: warna halaman + font Nunito Sans (karakter DashStack)
    --------------------------------------------------------------------- */
-html,
-body {
+html {
+  background: var(--ds-bg) !important;
+}
+html body {
   background: var(--ds-bg) !important;
   color: var(--ds-ink) !important;
   font-family: "Nunito Sans", Inter, ui-sans-serif, system-ui,
     -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
 }
-button,
-input,
-select,
-textarea {
+body button,
+body input,
+body select,
+body textarea {
   font-family: inherit !important;
 }
 
 /* ---------------------------------------------------------------------
    2. APP SHELL — latar & lebar konten
    --------------------------------------------------------------------- */
-.luma-app {
+body .luma-app {
   background: var(--ds-bg) !important;
 }
-.content {
+body .content {
   max-width: 1480px;
   margin: 0 auto;
   padding: 26px 30px 64px;
 }
-.content h1 {
+body .content h1 {
   font-size: 30px;
   font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--ds-ink-head) !important;
 }
-.content h2 {
+body .content h2 {
   font-size: 20px;
   font-weight: 750;
   color: var(--ds-ink-head) !important;
 }
-.content h3 {
+body .content h3 {
   font-weight: 700;
   color: #1d2939 !important;
 }
-.eyebrow {
+body .eyebrow {
   color: var(--ds-primary) !important;
   letter-spacing: 0.14em;
 }
-.muted {
+body .muted {
   color: var(--ds-muted) !important;
 }
 
 /* ---------------------------------------------------------------------
    3. SIDEBAR — putih bersih ala DashStack, item aktif biru lembut
    --------------------------------------------------------------------- */
-.sidebar {
+body .sidebar {
   background: var(--ds-card) !important;
   background-image: none !important;
   color: #4b5565 !important;
@@ -121,82 +127,82 @@ textarea {
   box-shadow: none !important;
   padding: 16px 12px 14px !important;
 }
-.brand {
+body .brand {
   padding: 6px 9px 18px !important;
 }
-.brand strong {
+body .brand strong {
   color: var(--ds-ink-head) !important;
 }
-.brand span {
+body .brand span {
   color: var(--ds-muted-2) !important;
 }
-.brand-mark {
+body .brand-mark {
   filter: none !important;
 }
-.sidebar-label {
+body .sidebar-label {
   color: #9aa4b4 !important;
   font-size: 9px !important;
   letter-spacing: 0.14em !important;
   padding: 14px 10px 7px !important;
 }
-.side-nav a,
-.side-nav > button,
-.side-group summary {
+body .side-nav a,
+body .side-nav > button,
+body .side-group summary {
   color: #5c6675 !important;
   border-radius: var(--ds-radius-sm) !important;
   font-weight: 600 !important;
   min-height: 40px !important;
 }
-.side-nav a:hover,
-.side-nav > button:hover,
-.side-group summary:hover {
+body .side-nav a:hover,
+body .side-nav > button:hover,
+body .side-group summary:hover {
   background: #f5f7fb !important;
   color: var(--ds-ink) !important;
 }
-.side-nav a.active,
-.side-nav > button.active,
-.side-group summary.active {
+body .side-nav a.active,
+body .side-nav > button.active,
+body .side-group summary.active {
   background: var(--ds-primary-soft) !important;
   color: var(--ds-primary) !important;
   box-shadow: none !important;
 }
-.nav-ico {
+body .nav-ico {
   background: #f1f3f8 !important;
   color: #64748b !important;
   border-radius: 8px !important;
 }
-.side-nav a.active .nav-ico,
-.side-nav > button.active .nav-ico {
+body .side-nav a.active .nav-ico,
+body .side-nav > button.active .nav-ico {
   background: var(--ds-primary) !important;
   color: #fff !important;
 }
-.side-subnav button {
+body .side-subnav button {
   color: #6a7484 !important;
   border-radius: 8px !important;
 }
-.side-subnav button:hover {
+body .side-subnav button:hover {
   background: #f5f7fb !important;
   color: var(--ds-ink) !important;
 }
-.sidebar-bottom {
+body .sidebar-bottom {
   background: var(--ds-card) !important;
   border-top: 1px solid var(--ds-line-soft) !important;
 }
-.user-chip strong {
+body .user-chip strong {
   color: var(--ds-ink-head) !important;
 }
-.user-chip small {
+body .user-chip small {
   color: var(--ds-muted-2) !important;
 }
-.avatar {
+body .avatar {
   border-radius: 10px !important;
   background: linear-gradient(135deg, #4880ff, #6e9aff) !important;
   box-shadow: 0 4px 12px rgba(72, 128, 255, 0.25) !important;
 }
-.logout {
+body .logout {
   color: var(--ds-muted) !important;
 }
-.logout:hover {
+body .logout:hover {
   background: #f5f7fb !important;
   color: var(--ds-ink) !important;
 }
@@ -204,21 +210,21 @@ textarea {
 /* ---------------------------------------------------------------------
    4. TOPBAR — putih tegas dengan garis halus
    --------------------------------------------------------------------- */
-.topbar {
+body .topbar {
   height: 66px !important;
   background: var(--ds-card) !important;
   border-bottom: 1px solid var(--ds-line) !important;
   box-shadow: none !important;
 }
-.topbar-title {
+body .topbar-title {
   font-size: 16px;
   font-weight: 800;
   color: var(--ds-ink-head) !important;
 }
-.topbar-kicker {
+body .topbar-kicker {
   color: var(--ds-muted-2) !important;
 }
-.connection-pill {
+body .connection-pill {
   background: var(--ds-card) !important;
   border-color: var(--ds-line) !important;
   box-shadow: var(--ds-shadow-sm) !important;
@@ -227,24 +233,24 @@ textarea {
 /* ---------------------------------------------------------------------
    5. KARTU & PANEL — permukaan DashStack
    --------------------------------------------------------------------- */
-.card {
+body .card {
   background: var(--ds-card) !important;
   border: 1px solid var(--ds-line) !important;
   border-radius: var(--ds-radius) !important;
   box-shadow: var(--ds-shadow) !important;
 }
-.dashboard-kpi-card,
-.owner-metric,
-.pm-stats article,
-.pm-shell,
-.listing-v2-table-wrap,
-.shipping-v2-table-wrap,
-.campaign-v1-table-wrap,
-.rate-v2-table-wrap {
+body .dashboard-kpi-card,
+body .owner-metric,
+body .pm-shell,
+body .pm-stats article,
+body .listing-v2-table-wrap,
+body .shipping-v2-table-wrap,
+body .campaign-v1-table-wrap,
+body .rate-v2-table-wrap {
   border-radius: var(--ds-radius) !important;
 }
-.dashboard-kpi-card,
-.owner-metric {
+body .dashboard-kpi-card,
+body .owner-metric {
   background: var(--ds-card) !important;
   border: 1px solid var(--ds-line) !important;
   border-radius: var(--ds-radius) !important;
@@ -254,9 +260,10 @@ textarea {
 /* ---------------------------------------------------------------------
    6. TOMBOL — primary solid biru DashStack, sekunder putih bersih
    --------------------------------------------------------------------- */
-.primary,
-.auth-primary-button,
-.asp-primary {
+body .primary,
+body .auth-primary-button,
+body .asp-primary,
+body .auth-v7-primary {
   background: var(--ds-primary) !important;
   background-image: none !important;
   border: 0 !important;
@@ -265,39 +272,46 @@ textarea {
   font-weight: 700 !important;
   box-shadow: 0 1px 3px rgba(72, 128, 255, 0.35) !important;
 }
-.primary:hover:not(:disabled),
-.auth-primary-button:hover:not(:disabled),
-.asp-primary:hover:not(:disabled) {
+body .primary:hover:not(:disabled),
+body .auth-primary-button:hover:not(:disabled),
+body .asp-primary:hover:not(:disabled),
+body .auth-v7-primary:hover:not(:disabled) {
   background: var(--ds-primary-hover) !important;
   box-shadow: 0 2px 6px rgba(72, 128, 255, 0.4) !important;
   transform: none !important;
 }
-.content button,
-.button {
+body .content button,
+body .button {
   border-radius: var(--ds-radius-sm) !important;
 }
-.content button:hover:not(:disabled) {
+body .content button:hover:not(:disabled) {
   transform: none !important;
 }
-.sheet-tabs button.active {
+body .sheet-tabs button.active {
   background: var(--ds-primary) !important;
   color: #fff !important;
+}
+/* Tab Email/WhatsApp di auth: aktif = solid biru DashStack */
+body .auth-v7-tabs button.active {
+  background: var(--ds-primary) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 12px rgba(72, 128, 255, 0.25) !important;
 }
 
 /* ---------------------------------------------------------------------
    7. INPUT — focus ring biru lembut (aksesibilitas + rasa DashStack)
    --------------------------------------------------------------------- */
-.content input:not([type="checkbox"]):not([type="radio"]),
-.content select,
-.content textarea {
+body .content input:not([type="checkbox"]):not([type="radio"]),
+body .content select,
+body .content textarea {
   border-radius: var(--ds-radius-sm) !important;
   border-color: #d5dbe7 !important;
   background: var(--ds-card) !important;
 }
-.content input:focus-visible,
-.content select:focus-visible,
-.content textarea:focus-visible,
-.sidebar .side-nav :focus-visible {
+body .content input:focus-visible,
+body .content select:focus-visible,
+body .content textarea:focus-visible,
+body .sidebar .side-nav :focus-visible {
   outline: 2px solid rgba(72, 128, 255, 0.35) !important;
   outline-offset: 1px;
   border-color: var(--ds-primary) !important;
@@ -306,52 +320,52 @@ textarea {
 /* ---------------------------------------------------------------------
    8. TABEL — kepala tabel abu halus, baris rapi
    --------------------------------------------------------------------- */
-.scroll table thead th,
-.listing-v2-table thead th,
-.shipping-v2-table thead th,
-.campaign-v1-table thead th,
-.rate-v2-table thead th {
+body .scroll table thead th,
+body .listing-v2-table thead th,
+body .shipping-v2-table thead th,
+body .campaign-v1-table thead th,
+body .rate-v2-table thead th {
   background: #f7f8fa !important;
   color: #67728a !important;
   font-weight: 750 !important;
   letter-spacing: 0.03em;
 }
-.scroll table td {
+body .scroll table td {
   border-color: var(--ds-line-soft) !important;
 }
-.scroll table tbody tr:hover {
+body .scroll table tbody tr:hover {
   background: #f8fafd !important;
 }
 
 /* ---------------------------------------------------------------------
    9. STATUS PILLS — pastel DashStack
    --------------------------------------------------------------------- */
-.status-pill.s-paid,
-.pm-status.ok {
+body .status-pill.s-paid,
+body .pm-status.ok {
   background: var(--ds-success-soft) !important;
   color: #027a48 !important;
 }
-.status-pill.s-pending {
+body .status-pill.s-pending {
   background: var(--ds-warning-soft) !important;
   color: #b25e02 !important;
 }
-.status-pill.s-failed,
-.pm-alert-red {
+body .status-pill.s-failed {
   background: var(--ds-danger-soft) !important;
   color: #b42318 !important;
 }
-.status-pill.s-processing {
+body .status-pill.s-processing {
   background: var(--ds-info-soft) !important;
   color: #026aa2 !important;
 }
 
 /* ---------------------------------------------------------------------
    10. AUTH & HALAMAN LOGIN — latar biru DashStack dengan kartu putih
+       (khusus layout auth v7 yang berdiri sendiri, ikut diberi biru lembut)
    --------------------------------------------------------------------- */
-.standalone-auth {
+body .standalone-auth {
   background: linear-gradient(160deg, #4880ff 0%, #3a6ef0 60%, #2f5fd8 100%) !important;
 }
-.auth-shell {
+body .auth-shell {
   border-radius: 20px !important;
   border: 0 !important;
   box-shadow: 0 24px 64px rgba(15, 34, 82, 0.35) !important;
@@ -362,4 +376,8 @@ textarea {
         - Font dideklarasikan via @font-face di bagian 0 (file self-host),
           bukan next/font (tidak kompatibel dengan Turbopack Next 16 di
           project ini). Fallback tetap Inter/system-ui.
+        - Perbaikan 2026-11-01: seluruh selector diberi prefix `body` /
+          `html body` karena urutan chunk CSS Turbopack tidak menjamin
+          layer ini menang cascade — specificity harus lebih tinggi dari
+          rule legacy (0,1,0) ber-`!important`.
    --------------------------------------------------------------------- */
