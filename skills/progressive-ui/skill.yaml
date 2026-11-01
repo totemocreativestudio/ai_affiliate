@@ -1,0 +1,27 @@
+id: sk-progressive-ui
+title: Progressive UI Skill
+type: skill
+version: 1.0.0
+status: approved
+owner: @surya
+created: 2026-11-01
+updated: 2026-11-01
+description: Reusable progressive disclosure components — Drawer, Panel, Collapse, TabContainer
+entryPoint: index.ts
+dependencies:
+  - sk-dashstack-restyle
+  - p-progressive-disclosure
+  - p-inline-expand
+  - p-drawer-pattern
+  - p-modal-pattern
+  - p-collapse-pattern
+  - p-tab-conversion
+exports:
+  - ProgressiveDrawer: "Side drawer, slide-over, full-screen, modal"
+  - ProgressivePanel: "Inline expandable panel"
+  - ExpandableCard: "Card with expandable content"
+  - CollapsibleSection: "Accordion-style section"
+  - TabContainer: "Tab navigation with lazy panels"
+  - useFocusTrap: "Focus management hook"
+  - useFocusReturn: "Focus return hook"
+tags: [progressive, disclosure, drawer, panel, collapse, tabs, ui]
