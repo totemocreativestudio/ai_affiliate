@@ -12,6 +12,7 @@ import "./lumaway-auth-v7.css";
 import "./luma-ops-v4.css";
 import "./lumaway-hallmark.css";
 import "./luma-layout-standard.css";
+import "./lumaway-dashstack-restyle.css";
 import Script from "next/script";
 import ReferralCapture from "./components/ReferralCapture";
 
@@ -37,7 +38,7 @@ export const viewport = {
   maximumScale: 5,
   viewportFit: "cover",
   colorScheme: "light",
-  themeColor: "#f6f7fb",
+  themeColor: "#f7f8fa",
 };
 
 const themeBoot = `(()=>{try{document.documentElement.dataset.theme='light';localStorage.removeItem('lumaway_theme')}catch{}})();`;
