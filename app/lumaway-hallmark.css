@@ -23,12 +23,12 @@
   --lh-ink-3:       oklch(60% 0.008 48);
 
   /* Accent — brand coral / warm orange (warm ~48°) */
-  --lh-accent:      oklch(65% 0.18 48);
-  --lh-accent-2:    oklch(71% 0.14 48);
+  --lh-accent:      #4880ff;
+  --lh-accent-2:    #6e9aff;
   --lh-accent-ink:  oklch(99% 0 0);
-  --lh-accent-soft: oklch(96% 0.05 48);
-  --lh-accent-glow: oklch(65% 0.18 48 / 0.12);
-  --lh-accent-border: oklch(65% 0.18 48 / 0.15);
+  --lh-accent-soft: #ecf2ff;
+  --lh-accent-glow: rgba(72,128,255,0.12);
+  --lh-accent-border: rgba(72,128,255,0.15);
 
   /* Signal colors */
   --lh-success:     oklch(50% 0.14 155);
@@ -45,7 +45,7 @@
   --lh-rule-2:      oklch(85% 0.015 48);
 
   /* Focus ring */
-  --lh-focus:       oklch(65% 0.18 48);
+  --lh-focus:       #4880ff;
 
   /* Typography */
   --lh-font-display: "DM Sans", "Inter", ui-sans-serif, system-ui;

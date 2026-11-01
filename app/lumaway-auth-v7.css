@@ -51,7 +51,7 @@
 .auth-v7-fields label{display:grid;gap:6px}
 .auth-v7-fields label>span{color:#475467;font-size:13px;font-weight:700}
 .auth-v7-fields input{width:100%;box-sizing:border-box;min-height:46px;padding:12px 13px;border:1px solid #d0d5dd;border-radius:11px;background:#fff;color:#101828;font-size:15px;outline:none;transition:border-color .16s ease,box-shadow .16s ease}
-.auth-v7-fields input:focus-visible{border-color:#6674df;box-shadow:0 0 0 4px rgba(88,104,218,.10)}
+.auth-v7-fields input:focus-visible{border-color:#4880ff;box-shadow:0 0 0 4px rgba(72,128,255,.10)}
 .auth-v7-password{position:relative}
 .auth-v7-password input{padding-right:48px}
 .auth-v7-password button{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:40px;height:40px;border:0;background:transparent;color:#667085;display:grid;place-items:center;cursor:pointer;border-radius:9px}
@@ -59,11 +59,11 @@
 .auth-v7-password svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .auth-v7-meta{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:12px 0 16px}
 .auth-v7-meta label{display:flex;align-items:center;gap:8px;color:#667085;font-size:13px}
-.auth-v7-meta input,.auth-v7-consent input{accent-color:#4f63d8;width:18px;height:18px;flex:none;cursor:pointer}
-.auth-v7-meta button,.auth-v7-bottom button,.auth-v7-secondary-link{padding:0;border:0;background:transparent;color:#4055c0;font-size:13px;font-weight:750;cursor:pointer}
+.auth-v7-meta input,.auth-v7-consent input{accent-color:#3a6ef0;width:18px;height:18px;flex:none;cursor:pointer}
+.auth-v7-meta button,.auth-v7-bottom button,.auth-v7-secondary-link{padding:0;border:0;background:transparent;color:#3a6ef0;font-size:13px;font-weight:750;cursor:pointer}
 .auth-v7-consent{display:flex;align-items:flex-start;gap:10px;margin:13px 0 16px;color:#667085;font-size:12.5px;line-height:1.55}
 .auth-v7-consent input{margin-top:1px}
-.auth-v7-consent a{color:#4055c0;text-decoration:none}
+.auth-v7-consent a{color:#3a6ef0;text-decoration:none}
 .auth-v7-consent a:hover{text-decoration:underline}
 .auth-v7-alert{display:grid;gap:4px;margin:13px 0;padding:12px 14px;border-radius:10px;font-size:13px;line-height:1.5}
 .auth-v7-alert b{font-size:12px}
@@ -78,7 +78,7 @@
 .auth-v7-secondary-link{display:inline-flex!important;align-items:center;min-height:32px}
 .auth-v7-legal{margin:22px 0 0;color:#98a2b3;font-size:12px;line-height:1.6}
 
-.auth-static-page{min-height:100svh;display:grid;place-items:center;padding:24px;background:linear-gradient(135deg,#eef2ff,#f8fafc 50%,#eefcff)}
+.auth-static-page{min-height:100svh;display:grid;place-items:center;padding:24px;background:linear-gradient(135deg,#ecf2ff,#f8fafc 50%,#eefcff)}
 .auth-static-card{width:min(100%,520px);padding:28px;border:1px solid #e4e7ec;border-radius:22px;background:#fff;box-shadow:0 18px 55px rgba(31,41,55,.10)}
 .auth-static-brand{display:flex;align-items:center;gap:10px;margin-bottom:24px}
 .auth-static-brand img{width:112px;height:auto}
@@ -86,7 +86,7 @@
 .auth-static-card p{color:#667085;font-size:14px;line-height:1.65}
 .auth-static-card label{display:grid;gap:7px;margin-top:14px;color:#475467;font-size:13px;font-weight:700}
 .auth-static-card input{min-height:46px;padding:11px 13px;border:1px solid #d0d5dd;border-radius:10px;outline:none;font-size:15px}
-.auth-static-card input:focus{border-color:#6674df;box-shadow:0 0 0 4px rgba(88,104,218,.10)}
+.auth-static-card input:focus{border-color:#4880ff;box-shadow:0 0 0 4px rgba(72,128,255,.10)}
 .auth-static-actions{display:flex;gap:10px;margin-top:18px}
 .auth-static-actions button,.auth-static-actions a{min-height:46px;display:inline-flex;align-items:center;justify-content:center;padding:0 18px;border-radius:999px;text-decoration:none;font-size:13px;font-weight:750;cursor:pointer}
 .auth-static-actions .primary{border:0;background:#101318;color:#fff}
@@ -121,4 +121,4 @@
   .auth-v7-slide,.auth-v7-oauth,.auth-v7-primary,.auth-v7-dots button{transition:none}
 }
 /* Keyboard users need a visible focus ring; inputs already declare their own. */
-.auth-v7-oauth:focus-visible,.auth-v7-primary:focus-visible,.auth-v7-password button:focus-visible,.auth-v7-dots button:focus-visible,.auth-v7-meta button:focus-visible,.auth-v7-bottom button:focus-visible,.auth-v7-secondary-link:focus-visible,.auth-static-actions button:focus-visible,.auth-static-actions a:focus-visible{outline:2px solid #6674df;outline-offset:2px}
+.auth-v7-oauth:focus-visible,.auth-v7-primary:focus-visible,.auth-v7-password button:focus-visible,.auth-v7-dots button:focus-visible,.auth-v7-meta button:focus-visible,.auth-v7-bottom button:focus-visible,.auth-v7-secondary-link:focus-visible,.auth-static-actions button:focus-visible,.auth-static-actions a:focus-visible{outline:2px solid #4880ff;outline-offset:2px}

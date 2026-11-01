@@ -17,12 +17,12 @@
 }
 .google-oauth-button:hover{
   transform:translateY(-1px);
-  border-color:#c8c0ff;
-  background:#fcfbff;
-  box-shadow:0 8px 24px rgba(71,55,170,.08);
+  border-color:#6e9aff;
+  background:#ecf2ff;
+  box-shadow:0 8px 24px rgba(58,110,240,.08);
 }
 .google-oauth-button:focus-visible{
-  outline:3px solid oklch(65% 0.18 48 / 0.18);
+  outline:3px solid rgba(72,128,255,0.18);
   outline-offset:2px;
 }
 .google-oauth-button:disabled{
@@ -38,7 +38,7 @@
   border-radius:50%;
   border:1px solid #e3e6ed;
   background:#fff;
-  color:#4285f4;
+  color:#4880ff;
   font:800 15px/1 Arial,sans-serif;
 }
 @media(max-width:680px){
