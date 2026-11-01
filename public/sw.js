@@ -1,12 +1,9 @@
 // Service worker Lumaway — PWA shell + auto-update.
 //
-// FIX: versi cache dinaikkan (v5 → v6) dan shell ("/" & "/dashboard") TIDAK lagi
-// di-cache offline-first. Sebelumnya shell di-precache lalu di-"stale-while-revalidate",
-// sehingga UI lama tetap tampil di Vercel walau sudah deploy baru dan user sudah
-// clear cache aplikasi. Sekarang navigasi selalu ambil network terbaru; cache hanya
-// dipakai sebagai fallback offline. Naikkan CACHE_VERSION setiap kali ada perubahan
-// penting agar klien lama otomatis dibersihkan.
-const CACHE_VERSION = "v6";
+// FIX: naikkan CACHE_VERSION setiap kali ada perubahan penting agar klien lama
+// otomatis dibersihkan.
+// v7: DashStack restyle layer (lumaway-dashstack-restyle.css) + font Nunito Sans.
+const CACHE_VERSION = "v7";
 const CACHE = `lumaway-shell-${CACHE_VERSION}`;
 // Hanya aset yang benar-benar statis & aman untuk offline. Shell HTML tidak di-precache.
 const STATIC = ["/offline.html", "/manifest.webmanifest", "/luma-mark.png"];

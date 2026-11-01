@@ -131,8 +131,9 @@ if (!appShell.includes('document.documentElement.dataset.theme = "light"')) {
   fail("Lumaway must stay in stable light-only mode");
 }
 
-if (!serviceWorker.includes('const CACHE_VERSION = "v6"')) {
-  fail("service worker cache version must match the light-only production shell");
+const cacheVersionMatch = serviceWorker.match(/const CACHE_VERSION = "v(\d+)"/);
+if (!cacheVersionMatch || Number(cacheVersionMatch[1]) < 6) {
+  fail("service worker cache version must be v6 or newer (bump CACHE_VERSION on every important shell change)");
 }
 if (serviceWorker.includes('caches.match("/")')) {
   fail("service worker must not use the root route as an offline navigation fallback");
