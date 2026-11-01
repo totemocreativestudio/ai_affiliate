@@ -61,6 +61,30 @@
   --ds-radius-sm: 10px;
   --ds-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
   --ds-shadow: 0 1px 3px rgba(16, 24, 40, 0.06), 0 6px 16px rgba(16, 24, 40, 0.05);
+
+  /* Spacing scale (4px grid) */
+  --ds-space-1: 4px;
+  --ds-space-2: 8px;
+  --ds-space-3: 12px;
+  --ds-space-4: 16px;
+  --ds-space-5: 20px;
+  --ds-space-6: 24px;
+  --ds-space-8: 32px;
+  --ds-space-10: 40px;
+  --ds-space-12: 48px;
+
+  /* Typography scale */
+  --ds-text-xs: 12px;
+  --ds-text-sm: 13px;
+  --ds-text-base: 14px;
+  --ds-text-lg: 16px;
+  --ds-text-xl: 18px;
+  --ds-text-2xl: 22px;
+  --ds-text-3xl: 28px;
+  --ds-text-4xl: 34px;
+  --ds-leading-tight: 1.25;
+  --ds-leading-normal: 1.5;
+  --ds-leading-relaxed: 1.65;
 }
 
 /* ---------------------------------------------------------------------
@@ -329,13 +353,215 @@ body .rate-v2-table thead th {
   color: #67728a !important;
   font-weight: 750 !important;
   letter-spacing: 0.03em;
+  font-size: var(--ds-text-sm) !important;
 }
-body .scroll table td {
+body .scroll table td,
+body .scroll table th {
+  padding: var(--ds-space-3) var(--ds-space-4) !important;
   border-color: var(--ds-line-soft) !important;
+  font-size: var(--ds-text-sm) !important;
 }
 body .scroll table tbody tr:hover {
   background: #f8fafd !important;
 }
+
+/* ---------------------------------------------------------------------
+   9. TIPOGRAFI DASAR — skala terbaca, rhythm vertikal
+   --------------------------------------------------------------------- */
+html body {
+  font-size: var(--ds-text-base) !important;
+  line-height: var(--ds-leading-normal) !important;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+body .content {
+  font-size: var(--ds-text-base) !important;
+  line-height: var(--ds-leading-relaxed) !important;
+}
+body .content p,
+body .content li,
+body .content td,
+body .content th,
+body .content label {
+  font-size: var(--ds-text-sm) !important;
+  line-height: var(--ds-leading-relaxed) !important;
+}
+body .content h1 { font-size: var(--ds-text-4xl) !important; line-height: var(--ds-leading-tight) !important; }
+body .content h2 { font-size: var(--ds-text-2xl) !important; line-height: var(--ds-leading-tight) !important; }
+body .content h3 { font-size: var(--ds-text-xl) !important; line-height: var(--ds-leading-tight) !important; }
+body .content h4 { font-size: var(--ds-text-lg) !important; line-height: var(--ds-leading-normal) !important; }
+body .content small { font-size: var(--ds-text-xs) !important; line-height: var(--ds-leading-normal) !important; }
+body .content .eyebrow { font-size: 10px !important; letter-spacing: 0.14em !important; }
+
+/* Paragraph spacing rhythm */
+body .content p + p,
+body .content h2 + p,
+body .content h3 + p,
+body .content ul + p,
+body .content ol + p,
+body .content table + p {
+  margin-top: var(--ds-space-4) !important;
+}
+body .content h2 { margin-top: var(--ds-space-8) !important; }
+body .content h3 { margin-top: var(--ds-space-6) !important; }
+body .content h4 { margin-top: var(--ds-space-5) !important; }
+body .content ul, body .content ol { margin-top: var(--ds-space-3) !important; padding-left: var(--ds-space-5) !important; }
+
+/* ---------------------------------------------------------------------
+   10. PAGE HEADER — struktur halaman konsisten
+   --------------------------------------------------------------------- */
+body .page-head,
+body .legacy-page-anchor > .page-head,
+body .legacy-page-anchor > header:first-child,
+body .dashboard-page > header:first-child {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: var(--ds-space-4) !important;
+  margin-bottom: var(--ds-space-6) !important;
+  padding-bottom: var(--ds-space-4) !important;
+  border-bottom: 1px solid var(--ds-line) !important;
+}
+body .page-head > div:first-child,
+body .page-head-main { min-width: 0; }
+body .page-head h1 { margin: 0 !important; }
+body .page-head .eyebrow { margin-bottom: var(--ds-space-2) !important; }
+body .page-head-actions { display: flex !important; gap: var(--ds-space-2) !important; flex-wrap: wrap !important; align-items: center !important; }
+
+/* ---------------------------------------------------------------------
+   11. SECTION HEAD — heading kartu / panel
+   --------------------------------------------------------------------- */
+body .section-head {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: var(--ds-space-3) !important;
+  margin-bottom: var(--ds-space-4) !important;
+}
+body .section-head > div:first-child { min-width: 0; }
+body .section-head h2,
+body .section-head h3,
+body .section-head h4 { margin: 0 !important; }
+body .section-head h3 { font-size: var(--ds-text-lg) !important; }
+body .section-head h4 { font-size: var(--ds-text-base) !important; }
+body .section-head p { margin: var(--ds-space-1) 0 0 !important; font-size: var(--ds-text-xs) !important; color: var(--ds-muted) !important; }
+body .section-head-actions { display: flex !important; gap: var(--ds-space-2) !important; align-items: center !important; flex-wrap: wrap !important; }
+
+/* ---------------------------------------------------------------------
+   12. GRID & CARD SPACING — ruang konsisten 4px grid
+   --------------------------------------------------------------------- */
+body .grid,
+body .dashboard-grid,
+body .card-grid,
+body .kpi-grid {
+  display: grid !important;
+  gap: var(--ds-space-4) !important;
+}
+body .dashboard-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+body .kpi-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+@media (max-width: 1100px) {
+  body .dashboard-grid { grid-template-columns: 1fr !important; }
+  body .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+@media (max-width: 640px) {
+  body .kpi-grid { grid-template-columns: 1fr !important; }
+}
+body .card {
+  padding: var(--ds-space-5) !important;
+}
+body .card .card-body { padding: 0 !important; }
+
+/* ---------------------------------------------------------------------
+   13. EMPTY STATES — keadaan kosong yang informatif
+   --------------------------------------------------------------------- */
+body .empty-state,
+body .smart-empty,
+body [class*="empty-state"],
+body .no-data {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: var(--ds-space-10) var(--ds-space-6) !important;
+  text-align: center !important;
+  background: var(--ds-card) !important;
+  border: 1px dashed var(--ds-line) !important;
+  border-radius: var(--ds-radius) !important;
+}
+body .empty-state svg,
+body .empty-state i[class*="icon"] { width: 48px !important; height: 48px !important; color: var(--ds-muted-2) !important; margin-bottom: var(--ds-space-3) !important; }
+body .empty-state h3 { margin: 0 0 var(--ds-space-2) !important; font-size: var(--ds-text-lg) !important; color: var(--ds-ink-head) !important; }
+body .empty-state p { margin: 0 !important; font-size: var(--ds-text-sm) !important; color: var(--ds-muted) !important; max-width: 280px; }
+body .empty-state .empty-action { margin-top: var(--ds-space-4) !important; }
+
+/* ---------------------------------------------------------------------
+   14. SCROLLBAR — halus, tidak mengganggu
+   --------------------------------------------------------------------- */
+body ::-webkit-scrollbar { width: 8px !important; height: 8px !important; }
+body ::-webkit-scrollbar-track { background: transparent !important; }
+body ::-webkit-scrollbar-thumb { background: var(--ds-line) !important; border-radius: 4px !important; border: 2px solid transparent !important; background-clip: content-box !important; }
+body ::-webkit-scrollbar-thumb:hover { background: var(--ds-muted-2) !important; }
+body { scrollbar-width: thin !important; scrollbar-color: var(--ds-line) transparent !important; }
+
+/* ---------------------------------------------------------------------
+   15. FOCUS VISIBLE — aksesibilitas keyboard jelas
+   --------------------------------------------------------------------- */
+body *:focus-visible {
+  outline: 2px solid var(--ds-primary) !important;
+  outline-offset: 2px !important;
+}
+body button:focus-visible,
+body a:focus-visible,
+body input:focus-visible,
+body select:focus-visible,
+body textarea:focus-visible,
+body [tabindex]:focus-visible {
+  outline: 2px solid var(--ds-primary) !important;
+  outline-offset: 2px !important;
+}
+
+/* ---------------------------------------------------------------------
+   16. RESPONSIVE TOUCH TARGETS — minimal 44px
+   --------------------------------------------------------------------- */
+@media (pointer: coarse) {
+  body .side-nav a,
+  body .side-nav > button,
+  body .side-group summary,
+  body .topbar button,
+  body .connection-pill,
+  body .card button,
+  body .button,
+  body .primary,
+  body .content button,
+  body .pagination button,
+  body .tab-button {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+}
+
+/* ---------------------------------------------------------------------
+   17. UTILITY — spacing helpers (dipakai internal bila perlu)
+   --------------------------------------------------------------------- */
+body .mt-1 { margin-top: var(--ds-space-1) !important; }
+body .mt-2 { margin-top: var(--ds-space-2) !important; }
+body .mt-3 { margin-top: var(--ds-space-3) !important; }
+body .mt-4 { margin-top: var(--ds-space-4) !important; }
+body .mt-5 { margin-top: var(--ds-space-5) !important; }
+body .mt-6 { margin-top: var(--ds-space-6) !important; }
+body .mb-1 { margin-bottom: var(--ds-space-1) !important; }
+body .mb-2 { margin-bottom: var(--ds-space-2) !important; }
+body .mb-3 { margin-bottom: var(--ds-space-3) !important; }
+body .mb-4 { margin-bottom: var(--ds-space-4) !important; }
+body .gap-2 { gap: var(--ds-space-2) !important; }
+body .gap-3 { gap: var(--ds-space-3) !important; }
+body .gap-4 { gap: var(--ds-space-4) !important; }
 
 /* ---------------------------------------------------------------------
    9. STATUS PILLS — pastel DashStack
