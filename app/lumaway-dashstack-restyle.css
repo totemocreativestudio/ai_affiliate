@@ -88,6 +88,22 @@
 }
 
 /* ---------------------------------------------------------------------
+   0b. FORCE TOKENS — override any legacy values with highest specificity
+   --------------------------------------------------------------------- */
+html { background: #f7f8fa !important; }
+html, body {
+  background: #f7f8fa !important;
+  color: #141b2d !important;
+  font-family: "Nunito Sans", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  font-size: 14px !important;
+  line-height: 1.65 !important;
+  -webkit-font-smoothing: antialiased !important;
+  text-rendering: optimizeLegibility !important;
+}
+*, *::before, *::after { box-sizing: border-box; }
+button, input, select, textarea { font-family: inherit !important; font-size: inherit !important; }
+
+/* ---------------------------------------------------------------------
    1. Fondasi: warna halaman + font Nunito Sans (karakter DashStack)
    --------------------------------------------------------------------- */
 html {
@@ -634,6 +650,169 @@ body .auth-shell {
   border-radius: 20px !important;
   border: 0 !important;
   box-shadow: 0 24px 64px rgba(15, 34, 82, 0.35) !important;
+}
+
+/* ---------------------------------------------------------------------
+   12. PAGE HEADER — struktur halaman konsisten
+   --------------------------------------------------------------------- */
+body .page-head,
+body .legacy-page-anchor > .page-head,
+body .legacy-page-anchor > header:first-child,
+body .dashboard-page > header:first-child {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: var(--ds-space-4) !important;
+  margin-bottom: var(--ds-space-6) !important;
+  padding-bottom: var(--ds-space-4) !important;
+  border-bottom: 1px solid var(--ds-line) !important;
+}
+body .page-head > div:first-child,
+body .page-head-main { min-width: 0; }
+body .page-head h1 { margin: 0 !important; }
+body .page-head .eyebrow { margin-bottom: var(--ds-space-2) !important; }
+body .page-head-actions { display: flex !important; gap: var(--ds-space-2) !important; flex-wrap: wrap !important; align-items: center !important; }
+
+/* ---------------------------------------------------------------------
+   13. SECTION HEAD — heading kartu / panel
+   --------------------------------------------------------------------- */
+body .section-head {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: var(--ds-space-3) !important;
+  margin-bottom: var(--ds-space-4) !important;
+}
+body .section-head > div:first-child { min-width: 0; }
+body .section-head h2,
+body .section-head h3,
+body .section-head h4 { margin: 0 !important; }
+body .section-head h3 { font-size: var(--ds-text-lg) !important; }
+body .section-head h4 { font-size: var(--ds-text-base) !important; }
+body .section-head p { margin: var(--ds-space-1) 0 0 !important; font-size: var(--ds-text-xs) !important; color: var(--ds-muted) !important; }
+body .section-head-actions { display: flex !important; gap: var(--ds-space-2) !important; align-items: center !important; flex-wrap: wrap !important; }
+
+/* ---------------------------------------------------------------------
+   14. GRID & CARD SPACING — ruang konsisten 4px grid
+   --------------------------------------------------------------------- */
+body .grid,
+body .dashboard-grid,
+body .card-grid,
+body .kpi-grid {
+  display: grid !important;
+  gap: var(--ds-space-4) !important;
+}
+body .dashboard-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+body .kpi-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+@media (max-width: 1100px) {
+  body .dashboard-grid { grid-template-columns: 1fr !important; }
+  body .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+@media (max-width: 640px) {
+  body .kpi-grid { grid-template-columns: 1fr !important; }
+}
+body .card {
+  padding: var(--ds-space-5) !important;
+}
+body .card .card-body { padding: 0 !important; }
+
+/* ---------------------------------------------------------------------
+   15. TABLE — konsisten, terbaca
+   --------------------------------------------------------------------- */
+body .scroll table thead th,
+body .listing-v2-table thead th,
+body .shipping-v2-table thead th,
+body .campaign-v1-table thead th,
+body .rate-v2-table thead th {
+  background: #f7f8fa !important;
+  color: #67728a !important;
+  font-weight: 750 !important;
+  letter-spacing: 0.03em;
+  font-size: var(--ds-text-sm) !important;
+}
+body .scroll table td,
+body .scroll table th {
+  padding: var(--ds-space-3) var(--ds-space-4) !important;
+  border-color: var(--ds-line-soft) !important;
+  font-size: var(--ds-text-sm) !important;
+}
+body .scroll table tbody tr:hover {
+  background: #f8fafd !important;
+}
+
+/* ---------------------------------------------------------------------
+   16. EMPTY STATES — keadaan kosong yang informatif
+   --------------------------------------------------------------------- */
+body .empty-state,
+body .smart-empty,
+body [class*="empty-state"],
+body .no-data {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: var(--ds-space-10) var(--ds-space-6) !important;
+  text-align: center !important;
+  background: var(--ds-card) !important;
+  border: 1px dashed var(--ds-line) !important;
+  border-radius: var(--ds-radius) !important;
+}
+body .empty-state svg,
+body .empty-state i[class*="icon"] { width: 48px !important; height: 48px !important; color: var(--ds-muted-2) !important; margin-bottom: var(--ds-space-3) !important; }
+body .empty-state h3 { margin: 0 0 var(--ds-space-2) !important; font-size: var(--ds-text-lg) !important; color: var(--ds-ink-head) !important; }
+body .empty-state p { margin: 0 !important; font-size: var(--ds-text-sm) !important; color: var(--ds-muted) !important; max-width: 280px; }
+body .empty-state .empty-action { margin-top: var(--ds-space-4) !important; }
+
+/* ---------------------------------------------------------------------
+   17. SCROLLBAR — halus, tidak mengganggu
+   --------------------------------------------------------------------- */
+body ::-webkit-scrollbar { width: 8px !important; height: 8px !important; }
+body ::-webkit-scrollbar-track { background: transparent !important; }
+body ::-webkit-scrollbar-thumb { background: var(--ds-line) !important; border-radius: 4px !important; border: 2px solid transparent !important; background-clip: content-box !important; }
+body ::-webkit-scrollbar-thumb:hover { background: var(--ds-muted-2) !important; }
+body { scrollbar-width: thin !important; scrollbar-color: var(--ds-line) transparent !important; }
+
+/* ---------------------------------------------------------------------
+   18. FOCUS VISIBLE — aksesibilitas keyboard jelas
+   --------------------------------------------------------------------- */
+body *:focus-visible {
+  outline: 2px solid var(--ds-primary) !important;
+  outline-offset: 2px !important;
+}
+body button:focus-visible,
+body a:focus-visible,
+body input:focus-visible,
+body select:focus-visible,
+body textarea:focus-visible,
+body [tabindex]:focus-visible {
+  outline: 2px solid var(--ds-primary) !important;
+  outline-offset: 2px !important;
+}
+
+/* ---------------------------------------------------------------------
+   19. RESPONSIVE TOUCH TARGETS — minimal 44px
+   --------------------------------------------------------------------- */
+@media (pointer: coarse) {
+  body .side-nav a,
+  body .side-nav > button,
+  body .side-group summary,
+  body .topbar button,
+  body .connection-pill,
+  body .card button,
+  body .button,
+  body .primary,
+  body .content button,
+  body .pagination button,
+  body .tab-button {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
 }
 
 /* ---------------------------------------------------------------------
