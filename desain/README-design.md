@@ -32,4 +32,8 @@ Status pekerjaan aktif: **DashStack Restyle — migrasi penuh warna** (REVIEW �
   (dormant, app light-only) dipertahankan. Token root ikut di-set
   (`--luma`/`--luma-deep`/`--luma-soft`, `--ui-accent`, `--lw4-violet`,
   `--lwv5-violet/purple`, `--lh-accent/focus`, brand gradient `--lwv5-*` → biru).
+- [x] **Layout & Tipografi rapih** (2026-11-01) — spacing 4px grid, tipografi floor 12px,
+  page/section head terstruktur, grid/card rhythm, tabel cell padding, empty state
+  informatif, scrollbar tipis, focus visible, touch target ≥44px. 889 rule mikro
+  (6–9.5px) dinaikkan ke skala terbaca.
 - [ ] Feedback owner setelah deploy → label jadi `APPROVED` kalau disetujui/revisi `REVISION`

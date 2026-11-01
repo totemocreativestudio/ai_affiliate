@@ -32,6 +32,7 @@ Dashboard UI Kit (Figma Community, oleh Seju).
 | Halaman auth: latar gradient biru DashStack + kartu putih | Menyamakan identitas login dengan kit | Sample login page |
 | Implementasi = **1 layer additive** `app/lumaway-dashstack-restyle.css` di-import terakhir | Rapih, reversible, tidak menyentuh/menghapus CSS lama (aturan owner: jangan hapus apa pun) | — |
 | PWA cache naik ke `v7` | Per its own instruction: wajib naikkan versi saat ada perubahan visual penting | — |
+| Layout & tipografi (tambahan 2026-11-01) | Spacing 4px grid, floor 12px, page/section head, grid/card rhythm, tabel, empty state, scrollbar, focus ring, touch 44px | 889 rule mikro di-naikkan, rhythm vertikal konsisten |
 
 ## UNKNOWN
 
