@@ -1,0 +1,18 @@
+id: sk-git-workflow
+title: Git Workflow Skill
+type: skill
+version: 1.0.0
+status: approved
+owner: @surya
+created: 2026-11-01
+updated: 2026-11-01
+description: Git workflow best practices, branching strategy, commit conventions, and PR management for team collaboration
+entryPoint: index.ts
+dependencies: []
+exports:
+  - GIT_WORKFLOW: "Complete git workflow guide and utilities"
+  - COMMIT_TYPES: "Conventional commit types"
+  - BRANCH_NAMING: "Branch naming conventions"
+  - PR_TEMPLATE: "PR template for consistent reviews"
+  - gitHelpers: "Helper functions for common git operations"
+tags: [git, workflow, branching, commits, pr, team]
