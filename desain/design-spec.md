@@ -78,3 +78,27 @@ Total: ±1.275 penggantian di 42 file CSS + perbaikan token root
 (`--luma-deep` → `#3a6ef0`, `--ui-accent`, `--lw4-violet`, `--lwv5-violet`,
 `--lwv5-purple`, `--lh-accent`, `--lh-focus`). Verifikasi: scan HSL akhir tanpa
 sisa violet saturasi; `npm run verify` + `npm run build` hijau.
+
+## 6. Layout & Tipografi rapih (2026-11-01)
+
+Permintaan owner: "perbaiki layout dan penempatannya, rapih dan mudah dipahami".
+Ditemukan 889 rule `font-size: 6–9.5px` di 36 file (mikroskopis). Perbaikan via
+layer restyle (section 9–17):
+
+| Area | Sebelum | Sesudah |
+| --- | --- | --- |
+| Spacing | acak | token `--ds-space-1..12` (4px grid) |
+| Tipografi body | 12–14px tidak konsisten | base 14px, line-height 1.65 |
+| Heading | ukuran acak, margin tidak ada | skala 34/28/22/18/16px, margin-top rhythm |
+| Paragraph | tanpa spasi vertikal | `margin-top: 16px` antar p/h2/h3 |
+| Page header | tidak ada / header acak | `.page-head` flex eyebrow+h1 kiri, action kanan, border-b |
+| Section head | tidak konsisten | `.section-head` flex heading+meta kiri, action kanan |
+| Grid kartu | gap acak | `.dashboard-grid` 2-kolom, `.kpi-grid` 4-kolom, gap 16px, responsive |
+| Card padding | 12–20px acak | 20px (space-5) |
+| Tabel cell | padding tipis, font 8–9px | padding 12×16px, font 13px, header 13px weight 750 |
+| Empty state | tidak ada / tersembunyi | centered icon+h3+p+CTA, border dashed, radius 16px |
+| Scrollbar | default browser | 8px track transparan, thumb `#e6eaf1` |
+| Focus keyboard | outline tidak terlihat | ring biru `#4880ff` offset 2px |
+| Touch target | < 44px | ≥ 44×44px (pointer: coarse) |
+
+Semua via layer additive — tidak menyentuh CSS lama.
