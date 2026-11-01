@@ -1,0 +1,191 @@
+# ICM Global Relationship Map
+# Auto-generated from frontmatter relationships — source of truth for navigation
+
+relationships:
+  # Design System Token Hierarchy
+  - from: k-dashstack-tokens
+    to: k-color-palette
+    type: implements
+    description: "Tokens implement color palette definitions"
+  - from: k-dashstack-tokens
+    to: k-spacing-scale
+    type: implements
+    description: "Tokens implement spacing scale"
+  - from: k-dashstack-tokens
+    to: k-typography-scale
+    type: implements
+    description: "Tokens implement typography scale"
+  - from: k-dashstack-tokens
+    to: k-elevation-shadow
+    type: implements
+    description: "Tokens implement elevation/shadow scale"
+  
+  # Architecture implements Design Spec
+  - from: a-shell-architecture
+    to: s-design-spec
+    type: implements
+    description: "Shell architecture implements design specification"
+  - from: a-css-layer-strategy
+    to: s-design-spec
+    type: implements
+    description: "CSS layer strategy implements design spec layer approach"
+  - from: a-route-mapping
+    to: s-design-spec
+    type: implements
+    description: "Route mapping implements navigation spec"
+  
+  # Navigation Maps
+  - from: m-sidebar-map
+    to: a-shell-architecture
+    type: references
+    description: "Sidebar map references shell architecture"
+  - from: m-sidebar-map
+    to: m-group-defaults
+    type: relates-to
+    description: "Sidebar map relates to group defaults"
+  - from: m-sidebar-map
+    to: m-progressive-triggers
+    type: relates-to
+    description: "Sidebar map relates to progressive triggers"
+  - from: m-group-defaults
+    to: m-sidebar-map
+    type: relates-to
+    description: "Group defaults relate to sidebar map"
+  - from: m-progressive-triggers
+    to: m-sidebar-map
+    type: relates-to
+    description: "Progressive triggers relate to sidebar map"
+  
+  # Patterns
+  - from: p-progressive-disclosure
+    to: s-progressive-disclosure-spec
+    type: implements
+    description: "Pattern implements progressive disclosure spec"
+  - from: p-progressive-disclosure
+    to: k-dashstack-tokens
+    type: references
+    description: "Pattern references design tokens for animations"
+  - from: p-inline-expand
+    to: p-progressive-disclosure
+    type: extends
+    description: "Inline expand extends base progressive disclosure pattern"
+  - from: p-drawer-pattern
+    to: p-progressive-disclosure
+    type: extends
+    description: "Drawer pattern extends base progressive disclosure pattern"
+  - from: p-modal-pattern
+    to: p-progressive-disclosure
+    type: extends
+    description: "Modal pattern extends base progressive disclosure pattern"
+  - from: p-collapse-pattern
+    to: p-progressive-disclosure
+    type: extends
+    description: "Collapse pattern extends base progressive disclosure pattern"
+  - from: p-tab-conversion
+    to: p-progressive-disclosure
+    type: extends
+    description: "Tab conversion extends base progressive disclosure pattern"
+  
+  # Inventory
+  - from: i-component-inventory
+    to: a-shell-architecture
+    type: relates-to
+    description: "Component inventory relates to shell architecture"
+  
+  # Specs
+  - from: s-design-spec
+    to: d-001-dashstack-adoption
+    type: decides
+    description: "Design spec decided by dashstack adoption ADR"
+  - from: s-design-spec
+    to: d-004-no-feature-deletion
+    type: governs
+    description: "Design spec governed by no feature deletion decision"
+  - from: s-progressive-disclosure-spec
+    to: d-002-progressive-disclosure
+    type: decides
+    description: "Progressive disclosure spec decided by ADR"
+  - from: s-progressive-disclosure-spec
+    to: d-003-sidebar-smart-defaults
+    type: governs
+    description: "Progressive disclosure governed by sidebar defaults decision"
+  - from: s-layout-typography-spec
+    to: s-design-spec
+    type: extends
+    description: "Layout/typography spec extends base design spec"
+  
+  # Decisions (ADRs)
+  - from: d-001-dashstack-adoption
+    to: s-design-spec
+    type: decides
+    description: "ADR decides on design spec approach"
+  - from: d-002-progressive-disclosure
+    to: s-progressive-disclosure-spec
+    type: decides
+    description: "ADR decides on progressive disclosure spec"
+  - from: d-003-sidebar-smart-defaults
+    to: m-sidebar-map
+    type: decides
+    description: "ADR decides on sidebar smart defaults"
+  - from: d-004-no-feature-deletion
+    to: s-design-spec
+    type: governs
+    description: "ADR governs no feature deletion policy"
+  
+  # Skills reference Knowledge and Specs
+  - from: sk-dashstack-restyle
+    to: k-dashstack-tokens
+    type: references
+    description: "Skill references design tokens"
+  - from: sk-dashstack-restyle
+    to: s-design-spec
+    type: implements
+    description: "Skill implements design spec"
+  - from: sk-dashstack-restyle
+    to: k-typography-scale
+    type: references
+    description: "Skill references typography scale"
+  - from: sk-dashstack-restyle
+    to: k-spacing-scale
+    type: references
+    description: "Skill references spacing scale"
+  
+  - from: sk-sidebar-management
+    to: m-sidebar-map
+    type: references
+    description: "Skill references sidebar navigation map"
+  - from: sk-sidebar-management
+    to: m-group-defaults
+    type: references
+    description: "Skill references group defaults"
+  - from: sk-sidebar-management
+    to: d-003-sidebar-smart-defaults
+    type: implements
+    description: "Skill implements sidebar defaults decision"
+  
+  - from: sk-progressive-ui
+    to: p-progressive-disclosure
+    type: references
+    description: "Skill references progressive disclosure patterns"
+  - from: sk-progressive-ui
+    to: s-progressive-disclosure-spec
+    type: implements
+    description: "Skill implements progressive disclosure spec"
+  - from: sk-progressive-ui
+    to: k-dashstack-tokens
+    type: references
+    description: "Skill references design tokens for animations"
+
+  # Cross-references
+  - from: k-dashstack-tokens
+    to: sk-dashstack-restyle
+    type: references
+    description: "Tokens referenced by restyle skill"
+  - from: m-sidebar-map
+    to: sk-sidebar-management
+    type: references
+    description: "Sidebar map referenced by sidebar management skill"
+  - from: p-progressive-disclosure
+    to: sk-progressive-ui
+    type: references
+    description: "Patterns referenced by progressive UI skill"

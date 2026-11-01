@@ -1,0 +1,122 @@
+# ICM Frontmatter Schema Definition
+# Version: 1.0.0
+# Governed by: ICM (Information Content Model) - Jake Van Clief
+
+schema:
+  version: "1.0.0"
+  required_fields:
+    - id
+    - title
+    - type
+    - status
+    - version
+    - owner
+    - created
+    - updated
+    - tags
+    - relationships
+    - governance
+  field_definitions:
+    id:
+      type: string
+      pattern: "^[a-z]+-[a-z0-9-]+$"
+      description: "Unique atomic identifier, kebab-case, prefixed by type"
+      examples: ["k-dashstack-tokens", "s-design-spec", "d-001-dashstack-adoption"]
+    title:
+      type: string
+      max_length: 120
+      description: "Human-readable title"
+    type:
+      type: string
+      enum: [knowledge, architecture, mapping, pattern, inventory, spec, decision, skill]
+      description: "Content type - determines processing and relationships"
+    status:
+      type: string
+      enum: [draft, review, approved, deprecated]
+      default: draft
+    version:
+      type: string
+      pattern: "^\\d+\\.\\d+\\.\\d+$"
+      description: "Semantic version"
+    owner:
+      type: string
+      pattern: "^@[a-z]+$"
+      description: "Owner handle"
+    created:
+      type: string
+      format: date
+      description: "Creation date ISO 8601"
+    updated:
+      type: string
+      format: date
+      description: "Last update date ISO 8601"
+    tags:
+      type: array
+      items:
+        type: string
+        pattern: "^[a-z0-9-]+$"
+      description: "Lowercase kebab-case tags for discovery"
+    relationships:
+      type: array
+      items:
+        type: object
+        properties:
+          type:
+            type: string
+            enum: [relates-to, implements, extends, references, governs, decides, depends-on]
+          target:
+            type: string
+            pattern: "^[a-z]+-[a-z0-9-]+$"
+          description:
+            type: string
+      description: "Explicit relationships to other atomic content"
+    governance:
+      type: object
+      properties:
+        review-cycle:
+          type: string
+          pattern: "^\\d+[dwy]$"
+          description: "Review cycle: days (d), weeks (w), years (y)"
+        last-reviewed:
+          type: string
+          format: date
+        reviewers:
+          type: array
+          items:
+            type: string
+            pattern: "^@[a-z]+$"
+      required: [review-cycle, last-reviewed]
+
+content_types:
+  knowledge:
+    prefix: "k-"
+    description: "Reusable context, facts, tokens, definitions"
+    required_relationships: [implements, references]
+  architecture:
+    prefix: "a-"
+    description: "System structure, data flow, technical architecture"
+    required_relationships: [implements, relates-to]
+  mapping:
+    prefix: "m-"
+    description: "Relationship maps, navigation, cross-references"
+    required_relationships: [relates-to, references]
+  pattern:
+    prefix: "p-"
+    description: "Reusable UI/UX patterns with code snippets"
+    required_relationships: [implements, references]
+  inventory:
+    prefix: "i-"
+    description: "Component/asset catalog with metadata"
+    required_relationships: [relates-to]
+  spec:
+    prefix: "s-"
+    description: "Requirements, acceptance criteria, specifications"
+    required_relationships: [decides, relates-to]
+  decision:
+    prefix: "d-"
+    description: "Architecture Decision Records (ADR)"
+    required_relationships: [decides, governs]
+  skill:
+    prefix: "sk-"
+    description: "Reusable code logic with manifest"
+    required_relationships: [references, implements]

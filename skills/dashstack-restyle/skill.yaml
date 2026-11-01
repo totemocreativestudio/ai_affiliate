@@ -1,0 +1,27 @@
+id: sk-dashstack-restyle
+title: DashStack Restyle Skill
+type: skill
+version: 1.0.0
+status: approved
+owner: @surya
+created: 2026-11-01
+updated: 2026-11-01
+description: Provides DashStack design tokens, animations, and utility classes via additive CSS restyle layer
+entryPoint: index.ts
+dependencies:
+  - k-dashstack-tokens
+  - k-color-palette
+  - k-spacing-scale
+  - k-typography-scale
+  - k-elevation-shadow
+exports:
+  - tokens: "--ds-* CSS custom properties"
+  - animations: "@keyframes ds-* + utility classes"
+  - utilities: "spacing, typography, focus, scrollbar, touch-target classes"
+  - components: "card, button, input, table, empty-state, page-head, section-head patterns"
+files:
+  - index.ts
+  - tokens.ts
+  - animations.ts
+  - components/
+tags: [design-system, tokens, css, utilities]

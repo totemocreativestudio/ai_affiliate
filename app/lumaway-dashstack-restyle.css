@@ -564,6 +564,45 @@ body .gap-3 { gap: var(--ds-space-3) !important; }
 body .gap-4 { gap: var(--ds-space-4) !important; }
 
 /* ---------------------------------------------------------------------
+   18. PROGRESSIVE DISCLOSURE ANIMATIONS — hide/show/minimize smooth
+   --------------------------------------------------------------------- */
+@keyframes ds-slide-down {
+  from { opacity: 0; transform: translateY(-6px); max-height: 0; }
+  to   { opacity: 1; transform: translateY(0); max-height: 500px; }
+}
+@keyframes ds-slide-up {
+  from { opacity: 1; transform: translateY(0); max-height: 500px; }
+  to   { opacity: 0; transform: translateY(-6px); max-height: 0; }
+}
+@keyframes ds-slide-right {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes ds-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ds-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes ds-expand-height { from { max-height: 0; opacity: 0; } to { max-height: 800px; opacity: 1; } }
+@keyframes ds-collapse-height { from { max-height: 800px; opacity: 1; } to { max-height: 0; opacity: 0; } }
+@keyframes ds-chevron-rotate { from { transform: rotate(0deg); } to { transform: rotate(180deg); } }
+
+body .ds-progressive-panel { animation: ds-slide-down 0.2s ease both; overflow: hidden; }
+body .ds-progressive-panel.closing { animation: ds-slide-up 0.15s ease both; }
+body .ds-drawer { animation: ds-slide-right 0.22s ease both; }
+body .ds-fade { animation: ds-fade-in 0.15s ease both; }
+body .ds-expand { animation: ds-expand-height 0.25s ease both; }
+body .ds-collapse { animation: ds-collapse-height 0.2s ease both; }
+body .ds-chevron { display: inline-flex; transition: transform 0.2s ease; }
+body .ds-chevron.rotated { transform: rotate(180deg); }
+body .sidebar .side-group > .side-subnav { overflow: hidden; transition: max-height 0.2s ease, opacity 0.15s ease; }
+body .sidebar .side-group:not([open]) > .side-subnav { max-height: 0; opacity: 0; pointer-events: none; }
+body .sidebar .side-group[open] > .side-subnav { max-height: 500px; opacity: 1; }
+body .kpi-grid .kpi-row-hidden { overflow: hidden; transition: max-height 0.25s ease, opacity 0.15s ease; }
+body .kpi-grid:not(.expanded) .kpi-row-hidden { max-height: 0; opacity: 0; pointer-events: none; }
+body .kpi-grid.expanded .kpi-row-hidden { max-height: 200px; opacity: 1; }
+body .toolbar-advanced { overflow: hidden; transition: max-height 0.2s ease, opacity 0.15s ease; }
+body .toolbar-advanced.collapsed { max-height: 0; opacity: 0; pointer-events: none; }
+body .toolbar-advanced.expanded { max-height: 200px; opacity: 1; }
+
+/* ---------------------------------------------------------------------
    9. STATUS PILLS — pastel DashStack
    --------------------------------------------------------------------- */
 body .status-pill.s-paid,

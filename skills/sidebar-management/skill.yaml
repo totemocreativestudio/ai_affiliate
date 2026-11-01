@@ -1,0 +1,21 @@
+id: sk-sidebar-management
+title: Sidebar Management Skill
+type: skill
+version: 1.0.0
+status: approved
+owner: @surya
+created: 2026-11-01
+updated: 2026-11-01
+description: Manages sidebar group defaults, persistence, and role-based configuration
+entryPoint: index.ts
+dependencies:
+  - m-sidebar-map
+  - m-group-defaults
+  - m-progressive-triggers
+  - sk-dashstack-restyle
+exports:
+  - useSidebarGroups: "React hook for group open/closed state"
+  - GROUP_CONFIGS: "Group configuration with role defaults"
+  - toggleGroup: "Toggle group open/closed with persistence"
+  - getDefaultOpenGroups: "Get defaults for role"
+tags: [sidebar, navigation, persistence, roles]

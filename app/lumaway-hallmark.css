@@ -623,7 +623,7 @@
   border-radius: 4px;
   background: oklch(50% 0.16 155);
   color: #fff;
-  font-size: 8px;
+  font-size:10.5px;
   font-weight: 800;
   flex-shrink: 0;
 }

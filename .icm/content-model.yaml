@@ -1,0 +1,166 @@
+# ICM Content Model Definition
+# Defines content types, their structure, and processing rules
+
+content_model:
+  version: "1.0.0"
+  
+  types:
+    knowledge:
+      name: "Knowledge"
+      prefix: "k-"
+      description: "Atomic reusable context — tokens, definitions, facts, principles"
+      frontmatter:
+        required: [id, title, type, status, version, owner, created, updated, tags, relationships, governance]
+      structure:
+        - overview: "Brief description (1-2 sentences)"
+        - content: "Main content — structured, scannable, atomic"
+        - examples: "Code snippets, values, concrete examples"
+        - references: "Links to specs, decisions, skills"
+      processing:
+        - validate_frontmatter
+        - extract_tokens
+        - build_relationship_graph
+        - generate_index
+    
+    architecture:
+      name: "Architecture"
+      prefix: "a-"
+      description: "System structure, data flow, technical decisions"
+      frontmatter:
+        required: [id, title, type, status, version, owner, created, updated, tags, relationships, governance]
+      structure:
+        - overview: "System context and purpose"
+        - components: "Component diagram or list with responsibilities"
+        - data_flow: "How data moves through the system"
+        - interfaces: "Contracts, APIs, boundaries"
+        - constraints: "Technical constraints, non-functional requirements"
+      processing:
+        - validate_frontmatter
+        - extract_components
+        - build_architecture_graph
+    
+    mapping:
+      name: "Mapping"
+      prefix: "m-"
+      description: "Explicit relationship maps — navigation, triggers, cross-references"
+      frontmatter:
+        required: [id, title, type, status, version, owner, created, updated, tags, relationships, governance]
+      structure:
+        - overview: "What this map represents"
+        - matrix: "Table or structured list of relationships"
+        - rules: "Business rules governing the mapping"
+      processing:
+        - validate_frontmatter
+        - build_relationship_matrix
+        - validate_completeness
+    
+    pattern:
+      name: "Pattern"
+      prefix: "p-"
+      description: "Reusable UI/UX pattern with implementation guidance"
+      frontmatter:
+        required: [id, title, type, status, version, owner, created, updated, tags, relationships, governance]
+      structure:
+        - overview: "When to use this pattern"
+        - anatomy: "Visual/structural breakdown"
+        - behavior: "Interaction states, transitions"
+        - implementation: "Code snippets (TSX, CSS, hooks)"
+        - accessibility: "A11y requirements"
+        - variants: "Supported variants"
+      processing:
+        - validate_frontmatter
+        - extract_code_snippets
+        - link_to_skills
+    
+    inventory:
+      name: "Inventory"
+      prefix: "i-"
+      description: "Catalog of components, assets, or resources with metadata"
+      frontmatter:
+        required: [id, title, type, status, version, owner, created, updated, tags, relationships, governance]
+      structure:
+        - overview: "Scope of inventory"
+        - items: "Structured list with metadata per item"
+        - filters: "Available filter dimensions"
+      processing:
+        - validate_frontmatter
+        - build_search_index
+        - validate_completeness
+    
+    spec:
+      name: "Specification"
+      prefix: "s-"
+      description: "Requirements, acceptance criteria, testable specifications"
+      frontmatter:
+        required: [id, title, type, status, version, owner, created, updated, tags, relationships, governance]
+      structure:
+        - overview: "What this spec covers"
+        - requirements: "Numbered, testable requirements (REQ-XXX)"
+        - acceptance_criteria: "Given/When/Then format"
+        - out_of_scope: "Explicit exclusions"
+      processing:
+        - validate_frontmatter
+        - extract_requirements
+        - link_to_decisions
+        - generate_traceability
+    
+    decision:
+      name: "Decision (ADR)"
+      prefix: "d-"
+      description: "Architecture Decision Record — context, decision, consequences"
+      frontmatter:
+        required: [id, title, type, status, version, owner, created, updated, tags, relationships, governance]
+      structure:
+        - context: "Situation forcing the decision"
+        - decision: "What was decided (clear, actionable)"
+        - alternatives: "Options considered with pros/cons"
+        - consequences: "Positive, negative, risks, mitigation"
+        - implementation_notes: "How to execute"
+      processing:
+        - validate_frontmatter
+        - link_to_specs
+        - track_superseded
+    
+    skill:
+      name: "Skill"
+      prefix: "sk-"
+      description: "Reusable code logic with manifest for composition"
+      frontmatter:
+        required: [id, title, type, status, version, owner, created, updated, tags, relationships, governance]
+      structure:
+        - manifest: "skill.yaml — exports, dependencies, config schema"
+        - source: "TypeScript/TSX source files"
+        - tests: "Unit/integration tests"
+        - docs: "Usage documentation"
+      processing:
+        - validate_manifest
+        - typecheck_source
+        - run_tests
+        - generate_docs
+
+  relationships:
+    types:
+      - relates-to: "Bidirectional association"
+      - implements: "Child implements parent spec/decision"
+      - extends: "Child extends parent knowledge/pattern"
+      - references: "Child references parent for context"
+      - governs: "Decision governs implementation"
+      - decides: "Spec/decision decides on something"
+      - depends-on: "Hard dependency"
+    validation:
+      - no_circular_dependencies
+      - all_targets_exist
+      - required_relationship_types_per_content_type
+
+  governance:
+    review_cycles:
+      knowledge: "90d"
+      architecture: "180d"
+      mapping: "90d"
+      pattern: "180d"
+      inventory: "30d"
+      spec: "90d"
+      decision: "365d"
+      skill: "90d"
+    required_reviewers: 1
+    auto_deprecate_after: "2y"
